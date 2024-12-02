@@ -54,3 +54,12 @@ func Authenticate(username, password string) (*AuthResponse, error) {
 
 	return &authResp, nil
 }
+
+// func GetUserInfo(token string) error {
+// 	url := "https://bsky.social/xrpc/com.atproto.server.getUserInfo"
+
+// 	req, err := http.NewRequest(http.MethodGet, url, nil)
+// 	if err != nil {
+// 		return err
+// 	}
+// }
