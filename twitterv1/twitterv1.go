@@ -2,61 +2,13 @@ package twitterv1
 
 import (
 	"fmt"
+	"regexp"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
+	"github.com/Preloading/MastodonTwitterAPI/bridge"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
-
-type Tweet struct {
-	Coordinates interface{} `json:"coordinates"` // I do not think anything implients this in modern day
-	Favourited  bool        `json:"favorited"`
-	CreatedAt   string      `json:"created_at"`
-	Truncated   bool        `json:"truncated"`
-	// lets agree for now that entities don't exist. that seems like a lot of effort
-	Text            string      `json:"text"`
-	Annotations     interface{} `json:"annotations"`  // Unknown
-	Contributors    interface{} `json:"contributors"` // Unknown
-	ID              int         `json:"id"`
-	Geo             interface{} `json:"geo"`                 // I do not think anything impliments this in modern day
-	Place           interface{} `json:"place"`               // Unknown
-	InReplyToUserID int         `json:"in_reply_to_user_id"` // Unknown, but guessing int
-	User            TweetUser   `json:"user"`
-	Source          string      `json:"source"`
-}
-
-type TweetUser struct {
-	Name                      string `json:"name"`
-	ProfileSidebarBorderColor string `json:"profile_sidebar_border_color"` // Hex color (w/o hashtag)
-	ProfileBackgroundTile     bool   `json:"profile_background_tile"`
-	ProfileSidebarFillColor   string `json:"profile_sidebar_fill_color"` // Hex color (w/o hashtag)
-	CreatedAt                 string `json:"created_at"`
-	ProfileImageURL           string `json:"profile_image_url"`
-	Location                  string `json:"location"`
-	ProfileLinkColor          string `json:"profile_link_color"` // Hex color (w/o hashtag)
-	FollowRequestSent         bool   `json:"follow_request_sent"`
-	URL                       string `json:"url"`
-	FavouritesCount           int    `json:"favourites_count"`
-	ContributorsEnabled       bool   `json:"contributors_enabled"`
-	UtcOffset                 int    `json:"utc_offset"`
-	ID                        int    `json:"id"`
-	ProfileUseBackgroundImage bool   `json:"profile_use_background_image"`
-	ProfileTextColor          string `json:"profile_text_color"` // Hex color (w/o hashtag)
-	Protected                 bool   `json:"protected"`
-	FollowersCount            int    `json:"followers_count"`
-	Lang                      string `json:"lang"`
-	Notifications             bool   `json:"notifications"`
-	TimeZone                  string `json:"time_zone"` // oh god it's in text form aaaa
-	Verified                  bool   `json:"verified"`
-	ProfileBackgroundColor    string `json:"profile_background_color"` // Hex color (w/o hashtag)
-	GeoEnabled                bool   `json:"geo_enabled"`              // No clue what this does
-	Description               string `json:"description"`
-	FriendsCount              int    `json:"friends_count"`
-	StatusesCount             int    `json:"statuses_count"`
-	ProfileBackgroundImageURL string `json:"profile_background_image_url"`
-	Following                 bool   `json:"following"`
-	ScreenName                string `json:"screen_name"`
-}
 
 func InitServer() {
 	app := fiber.New()
@@ -65,12 +17,14 @@ func InitServer() {
 	app.Use(logger.New())
 
 	// Custom middleware to log request details
-	app.Use(func(c *fiber.Ctx) error {
-		fmt.Println("Request Method:", c.Method())
-		fmt.Println("Request URL:", c.OriginalURL())
-		fmt.Println("Post Body:", string(c.Body()))
-		return c.Next()
-	})
+	// app.Use(func(c *fiber.Ctx) error {
+	// 	fmt.Println("Request Method:", c.Method())
+	// 	fmt.Println("Request URL:", c.OriginalURL())
+	// 	fmt.Println("Post Body:", string(c.Body()))
+	// 	fmt.Println("Headers:", string(c.Request().Header.Header()))
+	// 	fmt.Println()
+	// 	return c.Next()
+	// })
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
@@ -108,7 +62,10 @@ func access_token(c *fiber.Ctx) error {
 			fmt.Println("Error:", err)
 			return c.SendStatus(401)
 		}
-		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=twitterapi", res.OAuthToken, res.OAuthTokenSecret, res.UserID))
+		fmt.Println("AccessJwt:", res.AccessJwt)
+		fmt.Println("RefreshJwt:", res.RefreshJwt)
+		fmt.Println("User ID:", res.DID)
+		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=twitterapi", res.AccessJwt, res.RefreshJwt, string(bridge.BlueSkyToTwitterID(res.DID))))
 	}
 	// This is a problem from when I actually get this connected to bluesky
 	return c.SendStatus(501)
@@ -132,7 +89,7 @@ func status_update(c *fiber.Ctx) error {
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
 func home_timeline(c *fiber.Ctx) error {
 
-	return c.JSON([]Tweet{
+	return c.JSON([]bridge.Tweet{
 		{
 			Coordinates:     nil,
 			Favourited:      false,
@@ -145,7 +102,7 @@ func home_timeline(c *fiber.Ctx) error {
 			Geo:             nil,
 			Place:           nil,
 			InReplyToUserID: 0,
-			User: TweetUser{
+			User: bridge.TweetUser{
 				Name:                      "Preloading",
 				ProfileSidebarBorderColor: "C0DEED",
 				ProfileBackgroundTile:     false,
@@ -184,42 +141,63 @@ func home_timeline(c *fiber.Ctx) error {
 }
 
 func user_info(c *fiber.Ctx) error {
-	screen_name := c.Params("screen_name")
-	user := TweetUser{
-		Name:                      "Preloading",
-		ProfileSidebarBorderColor: "C0DEED",
-		ProfileBackgroundTile:     false,
-		ProfileSidebarFillColor:   "DDEEF6",
-		CreatedAt:                 "Wed Sep 01 00:00:00 +0000 2021",
-		ProfileImageURL:           "https://cdn.bsky.app/img/avatar_thumbnail/plain/did:plc:khcyntihpu7snjszuojjgjc4/bafkreignfoswre6f2ehujkifewpk2xdlrqhfhraloaoixjf5dommpzjxeq@png",
-		Location:                  "San Francisco",
-		ProfileLinkColor:          "0084B4",
-		FollowRequestSent:         false,
-		URL:                       "http://dev.twitter.com",
-		FavouritesCount:           8,
-		ContributorsEnabled:       false,
-		UtcOffset:                 -28800,
-		ID:                        2,
-		ProfileUseBackgroundImage: true,
-		ProfileTextColor:          "333333",
-		Protected:                 false,
-		FollowersCount:            200,
-		Lang:                      "en",
-		Notifications:             false,
-		TimeZone:                  "Pacific Time (US & Canada)",
-		Verified:                  false,
-		ProfileBackgroundColor:    "C0DEED",
-		GeoEnabled:                true,
-		Description:               "A developer just looking to make some cool stuff",
-		FriendsCount:              100,
-		StatusesCount:             333,
-		ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
-		Following:                 false,
-		ScreenName:                screen_name,
+	screen_name := c.Query("screen_name")
+	authHeader := c.Get("Authorization")
+
+	// if authHeader == "" {
+	// 	return c.Status(fiber.StatusUnauthorized).SendString("Authorization header missing")
+	// }
+
+	// Define a regular expression to match the oauth_token
+	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
+	matches := re.FindStringSubmatch(authHeader)
+
+	if len(matches) < 2 {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
-	fmt.Println("ScreenName:", screen_name)
-	return c.XML(user)
+	oauthToken := matches[1]
+
+	userinfo, err := blueskyapi.GetUserInfo(oauthToken, screen_name)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+	}
+
+	// user := bridge.TweetUser{
+	// 	Name:                      "Preloading",
+	// 	ProfileSidebarBorderColor: "C0DEED",
+	// 	ProfileBackgroundTile:     false,
+	// 	ProfileSidebarFillColor:   "DDEEF6",
+	// 	CreatedAt:                 "Wed Sep 01 00:00:00 +0000 2021",
+	// 	ProfileImageURL:           "https://cdn.bsky.app/img/avatar_thumbnail/plain/did:plc:khcyntihpu7snjszuojjgjc4/bafkreignfoswre6f2ehujkifewpk2xdlrqhfhraloaoixjf5dommpzjxeq@png",
+	// 	Location:                  "San Francisco",
+	// 	ProfileLinkColor:          "0084B4",
+	// 	FollowRequestSent:         false,
+	// 	URL:                       "http://dev.twitter.com",
+	// 	FavouritesCount:           8,
+	// 	ContributorsEnabled:       false,
+	// 	UtcOffset:                 -28800,
+	// 	ID:                        2,
+	// 	ProfileUseBackgroundImage: true,
+	// 	ProfileTextColor:          "333333",
+	// 	Protected:                 false,
+	// 	FollowersCount:            200,
+	// 	Lang:                      "en",
+	// 	Notifications:             false,
+	// 	TimeZone:                  "Pacific Time (US & Canada)",
+	// 	Verified:                  false,
+	// 	ProfileBackgroundColor:    "C0DEED",
+	// 	GeoEnabled:                true,
+	// 	Description:               "A developer just looking to make some cool stuff",
+	// 	FriendsCount:              100,
+	// 	StatusesCount:             333,
+	// 	ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
+	// 	Following:                 false,
+	// 	ScreenName:                screen_name,
+	// }
+	return c.XML(userinfo)
 }
 
 // https://web.archive.org/web/20120313235613/https://dev.twitter.com/docs/api/1/get/trends/%3Awoeid
