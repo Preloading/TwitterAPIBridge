@@ -97,15 +97,10 @@ func InitServer() {
 // https://developer.x.com/en/docs/authentication/api-reference/access_token
 func access_token(c *fiber.Ctx) error {
 	// Parse the form data
-	sendErrorCodes := c.FormValue("send_error_codes")
+	//sendErrorCodes := c.FormValue("send_error_codes")
 	authMode := c.FormValue("x_auth_mode")
 	authPassword := c.FormValue("x_auth_password")
 	authUsername := c.FormValue("x_auth_username")
-
-	fmt.Println("SendErrorCodes:", sendErrorCodes)
-	fmt.Println("AuthMode:", authMode)
-	fmt.Println("AuthPassword:", authPassword)
-	fmt.Println("AuthUsername:", authUsername)
 
 	if authMode == "client_auth" {
 		res, err := blueskyapi.Authenticate(authUsername, authPassword)
