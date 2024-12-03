@@ -175,14 +175,16 @@ func Authenticate(username, password string) (*AuthResponse, error) {
 }
 
 func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
-	url := "https://bsky.social/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
+	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

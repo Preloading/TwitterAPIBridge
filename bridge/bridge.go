@@ -8,11 +8,11 @@ import (
 )
 
 type Tweet struct {
-	Coordinates interface{} `json:"coordinates"` // I do not think anything implients this in modern day
-	Favourited  bool        `json:"favorited"`
-	CreatedAt   string      `json:"created_at"`
-	Truncated   bool        `json:"truncated"`
-	// lets agree for now that entities don't exist. that seems like a lot of effort
+	Coordinates     interface{} `json:"coordinates"` // I do not think anything implients this in modern day
+	Favourited      bool        `json:"favorited"`
+	CreatedAt       string      `json:"created_at"`
+	Truncated       bool        `json:"truncated"`
+	Entities        Entities    `json:"entities"`
 	Text            string      `json:"text"`
 	Annotations     interface{} `json:"annotations"`  // Unknown
 	Contributors    interface{} `json:"contributors"` // Unknown
@@ -59,6 +59,32 @@ type TwitterUser struct {
 	IDStr                     string  `json:"id_str"`
 	IsTranslator              bool    `json:"is_translator"`
 	ListedCount               int     `json:"listed_count"`
+}
+
+type MediaSize struct {
+	W      int    `json:"w"`
+	Resize string `json:"resize"`
+	H      int    `json:"h"`
+}
+
+type Media struct {
+	ID            big.Int              `json:"id"`
+	IDStr         string               `json:"id_str"`
+	MediaURL      string               `json:"media_url"`
+	MediaURLHttps string               `json:"media_url_https"`
+	URL           string               `json:"url"`
+	DisplayURL    string               `json:"display_url"`
+	ExpandedURL   string               `json:"expanded_url"`
+	Sizes         map[string]MediaSize `json:"sizes"`
+	Type          string               `json:"type"`
+	Indices       []int                `json:"indices"`
+}
+
+type Entities struct {
+	Media        []Media       `json:"media"`
+	Urls         []interface{} `json:"urls"`          // TODO
+	UserMentions []interface{} `json:"user_mentions"` // TODO
+	Hashtags     []interface{} `json:"hashtags"`      // TODO
 }
 
 // Bluesky's API returns a letter ID for each user,

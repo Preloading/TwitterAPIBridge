@@ -6,6 +6,7 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
+	"math/big"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -140,12 +141,33 @@ func home_timeline(c *fiber.Ctx) error {
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
+		tweetEntities := bridge.Entities{
+			Hashtags:     nil,
+			Urls:         nil,
+			UserMentions: nil,
+			Media:        []bridge.Media{},
+		}
+
+		id := 1
+		for _, image := range item.Post.Record.Embed.Images {
+			// Process each image
+			fmt.Println("Image:", "http://10.0.0.77:3000/cdn/img/?url="+url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"))
+			tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
+				ID:       *big.NewInt(int64(id)),
+				IDStr:    strconv.Itoa(id),
+				MediaURL: "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"),
+				// MediaURLHttps: "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"),
+			})
+			id++
+		}
+
 		tweet := bridge.Tweet{
 			Coordinates:     nil,
 			Favourited:      item.Post.Viewer.Like,
 			CreatedAt:       bridge.TwitterTimeConverter(item.Post.Record.CreatedAt),
 			Truncated:       false,
 			Text:            item.Post.Record.Text,
+			Entities:        tweetEntities,
 			Annotations:     nil,
 			Contributors:    nil,
 			ID:              *bridge.BlueSkyToTwitterID(item.Post.CID),
@@ -184,6 +206,7 @@ func home_timeline(c *fiber.Ctx) error {
 				ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
 				Following:                 false,
 			},
+			Source: "BlueSky",
 		}
 		tweets = append(tweets, tweet)
 	}
@@ -245,19 +268,19 @@ func user_info(c *fiber.Ctx) error {
 	screen_name := c.Query("screen_name")
 	authHeader := c.Get("Authorization")
 
-	// if authHeader == "" {
-	// 	return c.Status(fiber.StatusUnauthorized).SendString("Authorization header missing")
-	// }
-
 	// Define a regular expression to match the oauth_token
 	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
 	matches := re.FindStringSubmatch(authHeader)
 
-	if len(matches) < 2 {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
-	}
+	oauthToken := ""
 
-	oauthToken := matches[1]
+	if len(matches) < 2 {
+		//return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		// This request supports without a token
+		oauthToken = ""
+	} else {
+		oauthToken = matches[1]
+	}
 
 	userinfo, err := blueskyapi.GetUserInfo(oauthToken, screen_name)
 
@@ -348,6 +371,12 @@ func trends_woeid(c *fiber.Ctx) error {
 			},
 		},
 	})
+}
+
+func Search(c *fiber.Ctx) error {
+	q := c.Query("q")
+	fmt.Println("Search query:", q)
+	return c.SendStatus(fiber.StatusNotImplemented)
 }
 
 func CDNDownscaler(c *fiber.Ctx) error {
