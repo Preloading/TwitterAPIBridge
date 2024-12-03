@@ -35,6 +35,57 @@ type AuthRequest struct {
 	Password   string `json:"password"`
 }
 
+type Author struct {
+	DID         string `json:"did"`
+	Handle      string `json:"handle"`
+	DisplayName string `json:"displayName"`
+	Avatar      string `json:"avatar"`
+	Associated  struct {
+		Lists        int  `json:"lists"`
+		FeedGens     int  `json:"feedgens"`
+		StarterPacks int  `json:"starterPacks"`
+		Labeler      bool `json:"labeler"`
+		//chat
+		CreatedAt string `json:"created_at"`
+		//viewer
+	}
+}
+type PostViewer struct {
+	Repost            bool `json:"repost"`
+	Like              bool `json:"like"`
+	ThreadMute        bool `json:"threadMute"`
+	ReplyDisabled     bool `json:"replyDisabled"`
+	EmbeddingDisabled bool `json:"embeddingDisabled"`
+	Pinned            bool `json:"pinned"`
+}
+type Post struct {
+	URI    string `json:"uri"`
+	CID    string `json:"cid"`
+	Author Author `json:"author"`
+	//Record string `json:"record"`
+	// embed
+	ReplyCount  int        `json:"replyCount"`
+	RepostCount int        `json:"repostCount"`
+	LikeCount   int        `json:"likeCount"`
+	QuoteCount  int        `json:"quoteCount"`
+	IndexedAt   string     `json:"indexedAt"`
+	Viewer      PostViewer `json:"viewer"`
+}
+
+type Feed struct {
+	Post  Post `json:"post"`
+	Reply struct {
+		Root   Post `json:"root"`
+		Parent Post `json:"parent"`
+	} `json:"reply"`
+	FeedContext string `json:"feedContext"`
+}
+
+type Timeline struct {
+	Feed   []Feed `json:"feed"`
+	Cursor string `json:"cursor"`
+}
+
 func Authenticate(username, password string) (*AuthResponse, error) {
 	url := "https://bsky.social/xrpc/com.atproto.server.createSession"
 
@@ -112,7 +163,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 		URL:                       "",
 		FavouritesCount:           0,
 		UtcOffset:                 0,
-		ID:                        bridge.BlueSkyToTwitterID(user.DID),
+		ID:                        *bridge.BlueSkyToTwitterID(user.DID),
 		ProfileUseBackgroundImage: false,
 		ListedCount:               0,
 		ProfileTextColor:          "000000",
@@ -128,4 +179,60 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 		StatusesCount:             user.PostsCount,
 		ScreenName:                user.Handle,
 	}, nil
+}
+
+func GetTimeline(token string) (error, *Timeline) {
+	url := "https://public.bsky.social/xrpc/app.bsky.feed.getTimeline"
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return err, nil
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch timeline"), nil
+	}
+
+	feeds := Timeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return err, nil
+	}
+
+	return nil, &feeds
+}
+
+func UpdateStatus(token string, status string) error {
+	url := "https://public.bsky.social/xrpc/com.atproto.repo.createRecord"
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil
+	}
+	return errors.New("failed to update status")
 }

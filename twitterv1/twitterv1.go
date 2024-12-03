@@ -2,12 +2,21 @@ package twitterv1
 
 import (
 	"fmt"
+	"image"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
+	"net/http"
+	"net/url"
 	"regexp"
+	"strconv"
+	"strings"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/nfnt/resize"
 )
 
 func InitServer() {
@@ -45,10 +54,15 @@ func InitServer() {
 	// Trends
 	app.Get("/1/trends/:woeid.json", trends_woeid)
 
+	// CDN Downscaler
+	app.Get("/cdn/img", CDNDownscaler)
+
 	app.Listen(":3000")
 }
 
 // https://developer.x.com/en/docs/authentication/api-reference/access_token
+// and
+// https://web.archive.org/web/20120708225149/https://dev.twitter.com/docs/oauth/xauth
 func access_token(c *fiber.Ctx) error {
 	// Parse the form data
 	//sendErrorCodes := c.FormValue("send_error_codes")
@@ -65,7 +79,8 @@ func access_token(c *fiber.Ctx) error {
 		fmt.Println("AccessJwt:", res.AccessJwt)
 		fmt.Println("RefreshJwt:", res.RefreshJwt)
 		fmt.Println("User ID:", res.DID)
-		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=twitterapi", res.AccessJwt, res.RefreshJwt, string(bridge.BlueSkyToTwitterID(res.DID))))
+		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=twitterapi&x_auth_expires=900", res.AccessJwt, res.RefreshJwt, bridge.BlueSkyToTwitterID(res.DID).String()))
+		// TODO: add x_auth_expires
 	}
 	// This is a problem from when I actually get this connected to bluesky
 	return c.SendStatus(501)
@@ -73,6 +88,17 @@ func access_token(c *fiber.Ctx) error {
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/post/statuses/update
 func status_update(c *fiber.Ctx) error {
+	authHeader := c.Get("Authorization")
+	// Define a regular expression to match the oauth_token
+	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
+	matches := re.FindStringSubmatch(authHeader)
+
+	if len(matches) < 2 {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	oauthToken := matches[1]
+
 	status := c.FormValue("status")
 	trim_user := c.FormValue("trim_user")
 	in_reply_to_status_id := c.FormValue("in_reply_to_status_id")
@@ -81,6 +107,11 @@ func status_update(c *fiber.Ctx) error {
 	fmt.Println("TrimUser:", trim_user)
 	fmt.Println("InReplyToStatusID:", in_reply_to_status_id)
 
+	if err := blueskyapi.UpdateStatus(oauthToken, status); err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
+	}
+
 	// TODO: Implement this
 
 	return c.SendString("Not implemented")
@@ -88,35 +119,55 @@ func status_update(c *fiber.Ctx) error {
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
 func home_timeline(c *fiber.Ctx) error {
+	authHeader := c.Get("Authorization")
+	// Define a regular expression to match the oauth_token
+	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
+	matches := re.FindStringSubmatch(authHeader)
 
-	return c.JSON([]bridge.Tweet{
-		{
+	if len(matches) < 2 {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	oauthToken := matches[1]
+
+	err, res := blueskyapi.GetTimeline(oauthToken)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
+	}
+
+	tweets := []bridge.Tweet{}
+
+	for _, item := range res.Feed {
+		tweet := bridge.Tweet{
 			Coordinates:     nil,
 			Favourited:      false,
 			CreatedAt:       "Wed Sep 01 00:00:00 +0000 2021",
 			Truncated:       false,
-			Text:            "Will it blow up if there's a @ in the name",
+			Text:            "test",
 			Annotations:     nil,
 			Contributors:    nil,
-			ID:              4,
+			ID:              *bridge.BlueSkyToTwitterID(item.Post.CID),
 			Geo:             nil,
 			Place:           nil,
 			InReplyToUserID: 0,
 			User: bridge.TweetUser{
-				Name:                      "Preloading",
-				ProfileSidebarBorderColor: "C0DEED",
+				Name:                      item.Post.Author.DisplayName,
+				ProfileSidebarBorderColor: "",
 				ProfileBackgroundTile:     false,
-				ProfileSidebarFillColor:   "DDEEF6",
-				CreatedAt:                 "Wed Sep 01 00:00:00 +0000 2021",
-				ProfileImageURL:           "https://cdn.bsky.app/img/avatar_thumbnail/plain/did:plc:khcyntihpu7snjszuojjgjc4/bafkreignfoswre6f2ehujkifewpk2xdlrqhfhraloaoixjf5dommpzjxeq@png",
-				Location:                  "San Francisco",
-				ProfileLinkColor:          "0084B4",
+				ProfileSidebarFillColor:   "",
+				CreatedAt:                 item.Post.Author.Associated.CreatedAt,
+				ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(item.Post.Author.Avatar) + "&width=128&height=128",
+				Location:                  "",
+				ProfileLinkColor:          "",
 				FollowRequestSent:         false,
-				URL:                       "http://dev.twitter.com",
-				FavouritesCount:           8,
+				URL:                       "",
+				FavouritesCount:           0,
+				ScreenName:                item.Post.Author.Handle,
 				ContributorsEnabled:       false,
 				UtcOffset:                 -28800,
-				ID:                        2,
+				ID:                        *bridge.BlueSkyToTwitterID(item.Post.Author.DID),
 				ProfileUseBackgroundImage: true,
 				ProfileTextColor:          "333333",
 				Protected:                 false,
@@ -127,16 +178,66 @@ func home_timeline(c *fiber.Ctx) error {
 				Verified:                  false,
 				ProfileBackgroundColor:    "C0DEED",
 				GeoEnabled:                true,
-				Description:               "A developer just looking to make some cool stuff",
+				Description:               "",
 				FriendsCount:              100,
 				StatusesCount:             333,
 				ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
 				Following:                 false,
-				ScreenName:                "preloading",
 			},
-			Source: "web",
-		},
-	})
+		}
+		tweets = append(tweets, tweet)
+	}
+
+	return c.JSON(tweets)
+
+	// return c.JSON([]bridge.Tweet{
+	// 	{
+	// 		Coordinates:     nil,
+	// 		Favourited:      false,
+	// 		CreatedAt:       "Wed Sep 01 00:00:00 +0000 2021",
+	// 		Truncated:       false,
+	// 		Text:            "Will it blow up if there's a @ in the name",
+	// 		Annotations:     nil,
+	// 		Contributors:    nil,
+	// 		ID:              4,
+	// 		Geo:             nil,
+	// 		Place:           nil,
+	// 		InReplyToUserID: 0,
+	// 		User: bridge.TweetUser{
+	// 			Name:                      "Preloading",
+	// 			ProfileSidebarBorderColor: "C0DEED",
+	// 			ProfileBackgroundTile:     false,
+	// 			ProfileSidebarFillColor:   "DDEEF6",
+	// 			CreatedAt:                 "Wed Sep 01 00:00:00 +0000 2021",
+	// 			ProfileImageURL:           "https://cdn.bsky.app/img/avatar_thumbnail/plain/did:plc:khcyntihpu7snjszuojjgjc4/bafkreignfoswre6f2ehujkifewpk2xdlrqhfhraloaoixjf5dommpzjxeq@png",
+	// 			Location:                  "San Francisco",
+	// 			ProfileLinkColor:          "0084B4",
+	// 			FollowRequestSent:         false,
+	// 			URL:                       "http://dev.twitter.com",
+	// 			FavouritesCount:           8,
+	// 			ContributorsEnabled:       false,
+	// 			UtcOffset:                 -28800,
+	// 			ID:                        2,
+	// 			ProfileUseBackgroundImage: true,
+	// 			ProfileTextColor:          "333333",
+	// 			Protected:                 false,
+	// 			FollowersCount:            200,
+	// 			Lang:                      "en",
+	// 			Notifications:             false,
+	// 			TimeZone:                  "Pacific Time (US & Canada)",
+	// 			Verified:                  false,
+	// 			ProfileBackgroundColor:    "C0DEED",
+	// 			GeoEnabled:                true,
+	// 			Description:               "A developer just looking to make some cool stuff",
+	// 			FriendsCount:              100,
+	// 			StatusesCount:             333,
+	// 			ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
+	// 			Following:                 false,
+	// 			ScreenName:                "preloading",
+	// 		},
+	// 		Source: "web",
+	// 	},
+	// })
 
 }
 
@@ -247,4 +348,56 @@ func trends_woeid(c *fiber.Ctx) error {
 			},
 		},
 	})
+}
+
+func CDNDownscaler(c *fiber.Ctx) error {
+	imageURL := c.Query("url")
+	if !strings.HasPrefix(imageURL, "https://cdn.bsky.app/img/") { // Later maybe lift these restrictions?
+		return c.SendStatus(fiber.StatusBadRequest)
+	}
+
+	widthStr := c.Query("width")
+	heightStr := c.Query("height")
+
+	width, err := strconv.Atoi(widthStr)
+	if err != nil {
+		width = 0
+	}
+	height, err := strconv.Atoi(heightStr)
+	if err != nil {
+		height = 0
+	}
+
+	resp, err := http.Get(imageURL)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch image")
+	}
+	defer resp.Body.Close()
+
+	img, format, err := image.Decode(resp.Body)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to decode image")
+	}
+
+	if width > 0 || height > 0 {
+		img = resize.Resize(uint(width), uint(height), img, resize.Lanczos3)
+	}
+
+	c.Set("Content-Type", "image/"+format)
+	switch format {
+	case "jpeg":
+		err = jpeg.Encode(c.Response().BodyWriter(), img, nil)
+	case "png":
+		err = png.Encode(c.Response().BodyWriter(), img)
+	case "gif":
+		err = gif.Encode(c.Response().BodyWriter(), img, nil)
+	default:
+		return c.Status(fiber.StatusInternalServerError).SendString("Unsupported image format")
+	}
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode image")
+	}
+
+	return nil
 }
