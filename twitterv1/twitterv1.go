@@ -142,10 +142,10 @@ func home_timeline(c *fiber.Ctx) error {
 	for _, item := range res.Feed {
 		tweet := bridge.Tweet{
 			Coordinates:     nil,
-			Favourited:      false,
-			CreatedAt:       "Wed Sep 01 00:00:00 +0000 2021",
+			Favourited:      item.Post.Viewer.Like,
+			CreatedAt:       bridge.TwitterTimeConverter(item.Post.Record.CreatedAt),
 			Truncated:       false,
-			Text:            "test",
+			Text:            item.Post.Record.Text,
 			Annotations:     nil,
 			Contributors:    nil,
 			ID:              *bridge.BlueSkyToTwitterID(item.Post.CID),
@@ -157,7 +157,7 @@ func home_timeline(c *fiber.Ctx) error {
 				ProfileSidebarBorderColor: "",
 				ProfileBackgroundTile:     false,
 				ProfileSidebarFillColor:   "",
-				CreatedAt:                 item.Post.Author.Associated.CreatedAt,
+				CreatedAt:                 bridge.TwitterTimeConverter(item.Post.Author.Associated.CreatedAt),
 				ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(item.Post.Author.Avatar) + "&width=128&height=128",
 				Location:                  "",
 				ProfileLinkColor:          "",

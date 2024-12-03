@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
 )
@@ -46,10 +47,62 @@ type Author struct {
 		StarterPacks int  `json:"starterPacks"`
 		Labeler      bool `json:"labeler"`
 		//chat
-		CreatedAt string `json:"created_at"`
+		CreatedAt time.Time `json:"created_at"`
 		//viewer
 	}
 }
+
+type PostRecord struct {
+	Type      string    `json:"$type"`
+	CreatedAt time.Time `json:"createdAt"`
+	Embed     Embed     `json:"embed"`
+	Facets    []Facet   `json:"facets"`
+	Langs     []string  `json:"langs"`
+	Text      string    `json:"text"`
+}
+
+type Embed struct {
+	Type   string  `json:"$type"`
+	Images []Image `json:"images"`
+}
+
+type Image struct {
+	Alt         string      `json:"alt"`
+	AspectRatio AspectRatio `json:"aspectRatio"`
+	Image       Blob        `json:"image"`
+}
+
+type AspectRatio struct {
+	Height int `json:"height"`
+	Width  int `json:"width"`
+}
+
+type Blob struct {
+	Type     string `json:"$type"`
+	Ref      Ref    `json:"ref"`
+	MimeType string `json:"mimeType"`
+	Size     int    `json:"size"`
+}
+
+type Ref struct {
+	Link string `json:"$link"`
+}
+
+type Facet struct {
+	Features []Feature `json:"features"`
+	Index    Index     `json:"index"`
+}
+
+type Feature struct {
+	Type string `json:"$type"`
+	Tag  string `json:"tag"`
+}
+
+type Index struct {
+	ByteEnd   int `json:"byteEnd"`
+	ByteStart int `json:"byteStart"`
+}
+
 type PostViewer struct {
 	Repost            bool `json:"repost"`
 	Like              bool `json:"like"`
@@ -59,11 +112,11 @@ type PostViewer struct {
 	Pinned            bool `json:"pinned"`
 }
 type Post struct {
-	URI    string `json:"uri"`
-	CID    string `json:"cid"`
-	Author Author `json:"author"`
-	//Record string `json:"record"`
-	// embed
+	URI    string     `json:"uri"`
+	CID    string     `json:"cid"`
+	Author Author     `json:"author"`
+	Record PostRecord `json:"record"`
+	// Embed  Embed      `json:"embed"`
 	ReplyCount  int        `json:"replyCount"`
 	RepostCount int        `json:"repostCount"`
 	LikeCount   int        `json:"likeCount"`
@@ -196,6 +249,12 @@ func GetTimeline(token string) (error, *Timeline) {
 		return err, nil
 	}
 	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		bodyString := string(bodyBytes)

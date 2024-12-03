@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 )
 
 type Tweet struct {
@@ -166,4 +167,9 @@ func decodeBase37(encoded string) (int, error) {
 		num = num*36 + index
 	}
 	return num, nil
+}
+
+// FormatTime converts Go's time.Time into the format "Wed Sep 01 00:00:00 +0000 2021"
+func TwitterTimeConverter(t time.Time) string {
+	return t.Format("Mon Jan 02 15:04:05 -0700 2006")
 }
