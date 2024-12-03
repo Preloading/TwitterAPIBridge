@@ -20,11 +20,11 @@ type Tweet struct {
 	Geo             interface{} `json:"geo"`                 // I do not think anything impliments this in modern day
 	Place           interface{} `json:"place"`               // Unknown
 	InReplyToUserID int         `json:"in_reply_to_user_id"` // Unknown, but guessing int
-	User            TweetUser   `json:"user"`
+	User            TwitterUser `json:"user"`
 	Source          string      `json:"source"`
 }
 
-type TweetUser struct {
+type TwitterUser struct {
 	Name                      string  `json:"name"`
 	ProfileSidebarBorderColor string  `json:"profile_sidebar_border_color"` // Hex color (w/o hashtag)
 	ProfileBackgroundTile     bool    `json:"profile_background_tile"`
@@ -56,43 +56,9 @@ type TweetUser struct {
 	Following                 bool    `json:"following"`
 	ScreenName                string  `json:"screen_name"`
 	ShowAllInlineMedia        bool    `json:"show_all_inline_media"`
-}
-
-type TwitterUser struct {
-	ProfileSidebarFillColor   string  `json:"profile_sidebar_fill_color"` // Hex color (w/o hashtag)
-	Name                      string  `json:"name"`
-	ProfileSidebarBorderColor string  `json:"profile_sidebar_border_color"` // Hex color (w/o hashtag)
-	ProfileBackgroundTile     bool    `json:"profile_background_tile"`
-	CreatedAt                 string  `json:"created_at"`
-	ProfileImageURL           string  `json:"profile_image_url"`
-	Location                  string  `json:"location"`
-	ProfileLinkColor          string  `json:"profile_link_color"` // Hex color (w/o hashtag)
-	FollowRequestSent         bool    `json:"follow_request_sent"`
 	IDStr                     string  `json:"id_str"`
 	IsTranslator              bool    `json:"is_translator"`
-	ContributorsEnabled       bool    `json:"contributors_enabled"`
-	URL                       string  `json:"url"`
-	FavouritesCount           int     `json:"favourites_count"`
-	UtcOffset                 int     `json:"utc_offset"`
-	ID                        big.Int `json:"id"`
-	ProfileUseBackgroundImage bool    `json:"profile_use_background_image"`
 	ListedCount               int     `json:"listed_count"`
-	ProfileTextColor          string  `json:"profile_text_color"` // Hex color (w/o hashtag)
-	Protected                 bool    `json:"protected"`
-	FollowersCount            int     `json:"followers_count"`
-	Lang                      string  `json:"lang"`
-	Notifications             bool    `json:"notifications"`
-	TimeZone                  string  `json:"time_zone"` // oh god it's in text form aaaa
-	Verified                  bool    `json:"verified"`
-	ProfileBackgroundColor    string  `json:"profile_background_color"` // Hex color (w/o hashtag)
-	GeoEnabled                bool    `json:"geo_enabled"`              // No clue what this does
-	Description               string  `json:"description"`
-	FriendsCount              int     `json:"friends_count"`
-	StatusesCount             int     `json:"statuses_count"`
-	ProfileBackgroundImageURL string  `json:"profile_background_image_url"`
-	Following                 bool    `json:"following"`
-	ScreenName                string  `json:"screen_name"`
-	ShowAllInlineMedia        bool    `json:"show_all_inline_media"`
 }
 
 // Bluesky's API returns a letter ID for each user,

@@ -152,7 +152,7 @@ func home_timeline(c *fiber.Ctx) error {
 			Geo:             nil,
 			Place:           nil,
 			InReplyToUserID: 0,
-			User: bridge.TweetUser{
+			User: bridge.TwitterUser{
 				Name:                      item.Post.Author.DisplayName,
 				ProfileSidebarBorderColor: "",
 				ProfileBackgroundTile:     false,
