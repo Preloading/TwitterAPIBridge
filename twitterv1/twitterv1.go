@@ -151,11 +151,11 @@ func home_timeline(c *fiber.Ctx) error {
 		id := 1
 		for _, image := range item.Post.Record.Embed.Images {
 			// Process each image
-			fmt.Println("Image:", "http://10.0.0.77:3000/cdn/img/?url="+url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"))
+			// fmt.Println("Image:", "http://10.0.0.77:3000/cdn/img/?url="+url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+item.Post.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"))
 			tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
 				ID:       *big.NewInt(int64(id)),
 				IDStr:    strconv.Itoa(id),
-				MediaURL: "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"),
+				MediaURL: "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+item.Post.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
 				// MediaURLHttps: "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"),
 			})
 			id++
@@ -206,7 +206,7 @@ func home_timeline(c *fiber.Ctx) error {
 				ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
 				Following:                 false,
 			},
-			Source: "BlueSky",
+			Source: "Bluesky",
 		}
 		tweets = append(tweets, tweet)
 	}
@@ -381,12 +381,31 @@ func Search(c *fiber.Ctx) error {
 
 func CDNDownscaler(c *fiber.Ctx) error {
 	imageURL := c.Query("url")
+	fmt.Println(imageURL)
 	if !strings.HasPrefix(imageURL, "https://cdn.bsky.app/img/") { // Later maybe lift these restrictions?
 		return c.SendStatus(fiber.StatusBadRequest)
 	}
 
 	widthStr := c.Query("width")
 	heightStr := c.Query("height")
+
+	// So twitter likes to do a stupid thing where it appends :small or :large to the end of tweet images, so we need to strip that, and use that for dimentions
+
+	if strings.HasSuffix(imageURL, ":small") {
+		imageURL = strings.TrimSuffix(imageURL, ":small")
+
+		// TODO: Find what these values actually used to be
+		widthStr = "320"
+		heightStr = ""
+	}
+	if strings.HasSuffix(imageURL, ":large") {
+		imageURL = strings.TrimSuffix(imageURL, ":large")
+
+		// TODO: Find what these values actually used to be
+		widthStr = ""
+		heightStr = ""
+
+	}
 
 	width, err := strconv.Atoi(widthStr)
 	if err != nil {
