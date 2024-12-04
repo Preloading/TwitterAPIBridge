@@ -55,6 +55,9 @@ func InitServer() {
 	// Trends
 	app.Get("/1/trends/:woeid.json", trends_woeid)
 
+	// Setings
+	app.Get("/1/account/settings.xml", GetSettings)
+
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)
 
@@ -144,7 +147,7 @@ func home_timeline(c *fiber.Ctx) error {
 		tweetEntities := bridge.Entities{
 			Hashtags:     nil,
 			Urls:         nil,
-			UserMentions: nil,
+			UserMentions: []bridge.UserMention{},
 			Media:        []bridge.Media{},
 		}
 
@@ -160,6 +163,34 @@ func home_timeline(c *fiber.Ctx) error {
 			})
 			id++
 		}
+		for _, faucet := range item.Post.Record.Facets {
+			// I haven't seen this exceed 1 element yet
+			// if len(faucet.Features) > 1 {
+			// fmt.Println("Faucet with more than 1 feature found!")
+			// faucetJSON, err := json.Marshal(faucet)
+			// if err != nil {
+			// 	fmt.Println("Error encoding faucet to JSON:", err)
+			// } else {
+			// 	fmt.Println("Faucet JSON:", string(faucetJSON))
+			// }
+			// // }
+			// fmt.Println(faucet.Features[0].Type)
+			switch faucet.Features[0].Type {
+			case "app.bsky.richtext.facet#mention":
+				fmt.Println("we found a mention")
+				tweetEntities.UserMentions = append(tweetEntities.UserMentions, bridge.UserMention{
+					Name:       "test",
+					ScreenName: "test",
+					//ScreenName: item.Post.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
+					ID: *bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
+					Indices: []int{
+						faucet.Index.ByteStart,
+						faucet.Index.ByteEnd,
+					},
+				})
+			}
+
+		}
 
 		tweet := bridge.Tweet{
 			Coordinates:     nil,
@@ -173,7 +204,7 @@ func home_timeline(c *fiber.Ctx) error {
 			ID:              *bridge.BlueSkyToTwitterID(item.Post.CID),
 			Geo:             nil,
 			Place:           nil,
-			InReplyToUserID: 0,
+			InReplyToUserID: *bridge.BlueSkyToTwitterID(item.Reply.Parent.Author.DID),
 			User: bridge.TwitterUser{
 				Name:                      item.Post.Author.DisplayName,
 				ProfileSidebarBorderColor: "",
@@ -201,66 +232,18 @@ func home_timeline(c *fiber.Ctx) error {
 				ProfileBackgroundColor:    "C0DEED",
 				GeoEnabled:                true,
 				Description:               "",
-				FriendsCount:              100,
-				StatusesCount:             333,
+				// FriendsCount:              100,
+				// StatusesCount:             333,
 				ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
 				Following:                 false,
 			},
-			Source: "Bluesky",
+			Source:            "Bluesky",
+			InReplyToStatusID: *bridge.BlueSkyToTwitterID(item.Reply.Parent.CID),
 		}
 		tweets = append(tweets, tweet)
 	}
 
 	return c.JSON(tweets)
-
-	// return c.JSON([]bridge.Tweet{
-	// 	{
-	// 		Coordinates:     nil,
-	// 		Favourited:      false,
-	// 		CreatedAt:       "Wed Sep 01 00:00:00 +0000 2021",
-	// 		Truncated:       false,
-	// 		Text:            "Will it blow up if there's a @ in the name",
-	// 		Annotations:     nil,
-	// 		Contributors:    nil,
-	// 		ID:              4,
-	// 		Geo:             nil,
-	// 		Place:           nil,
-	// 		InReplyToUserID: 0,
-	// 		User: bridge.TweetUser{
-	// 			Name:                      "Preloading",
-	// 			ProfileSidebarBorderColor: "C0DEED",
-	// 			ProfileBackgroundTile:     false,
-	// 			ProfileSidebarFillColor:   "DDEEF6",
-	// 			CreatedAt:                 "Wed Sep 01 00:00:00 +0000 2021",
-	// 			ProfileImageURL:           "https://cdn.bsky.app/img/avatar_thumbnail/plain/did:plc:khcyntihpu7snjszuojjgjc4/bafkreignfoswre6f2ehujkifewpk2xdlrqhfhraloaoixjf5dommpzjxeq@png",
-	// 			Location:                  "San Francisco",
-	// 			ProfileLinkColor:          "0084B4",
-	// 			FollowRequestSent:         false,
-	// 			URL:                       "http://dev.twitter.com",
-	// 			FavouritesCount:           8,
-	// 			ContributorsEnabled:       false,
-	// 			UtcOffset:                 -28800,
-	// 			ID:                        2,
-	// 			ProfileUseBackgroundImage: true,
-	// 			ProfileTextColor:          "333333",
-	// 			Protected:                 false,
-	// 			FollowersCount:            200,
-	// 			Lang:                      "en",
-	// 			Notifications:             false,
-	// 			TimeZone:                  "Pacific Time (US & Canada)",
-	// 			Verified:                  false,
-	// 			ProfileBackgroundColor:    "C0DEED",
-	// 			GeoEnabled:                true,
-	// 			Description:               "A developer just looking to make some cool stuff",
-	// 			FriendsCount:              100,
-	// 			StatusesCount:             333,
-	// 			ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
-	// 			Following:                 false,
-	// 			ScreenName:                "preloading",
-	// 		},
-	// 		Source: "web",
-	// 	},
-	// })
 
 }
 
@@ -377,6 +360,46 @@ func Search(c *fiber.Ctx) error {
 	q := c.Query("q")
 	fmt.Println("Search query:", q)
 	return c.SendStatus(fiber.StatusNotImplemented)
+}
+
+func PushDestinations(c *fiber.Ctx) error {
+	// This request is /1/account/push_destinations/device.xml, and i cannot find any info on this.
+	return c.SendStatus(fiber.StatusNotImplemented)
+}
+
+// TODO
+// 99% sure this relies on PushDestinations, which i have no data on.
+func GetSettings(c *fiber.Ctx) error {
+	return c.XML(bridge.Config{
+		SleepTime: bridge.SleepTime{
+			EndTime:   nil,
+			Enabled:   true,
+			StartTime: nil,
+		},
+		TrendLocation: []bridge.TrendLocation{
+			{
+				Name:  "Worldwide",
+				Woeid: 1,
+				PlaceType: bridge.PlaceType{
+					Name: "Supername",
+					Code: 19,
+				},
+				Country:     "",
+				URL:         "http://where.yahooapis.com/v1/place/1",
+				CountryCode: nil,
+			},
+		},
+		Language:            "en",
+		AlwaysUseHttps:      false,
+		DiscoverableByEmail: true,
+		TimeZone: bridge.TimeZone{
+			Name:       "Pacific Time (US & Canada)",
+			TzinfoName: "America/Los_Angeles",
+			UtcOffset:  -28800,
+		},
+		GeoEnabled: true,
+	})
+
 }
 
 func CDNDownscaler(c *fiber.Ctx) error {

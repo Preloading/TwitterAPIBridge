@@ -8,20 +8,21 @@ import (
 )
 
 type Tweet struct {
-	Coordinates     interface{} `json:"coordinates"` // I do not think anything implients this in modern day
-	Favourited      bool        `json:"favorited"`
-	CreatedAt       string      `json:"created_at"`
-	Truncated       bool        `json:"truncated"`
-	Entities        Entities    `json:"entities"`
-	Text            string      `json:"text"`
-	Annotations     interface{} `json:"annotations"`  // Unknown
-	Contributors    interface{} `json:"contributors"` // Unknown
-	ID              big.Int     `json:"id"`
-	Geo             interface{} `json:"geo"`                 // I do not think anything impliments this in modern day
-	Place           interface{} `json:"place"`               // Unknown
-	InReplyToUserID int         `json:"in_reply_to_user_id"` // Unknown, but guessing int
-	User            TwitterUser `json:"user"`
-	Source          string      `json:"source"`
+	Coordinates       interface{} `json:"coordinates"` // I do not think anything implients this in modern day
+	Favourited        bool        `json:"favorited"`
+	CreatedAt         string      `json:"created_at"`
+	Truncated         bool        `json:"truncated"`
+	Entities          Entities    `json:"entities"`
+	Text              string      `json:"text"`
+	Annotations       interface{} `json:"annotations"`  // Unknown
+	Contributors      interface{} `json:"contributors"` // Unknown
+	ID                big.Int     `json:"id"`
+	Geo               interface{} `json:"geo"`                 // I do not think anything impliments this in modern day
+	Place             interface{} `json:"place"`               // Unknown
+	InReplyToUserID   big.Int     `json:"in_reply_to_user_id"` // Unknown, but guessing int
+	User              TwitterUser `json:"user"`
+	Source            string      `json:"source"`
+	InReplyToStatusID big.Int     `json:"in_reply_to_status_id"`
 }
 
 type TwitterUser struct {
@@ -82,9 +83,52 @@ type Media struct {
 
 type Entities struct {
 	Media        []Media       `json:"media"`
-	Urls         []interface{} `json:"urls"`          // TODO
-	UserMentions []interface{} `json:"user_mentions"` // TODO
-	Hashtags     []interface{} `json:"hashtags"`      // TODO
+	Urls         []interface{} `json:"urls"` // TODO
+	UserMentions []UserMention `json:"user_mentions"`
+	Hashtags     []interface{} `json:"hashtags"` // TODO
+}
+
+type UserMention struct {
+	Name       string  `json:"name"`
+	ID         big.Int `json:"id"`
+	Indices    []int   `json:"indices"` // Indices[0] is how many charectors till the first letter of the mention, Indicies[1] is how many charectors till the last letter of the mention
+	ScreenName string  `json:"screen_name"`
+}
+
+type SleepTime struct {
+	EndTime   *string `json:"end_time"`
+	Enabled   bool    `json:"enabled"`
+	StartTime *string `json:"start_time"`
+}
+
+type PlaceType struct {
+	Name string `json:"name"`
+	Code int    `json:"code"`
+}
+
+type TrendLocation struct {
+	Name        string    `json:"name"`
+	Woeid       int       `json:"woeid"`
+	PlaceType   PlaceType `json:"placeType"`
+	Country     string    `json:"country"`
+	URL         string    `json:"url"`
+	CountryCode *string   `json:"countryCode"`
+}
+
+type TimeZone struct {
+	Name       string `json:"name"`
+	TzinfoName string `json:"tzinfo_name"`
+	UtcOffset  int    `json:"utc_offset"`
+}
+
+type Config struct {
+	SleepTime           SleepTime       `json:"sleep_time"`
+	TrendLocation       []TrendLocation `json:"trend_location"`
+	Language            string          `json:"language"`
+	AlwaysUseHttps      bool            `json:"always_use_https"`
+	DiscoverableByEmail bool            `json:"discoverable_by_email"`
+	TimeZone            TimeZone        `json:"time_zone"`
+	GeoEnabled          bool            `json:"geo_enabled"`
 }
 
 // Bluesky's API returns a letter ID for each user,
