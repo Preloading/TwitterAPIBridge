@@ -46,8 +46,9 @@ func InitServer() {
 	// Posting
 	app.Post("/1/statuses/update.json", status_update)
 
-	// Timelines
+	// Posts
 	app.Get("/1/statuses/home_timeline.json", home_timeline)
+	app.Get("/1/statuses/show/:id.json", GetStatusFromId)
 
 	// Users
 	app.Get("/1/users/show.xml", user_info)
@@ -144,14 +145,44 @@ func home_timeline(c *fiber.Ctx) error {
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
-		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.CID, item.Reply.Parent.Author.DID))
+		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID))
 	}
 
 	return c.JSON(tweets)
 
 }
 
-func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyId string, replyUserBskyId string) bridge.Tweet {
+func GetStatusFromId(c *fiber.Ctx) error {
+	encodedId := c.Params("id")
+	idBigInt, ok := new(big.Int).SetString(encodedId, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	uri := bridge.TwitterIDToBlueSky(idBigInt)
+
+	fmt.Println("URI: " + uri)
+	authHeader := c.Get("Authorization")
+	fmt.Println("Auth: " + authHeader)
+	// Define a regular expression to match the oauth_token
+	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
+	matches := re.FindStringSubmatch(authHeader)
+
+	if len(matches) < 2 {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	oauthToken := matches[1]
+
+	err, thread := blueskyapi.GetPost(oauthToken, uri)
+
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(TranslatePostToTweet(thread.Post, "", ""))
+}
+
+func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string) bridge.Tweet {
 	tweetEntities := bridge.Entities{
 		Hashtags:     nil,
 		Urls:         nil,
@@ -209,12 +240,13 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyId string, replyUse
 		Entities:     tweetEntities,
 		Annotations:  nil,
 		Contributors: nil,
-		ID:           *bridge.BlueSkyToTwitterID(tweet.CID),
+		ID:           *bridge.BlueSkyToTwitterID(tweet.URI),
 		Geo:          nil,
 		Place:        nil,
 		InReplyToUserID: func() *big.Int {
 			id := bridge.BlueSkyToTwitterID(replyUserBskyId)
 			if id.Cmp(big.NewInt(0)) == 0 {
+				fmt.Println("null")
 				return nil
 			}
 			return id
@@ -234,7 +266,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyId string, replyUse
 			ScreenName:                tweet.Author.Handle,
 			ContributorsEnabled:       false,
 			UtcOffset:                 -28800,
-			ID:                        *bridge.BlueSkyToTwitterID(tweet.Author.DID),
+			ID:                        *bridge.BlueSkyToTwitterID(tweet.URI),
 			ProfileUseBackgroundImage: true,
 			ProfileTextColor:          "333333",
 			Protected:                 false,
@@ -253,11 +285,12 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyId string, replyUse
 		},
 		Source: "Bluesky",
 		InReplyToStatusID: func() *big.Int {
-			id := bridge.BlueSkyToTwitterID(replyMsgBskyId)
+			id := bridge.BlueSkyToTwitterID(replyMsgBskyURI) // hack, later probably do this more efficently
 			if id.Cmp(big.NewInt(0)) == 0 {
+				fmt.Println("null")
 				return nil
 			}
-			return id
+			return bridge.BlueSkyToTwitterID(replyMsgBskyURI)
 		}(),
 	}
 	return convertedTweet

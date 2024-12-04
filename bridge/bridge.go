@@ -1,7 +1,6 @@
 package bridge
 
 import (
-	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -136,15 +135,15 @@ type Config struct {
 // need to convert between the two
 
 // Base36 characters (digits and lowercase letters)
-const base37Chars = "0123456789abcdefghijklmnopqrstuvwxyz:"
+const base38Chars = "0123456789abcdefghijklmnopqrstuvwxyz:/."
 
 // BlueSkyToTwitterID converts a letter ID to a compact numeric representation using Base37
 func BlueSkyToTwitterID(letterID string) *big.Int {
 	numericID := big.NewInt(0)
-	base := big.NewInt(37)
+	base := big.NewInt(39)
 
 	for _, char := range letterID {
-		base37Value := strings.IndexRune(base37Chars, char)
+		base37Value := strings.IndexRune(base38Chars, char)
 		if base37Value == -1 {
 			// Handle invalid characters
 			continue
@@ -156,53 +155,36 @@ func BlueSkyToTwitterID(letterID string) *big.Int {
 	return numericID
 }
 
-// encodeBase37 encodes an integer to a Base37 string
-func encodeBase37(num *big.Int) string {
-	if num.Cmp(big.NewInt(0)) == 0 {
-		return string(base37Chars[0])
+// TwitterIDToBlueSky converts a numeric ID to a letter ID representation using Base37
+func TwitterIDToBlueSky(numericID *big.Int) string {
+	if numericID.Cmp(big.NewInt(0)) == 0 {
+		return string(base38Chars[0])
 	}
 
-	base := big.NewInt(37)
-	encoded := ""
+	base := big.NewInt(39)
+	letterID := ""
 
-	for num.Cmp(big.NewInt(0)) > 0 {
+	for numericID.Cmp(big.NewInt(0)) > 0 {
 		remainder := new(big.Int)
-		num.DivMod(num, base, remainder)
-		encoded = string(base37Chars[remainder.Int64()]) + encoded
+		numericID.DivMod(numericID, base, remainder)
+		letterID = string(base38Chars[remainder.Int64()]) + letterID
 	}
 
-	return encoded
+	return letterID
 }
 
-// TwitterToBlueSky converts a compact numeric representation back to the original letter ID
-func TwitterToBlueSky(numericID string) (string, error) {
-	var letterID strings.Builder
-
-	for i := 0; i < len(numericID); i += 2 {
-		// Take two characters at a time
-		chunk := numericID[i : i+2]
-		asciiValue, err := decodeBase37(chunk)
-		if err != nil {
-			return "", err
-		}
-		letterID.WriteByte(byte(asciiValue))
-	}
-
-	// Add the prefix "did:plc:" back to the letter ID
-	return letterID.String(), nil
+// EncodeIDs concatenates two IDs into one string with a delimiter
+func EncodeBlueskyMessageID(userid, messageid string) big.Int {
+	return *BlueSkyToTwitterID(userid + "/" + messageid)
 }
 
-// decodeBase37 decodes a Base36 string to an integer
-func decodeBase37(encoded string) (int, error) {
-	var num int
-	for _, char := range encoded {
-		index := strings.IndexRune(base37Chars, char)
-		if index == -1 {
-			return 0, fmt.Errorf("invalid character: %c", char)
-		}
-		num = num*36 + index
+// DecodeIDs splits the encoded string back into the original two IDs
+func DecodeBlueskyMessageID(encoded *big.Int) (string, string) {
+	ids := strings.Split(TwitterIDToBlueSky(encoded), "/")
+	if len(ids) != 2 {
+		return "", ""
 	}
-	return num, nil
+	return ids[0], ids[1]
 }
 
 // FormatTime converts Go's time.Time into the format "Wed Sep 01 00:00:00 +0000 2021"

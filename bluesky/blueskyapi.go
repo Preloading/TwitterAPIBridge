@@ -107,6 +107,8 @@ type Index struct {
 type PostViewer struct {
 	Repost            bool `json:"repost"`
 	Like              bool `json:"like"`
+	Muted             bool `json:"muted"`
+	BlockedBy         bool `json:"blockedBy"`
 	ThreadMute        bool `json:"threadMute"`
 	ReplyDisabled     bool `json:"replyDisabled"`
 	EmbeddingDisabled bool `json:"embeddingDisabled"`
@@ -138,6 +140,11 @@ type Feed struct {
 type Timeline struct {
 	Feed   []Feed `json:"feed"`
 	Cursor string `json:"cursor"`
+}
+
+type Thread struct {
+	Type string `json:"$type"`
+	Post Post   `json:"post"`
 }
 
 func Authenticate(username, password string) (*AuthResponse, error) {
@@ -272,6 +279,45 @@ func GetTimeline(token string) (error, *Timeline) {
 	}
 
 	return nil, &feeds
+}
+
+func GetPost(token string, uri string) (error, *Thread) {
+	// Example URL at://did:plc:dqibjxtqfn6hydazpetzr2w4/app.bsky.feed.post/3lchbospvbc2j
+
+	url := "https://public.bsky.social/xrpc/app.bsky.feed.getPostThread?depth=0&parentHeight=1&uri=" + uri
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return err, nil
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch timeline"), nil
+	}
+
+	thread := Thread{}
+	if err := json.NewDecoder(resp.Body).Decode(&thread); err != nil {
+		return err, nil
+	}
+
+	return nil, &thread
 }
 
 func UpdateStatus(token string, status string) error {
