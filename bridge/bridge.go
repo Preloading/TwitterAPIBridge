@@ -19,10 +19,10 @@ type Tweet struct {
 	ID                big.Int     `json:"id"`
 	Geo               interface{} `json:"geo"`                 // I do not think anything impliments this in modern day
 	Place             interface{} `json:"place"`               // Unknown
-	InReplyToUserID   big.Int     `json:"in_reply_to_user_id"` // Unknown, but guessing int
+	InReplyToUserID   *big.Int    `json:"in_reply_to_user_id"` // Unknown, but guessing int
 	User              TwitterUser `json:"user"`
 	Source            string      `json:"source"`
-	InReplyToStatusID big.Int     `json:"in_reply_to_status_id"`
+	InReplyToStatusID *big.Int    `json:"in_reply_to_status_id"`
 }
 
 type TwitterUser struct {

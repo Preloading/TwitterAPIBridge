@@ -144,107 +144,123 @@ func home_timeline(c *fiber.Ctx) error {
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
-		tweetEntities := bridge.Entities{
-			Hashtags:     nil,
-			Urls:         nil,
-			UserMentions: []bridge.UserMention{},
-			Media:        []bridge.Media{},
-		}
-
-		id := 1
-		for _, image := range item.Post.Record.Embed.Images {
-			// Process each image
-			// fmt.Println("Image:", "http://10.0.0.77:3000/cdn/img/?url="+url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+item.Post.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"))
-			tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
-				ID:       *big.NewInt(int64(id)),
-				IDStr:    strconv.Itoa(id),
-				MediaURL: "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+item.Post.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
-				// MediaURLHttps: "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"),
-			})
-			id++
-		}
-		for _, faucet := range item.Post.Record.Facets {
-			// I haven't seen this exceed 1 element yet
-			// if len(faucet.Features) > 1 {
-			// fmt.Println("Faucet with more than 1 feature found!")
-			// faucetJSON, err := json.Marshal(faucet)
-			// if err != nil {
-			// 	fmt.Println("Error encoding faucet to JSON:", err)
-			// } else {
-			// 	fmt.Println("Faucet JSON:", string(faucetJSON))
-			// }
-			// // }
-			// fmt.Println(faucet.Features[0].Type)
-			switch faucet.Features[0].Type {
-			case "app.bsky.richtext.facet#mention":
-				fmt.Println("we found a mention")
-				tweetEntities.UserMentions = append(tweetEntities.UserMentions, bridge.UserMention{
-					Name:       "test",
-					ScreenName: "test",
-					//ScreenName: item.Post.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
-					ID: *bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
-					Indices: []int{
-						faucet.Index.ByteStart,
-						faucet.Index.ByteEnd,
-					},
-				})
-			}
-
-		}
-
-		tweet := bridge.Tweet{
-			Coordinates:     nil,
-			Favourited:      item.Post.Viewer.Like,
-			CreatedAt:       bridge.TwitterTimeConverter(item.Post.Record.CreatedAt),
-			Truncated:       false,
-			Text:            item.Post.Record.Text,
-			Entities:        tweetEntities,
-			Annotations:     nil,
-			Contributors:    nil,
-			ID:              *bridge.BlueSkyToTwitterID(item.Post.CID),
-			Geo:             nil,
-			Place:           nil,
-			InReplyToUserID: *bridge.BlueSkyToTwitterID(item.Reply.Parent.Author.DID),
-			User: bridge.TwitterUser{
-				Name:                      item.Post.Author.DisplayName,
-				ProfileSidebarBorderColor: "",
-				ProfileBackgroundTile:     false,
-				ProfileSidebarFillColor:   "",
-				CreatedAt:                 bridge.TwitterTimeConverter(item.Post.Author.Associated.CreatedAt),
-				ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(item.Post.Author.Avatar) + "&width=128&height=128",
-				Location:                  "",
-				ProfileLinkColor:          "",
-				FollowRequestSent:         false,
-				URL:                       "",
-				FavouritesCount:           0,
-				ScreenName:                item.Post.Author.Handle,
-				ContributorsEnabled:       false,
-				UtcOffset:                 -28800,
-				ID:                        *bridge.BlueSkyToTwitterID(item.Post.Author.DID),
-				ProfileUseBackgroundImage: true,
-				ProfileTextColor:          "333333",
-				Protected:                 false,
-				FollowersCount:            200,
-				Lang:                      "en",
-				Notifications:             false,
-				TimeZone:                  "Pacific Time (US & Canada)",
-				Verified:                  false,
-				ProfileBackgroundColor:    "C0DEED",
-				GeoEnabled:                true,
-				Description:               "",
-				// FriendsCount:              100,
-				// StatusesCount:             333,
-				ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
-				Following:                 false,
-			},
-			Source:            "Bluesky",
-			InReplyToStatusID: *bridge.BlueSkyToTwitterID(item.Reply.Parent.CID),
-		}
-		tweets = append(tweets, tweet)
+		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.CID, item.Reply.Parent.Author.DID))
 	}
 
 	return c.JSON(tweets)
 
+}
+
+func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyId string, replyUserBskyId string) bridge.Tweet {
+	tweetEntities := bridge.Entities{
+		Hashtags:     nil,
+		Urls:         nil,
+		UserMentions: []bridge.UserMention{},
+		Media:        []bridge.Media{},
+	}
+
+	id := 1
+	for _, image := range tweet.Record.Embed.Images {
+		// Process each image
+		// fmt.Println("Image:", "http://10.0.0.77:3000/cdn/img/?url="+url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+item.Post.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"))
+		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
+			ID:       *big.NewInt(int64(id)),
+			IDStr:    strconv.Itoa(id),
+			MediaURL: "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
+			// MediaURLHttps: "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"),
+		})
+		id++
+	}
+	for _, faucet := range tweet.Record.Facets {
+		// I haven't seen this exceed 1 element yet
+		// if len(faucet.Features) > 1 {
+		// fmt.Println("Faucet with more than 1 feature found!")
+		// faucetJSON, err := json.Marshal(faucet)
+		// if err != nil {
+		// 	fmt.Println("Error encoding faucet to JSON:", err)
+		// } else {
+		// 	fmt.Println("Faucet JSON:", string(faucetJSON))
+		// }
+		// // }
+		// fmt.Println(faucet.Features[0].Type)
+		switch faucet.Features[0].Type {
+		case "app.bsky.richtext.facet#mention":
+			fmt.Println("we found a mention")
+			tweetEntities.UserMentions = append(tweetEntities.UserMentions, bridge.UserMention{
+				Name:       "test",
+				ScreenName: "test",
+				//ScreenName: item.Post.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
+				ID: *bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
+				Indices: []int{
+					faucet.Index.ByteStart,
+					faucet.Index.ByteEnd,
+				},
+			})
+		}
+
+	}
+
+	convertedTweet := bridge.Tweet{
+		Coordinates:  nil,
+		Favourited:   tweet.Viewer.Like,
+		CreatedAt:    bridge.TwitterTimeConverter(tweet.Record.CreatedAt),
+		Truncated:    false,
+		Text:         tweet.Record.Text,
+		Entities:     tweetEntities,
+		Annotations:  nil,
+		Contributors: nil,
+		ID:           *bridge.BlueSkyToTwitterID(tweet.CID),
+		Geo:          nil,
+		Place:        nil,
+		InReplyToUserID: func() *big.Int {
+			id := bridge.BlueSkyToTwitterID(replyUserBskyId)
+			if id.Cmp(big.NewInt(0)) == 0 {
+				return nil
+			}
+			return id
+		}(),
+		User: bridge.TwitterUser{
+			Name:                      tweet.Author.DisplayName,
+			ProfileSidebarBorderColor: "",
+			ProfileBackgroundTile:     false,
+			ProfileSidebarFillColor:   "",
+			CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt),
+			ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
+			Location:                  "",
+			ProfileLinkColor:          "",
+			FollowRequestSent:         false,
+			URL:                       "",
+			FavouritesCount:           0,
+			ScreenName:                tweet.Author.Handle,
+			ContributorsEnabled:       false,
+			UtcOffset:                 -28800,
+			ID:                        *bridge.BlueSkyToTwitterID(tweet.Author.DID),
+			ProfileUseBackgroundImage: true,
+			ProfileTextColor:          "333333",
+			Protected:                 false,
+			FollowersCount:            200,
+			Lang:                      "en",
+			Notifications:             false,
+			TimeZone:                  "Pacific Time (US & Canada)",
+			Verified:                  false,
+			ProfileBackgroundColor:    "C0DEED",
+			GeoEnabled:                true,
+			Description:               "",
+			// FriendsCount:              100,
+			// StatusesCount:             333,
+			ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
+			Following:                 false,
+		},
+		Source: "Bluesky",
+		InReplyToStatusID: func() *big.Int {
+			id := bridge.BlueSkyToTwitterID(replyMsgBskyId)
+			if id.Cmp(big.NewInt(0)) == 0 {
+				return nil
+			}
+			return id
+		}(),
+	}
+	return convertedTweet
 }
 
 func user_info(c *fiber.Ctx) error {
