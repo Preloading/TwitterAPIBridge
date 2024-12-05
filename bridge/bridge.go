@@ -7,58 +7,78 @@ import (
 )
 
 type Tweet struct {
-	Coordinates       interface{} `json:"coordinates"` // I do not think anything implients this in modern day
-	Favourited        bool        `json:"favorited"`
-	CreatedAt         string      `json:"created_at"`
-	Truncated         bool        `json:"truncated"`
-	Entities          Entities    `json:"entities"`
-	Text              string      `json:"text"`
-	Annotations       interface{} `json:"annotations"`  // Unknown
-	Contributors      interface{} `json:"contributors"` // Unknown
-	ID                big.Int     `json:"id"`
-	Geo               interface{} `json:"geo"`                 // I do not think anything impliments this in modern day
-	Place             interface{} `json:"place"`               // Unknown
-	InReplyToUserID   *big.Int    `json:"in_reply_to_user_id"` // Unknown, but guessing int
-	User              TwitterUser `json:"user"`
-	Source            string      `json:"source"`
-	InReplyToStatusID *big.Int    `json:"in_reply_to_status_id"`
+	Coordinates          interface{} `json:"coordinates"`
+	Favourited           bool        `json:"favorited"`
+	CreatedAt            string      `json:"created_at"`
+	Truncated            bool        `json:"truncated"`
+	Entities             Entities    `json:"entities"`
+	Text                 string      `json:"text"`
+	Annotations          interface{} `json:"annotations"`
+	Contributors         interface{} `json:"contributors"`
+	ID                   big.Int     `json:"id"`
+	IDStr                string      `json:"id_str"`
+	Geo                  interface{} `json:"geo"`
+	Place                interface{} `json:"place"`
+	InReplyToUserID      *big.Int    `json:"in_reply_to_user_id"`
+	InReplyToUserIDStr   *string     `json:"in_reply_to_user_id_str"`
+	User                 TwitterUser `json:"user"`
+	Source               string      `json:"source"`
+	InReplyToStatusID    *big.Int    `json:"in_reply_to_status_id"`
+	InReplyToStatusIDStr *string     `json:"in_reply_to_status_id_str"`
+	InReplyToScreenName  *string     `json:"in_reply_to_screen_name"`
+
+	// The following aren't found in home_timeline, but can be found when directly fetching a tweet.
+
+	PossiblySensitive bool `json:"possibly_sensitive"`
+
+	// Tweet... stats?
+	RetweetCount int `json:"retweet_count"`
+
+	// Our user's interaction with the tweet
+	Retweeted bool `json:"retweeted"`
 }
 
 type TwitterUser struct {
-	Name                      string  `json:"name"`
-	ProfileSidebarBorderColor string  `json:"profile_sidebar_border_color"` // Hex color (w/o hashtag)
-	ProfileBackgroundTile     bool    `json:"profile_background_tile"`
-	ProfileSidebarFillColor   string  `json:"profile_sidebar_fill_color"` // Hex color (w/o hashtag)
-	CreatedAt                 string  `json:"created_at"`
-	ProfileImageURL           string  `json:"profile_image_url"`
-	Location                  string  `json:"location"`
-	ProfileLinkColor          string  `json:"profile_link_color"` // Hex color (w/o hashtag)
-	FollowRequestSent         bool    `json:"follow_request_sent"`
-	URL                       string  `json:"url"`
-	FavouritesCount           int     `json:"favourites_count"`
-	ContributorsEnabled       bool    `json:"contributors_enabled"`
-	UtcOffset                 int     `json:"utc_offset"`
-	ID                        big.Int `json:"id"`
-	ProfileUseBackgroundImage bool    `json:"profile_use_background_image"`
-	ProfileTextColor          string  `json:"profile_text_color"` // Hex color (w/o hashtag)
-	Protected                 bool    `json:"protected"`
-	FollowersCount            int     `json:"followers_count"`
-	Lang                      string  `json:"lang"`
-	Notifications             bool    `json:"notifications"`
-	TimeZone                  string  `json:"time_zone"` // oh god it's in text form aaaa
-	Verified                  bool    `json:"verified"`
-	ProfileBackgroundColor    string  `json:"profile_background_color"` // Hex color (w/o hashtag)
-	GeoEnabled                bool    `json:"geo_enabled"`              // No clue what this does
-	Description               string  `json:"description"`
-	FriendsCount              int     `json:"friends_count"`
-	StatusesCount             int     `json:"statuses_count"`
-	ProfileBackgroundImageURL string  `json:"profile_background_image_url"`
-	Following                 bool    `json:"following"`
-	ScreenName                string  `json:"screen_name"`
-	ShowAllInlineMedia        bool    `json:"show_all_inline_media"`
-	IDStr                     string  `json:"id_str"`
-	IsTranslator              bool    `json:"is_translator"`
-	ListedCount               int     `json:"listed_count"`
+	Name                           string  `json:"name"`
+	ProfileSidebarBorderColor      string  `json:"profile_sidebar_border_color"`
+	ProfileBackgroundTile          bool    `json:"profile_background_tile"`
+	ProfileSidebarFillColor        string  `json:"profile_sidebar_fill_color"`
+	CreatedAt                      string  `json:"created_at"`
+	ProfileImageURL                string  `json:"profile_image_url"`
+	ProfileImageURLHttps           string  `json:"profile_image_url_https"`
+	Location                       string  `json:"location"`
+	ProfileLinkColor               string  `json:"profile_link_color"`
+	FollowRequestSent              bool    `json:"follow_request_sent"`
+	URL                            string  `json:"url"`
+	FavouritesCount                int     `json:"favourites_count"`
+	ContributorsEnabled            bool    `json:"contributors_enabled"`
+	UtcOffset                      *int    `json:"utc_offset"`
+	ID                             big.Int `json:"id"`
+	IDStr                          string  `json:"id_str"`
+	ProfileUseBackgroundImage      bool    `json:"profile_use_background_image"`
+	ProfileTextColor               string  `json:"profile_text_color"`
+	Protected                      bool    `json:"protected"`
+	FollowersCount                 int     `json:"followers_count"`
+	Lang                           string  `json:"lang"`
+	Notifications                  *bool   `json:"notifications"` // TODO: Are we sure this is a bool? It's set to null on https://web.archive.org/web/20120708204036/https://dev.twitter.com/docs/api/1/get/statuses/show/%3Aid
+	TimeZone                       *string `json:"time_zone"`
+	Verified                       bool    `json:"verified"`
+	ProfileBackgroundColor         string  `json:"profile_background_color"`
+	GeoEnabled                     bool    `json:"geo_enabled"`
+	Description                    string  `json:"description"`
+	FriendsCount                   int     `json:"friends_count"`
+	StatusesCount                  int     `json:"statuses_count"`
+	ProfileBackgroundImageURL      string  `json:"profile_background_image_url"`
+	ProfileBackgroundImageURLHttps string  `json:"profile_background_image_url_https"`
+	Following                      *bool   `json:"following"` // TODO: Are we sure this is a bool? It's set to null on https://web.archive.org/web/20120708204036/https://dev.twitter.com/docs/api/1/get/statuses/show/%3Aid
+	ScreenName                     string  `json:"screen_name"`
+	ShowAllInlineMedia             bool    `json:"show_all_inline_media"`
+	IsTranslator                   bool    `json:"is_translator"`
+	ListedCount                    int     `json:"listed_count"`
+
+	// not found in home_timeline
+	DefaultProfile      bool `json:"default_profile"`
+	DefaultProfileImage bool `json:"default_profile_image"`
 }
 
 type MediaSize struct {
@@ -82,15 +102,28 @@ type Media struct {
 
 type Entities struct {
 	Media        []Media       `json:"media"`
-	Urls         []interface{} `json:"urls"` // TODO
+	Urls         []URL         `json:"urls"`
 	UserMentions []UserMention `json:"user_mentions"`
-	Hashtags     []interface{} `json:"hashtags"` // TODO
+	Hashtags     []Hashtag     `json:"hashtags"`
+}
+
+type URL struct {
+	ExpandedURL string `json:"expanded_url"`
+	URL         string `json:"url"`
+	Indices     []int  `json:"indices"`
+	DisplayURL  string `json:"display_url"`
+}
+
+type Hashtag struct {
+	Text    string `json:"text"`
+	Indices []int  `json:"indices"`
 }
 
 type UserMention struct {
 	Name       string  `json:"name"`
 	ID         big.Int `json:"id"`
-	Indices    []int   `json:"indices"` // Indices[0] is how many charectors till the first letter of the mention, Indicies[1] is how many charectors till the last letter of the mention
+	IDStr      string  `json:"id_str"`
+	Indices    []int   `json:"indices"`
 	ScreenName string  `json:"screen_name"`
 }
 

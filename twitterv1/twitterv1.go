@@ -179,7 +179,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(TranslatePostToTweet(thread.Post, "", ""))
+	return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", ""))
 }
 
 func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string) bridge.Tweet {
@@ -230,67 +230,97 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		}
 
 	}
-
 	convertedTweet := bridge.Tweet{
-		Coordinates:  nil,
-		Favourited:   tweet.Viewer.Like,
-		CreatedAt:    bridge.TwitterTimeConverter(tweet.Record.CreatedAt),
-		Truncated:    false,
-		Text:         tweet.Record.Text,
-		Entities:     tweetEntities,
-		Annotations:  nil,
-		Contributors: nil,
-		ID:           *bridge.BlueSkyToTwitterID(tweet.URI),
-		Geo:          nil,
-		Place:        nil,
+		Coordinates:       nil,
+		Favourited:        tweet.Viewer.Like,
+		CreatedAt:         bridge.TwitterTimeConverter(tweet.Record.CreatedAt),
+		Truncated:         false,
+		Text:              tweet.Record.Text,
+		Entities:          tweetEntities,
+		Annotations:       nil, // I am curious what annotations are
+		Contributors:      nil,
+		ID:                *bridge.BlueSkyToTwitterID(tweet.URI),
+		IDStr:             bridge.BlueSkyToTwitterID(tweet.URI).String(),
+		Retweeted:         tweet.Viewer.Repost,
+		RetweetCount:      tweet.RepostCount,
+		Geo:               nil,
+		Place:             nil,
+		PossiblySensitive: false,
 		InReplyToUserID: func() *big.Int {
 			id := bridge.BlueSkyToTwitterID(replyUserBskyId)
 			if id.Cmp(big.NewInt(0)) == 0 {
-				fmt.Println("null")
 				return nil
 			}
 			return id
 		}(),
+		InReplyToUserIDStr: func() *string {
+			id := bridge.BlueSkyToTwitterID(replyUserBskyId)
+			if id.Cmp(big.NewInt(0)) == 0 {
+				return nil
+			}
+			idStr := id.String()
+			return &idStr
+		}(),
+		InReplyToScreenName: &tweet.Author.DisplayName,
 		User: bridge.TwitterUser{
-			Name:                      tweet.Author.DisplayName,
-			ProfileSidebarBorderColor: "",
-			ProfileBackgroundTile:     false,
-			ProfileSidebarFillColor:   "",
-			CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt),
-			ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
-			Location:                  "",
-			ProfileLinkColor:          "",
-			FollowRequestSent:         false,
-			URL:                       "",
-			FavouritesCount:           0,
-			ScreenName:                tweet.Author.Handle,
-			ContributorsEnabled:       false,
-			UtcOffset:                 -28800,
-			ID:                        *bridge.BlueSkyToTwitterID(tweet.URI),
-			ProfileUseBackgroundImage: true,
-			ProfileTextColor:          "333333",
-			Protected:                 false,
-			FollowersCount:            200,
-			Lang:                      "en",
-			Notifications:             false,
-			TimeZone:                  "Pacific Time (US & Canada)",
-			Verified:                  false,
-			ProfileBackgroundColor:    "C0DEED",
-			GeoEnabled:                true,
-			Description:               "",
-			// FriendsCount:              100,
-			// StatusesCount:             333,
-			ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
-			Following:                 false,
+			Name:                           tweet.Author.DisplayName,
+			ProfileSidebarBorderColor:      "eeeeee",
+			ProfileBackgroundTile:          false,
+			ProfileSidebarFillColor:        "efefef",
+			CreatedAt:                      bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt),
+			ProfileImageURL:                "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
+			ProfileImageURLHttps:           "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
+			Location:                       "Twitter",
+			ProfileLinkColor:               "009999",
+			FollowRequestSent:              false,
+			URL:                            "",
+			ScreenName:                     tweet.Author.Handle,
+			ContributorsEnabled:            false,
+			UtcOffset:                      nil,
+			IsTranslator:                   false,
+			ID:                             *bridge.BlueSkyToTwitterID(tweet.URI),
+			IDStr:                          bridge.BlueSkyToTwitterID(tweet.URI).String(),
+			ProfileUseBackgroundImage:      false,
+			ProfileTextColor:               "333333",
+			Protected:                      false,
+			Lang:                           "en",
+			Notifications:                  nil,
+			TimeZone:                       nil,
+			Verified:                       false,
+			ProfileBackgroundColor:         "C0DEED",
+			GeoEnabled:                     true,
+			Description:                    "",
+			ProfileBackgroundImageURL:      "http://a0.twimg.com/images/themes/theme1/bg.png",
+			ProfileBackgroundImageURLHttps: "http://a0.twimg.com/images/themes/theme1/bg.png",
+			Following:                      nil,
+
+			// huh
+			DefaultProfile:      false,
+			DefaultProfileImage: true,
+			ShowAllInlineMedia:  false,
+
+			// User Stats
+			ListedCount:     0,
+			FavouritesCount: 0,
+			FollowersCount:  200,
+			FriendsCount:    100,
+			StatusesCount:   333,
 		},
 		Source: "Bluesky",
 		InReplyToStatusID: func() *big.Int {
 			id := bridge.BlueSkyToTwitterID(replyMsgBskyURI) // hack, later probably do this more efficently
 			if id.Cmp(big.NewInt(0)) == 0 {
-				fmt.Println("null")
 				return nil
 			}
 			return bridge.BlueSkyToTwitterID(replyMsgBskyURI)
+		}(),
+		InReplyToStatusIDStr: func() *string {
+			id := bridge.BlueSkyToTwitterID(replyMsgBskyURI) // hack, later probably do this more efficently
+			if id.Cmp(big.NewInt(0)) == 0 {
+				return nil
+			}
+			idStr := id.String()
+			return &idStr
 		}(),
 	}
 	return convertedTweet

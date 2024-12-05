@@ -147,6 +147,11 @@ type Thread struct {
 	Post Post   `json:"post"`
 }
 
+// This is solely for the purpose of unmarshalling the response from the API
+type ThreadRoot struct {
+	Thread Thread `json:"thread"`
+}
+
 func Authenticate(username, password string) (*AuthResponse, error) {
 	url := "https://bsky.social/xrpc/com.atproto.server.createSession"
 
@@ -225,7 +230,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 		ContributorsEnabled:       false,
 		URL:                       "",
 		FavouritesCount:           0,
-		UtcOffset:                 0,
+		UtcOffset:                 nil,
 		ID:                        *bridge.BlueSkyToTwitterID(user.DID),
 		ProfileUseBackgroundImage: false,
 		ListedCount:               0,
@@ -233,7 +238,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 		Protected:                 false,
 		FollowersCount:            user.FollowersCount,
 		Lang:                      "en",
-		Notifications:             false,
+		Notifications:             nil,
 		Verified:                  false,
 		ProfileBackgroundColor:    "c0deed",
 		GeoEnabled:                false,
@@ -281,7 +286,7 @@ func GetTimeline(token string) (error, *Timeline) {
 	return nil, &feeds
 }
 
-func GetPost(token string, uri string) (error, *Thread) {
+func GetPost(token string, uri string) (error, *ThreadRoot) {
 	// Example URL at://did:plc:dqibjxtqfn6hydazpetzr2w4/app.bsky.feed.post/3lchbospvbc2j
 
 	url := "https://public.bsky.social/xrpc/app.bsky.feed.getPostThread?depth=0&parentHeight=1&uri=" + uri
@@ -312,7 +317,7 @@ func GetPost(token string, uri string) (error, *Thread) {
 		return errors.New("failed to fetch timeline"), nil
 	}
 
-	thread := Thread{}
+	thread := ThreadRoot{}
 	if err := json.NewDecoder(resp.Body).Decode(&thread); err != nil {
 		return err, nil
 	}
