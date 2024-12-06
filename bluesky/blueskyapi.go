@@ -105,14 +105,14 @@ type Index struct {
 }
 
 type PostViewer struct {
-	Repost            bool `json:"repost"`
-	Like              bool `json:"like"`
-	Muted             bool `json:"muted"`
-	BlockedBy         bool `json:"blockedBy"`
-	ThreadMute        bool `json:"threadMute"`
-	ReplyDisabled     bool `json:"replyDisabled"`
-	EmbeddingDisabled bool `json:"embeddingDisabled"`
-	Pinned            bool `json:"pinned"`
+	Repost            *string `json:"repost"`
+	Like              bool    `json:"like"`
+	Muted             bool    `json:"muted"`
+	BlockedBy         bool    `json:"blockedBy"`
+	ThreadMute        bool    `json:"threadMute"`
+	ReplyDisabled     bool    `json:"replyDisabled"`
+	EmbeddingDisabled bool    `json:"embeddingDisabled"`
+	Pinned            bool    `json:"pinned"`
 }
 type Post struct {
 	URI    string     `json:"uri"`
@@ -143,13 +143,45 @@ type Timeline struct {
 }
 
 type Thread struct {
-	Type string `json:"$type"`
-	Post Post   `json:"post"`
+	Type    string `json:"$type"`
+	Post    Post   `json:"post"`
+	Parent  Post   `json:"parent"`
+	Replies []Post `json:"replies"`
 }
 
 // This is solely for the purpose of unmarshalling the response from the API
 type ThreadRoot struct {
 	Thread Thread `json:"thread"`
+}
+
+// Reposting/Retweeting
+type RepostPayload struct {
+	Collection string       `json:"collection"`
+	Repo       string       `json:"repo"`
+	Record     RepostRecord `json:"record"`
+}
+
+type RepostRecord struct {
+	Type      string        `json:"$type"`
+	CreatedAt string        `json:"createdAt"`
+	Subject   RepostSubject `json:"subject"`
+}
+
+type RepostSubject struct {
+	URI string `json:"uri"`
+	CID string `json:"cid"`
+}
+
+type Commit struct {
+	CID string `json:"cid"`
+	Rev string `json:"rev"`
+}
+
+type Repost struct {
+	URI              string `json:"uri"`
+	CID              string `json:"cid"`
+	Commit           Commit `json:"commit"`
+	ValidationStatus string `json:"validationStatus"`
 }
 
 func Authenticate(username, password string) (*AuthResponse, error) {
@@ -286,10 +318,10 @@ func GetTimeline(token string) (error, *Timeline) {
 	return nil, &feeds
 }
 
-func GetPost(token string, uri string) (error, *ThreadRoot) {
+func GetPost(token string, uri string, depth int, parentHeight int) (error, *ThreadRoot) {
 	// Example URL at://did:plc:dqibjxtqfn6hydazpetzr2w4/app.bsky.feed.post/3lchbospvbc2j
 
-	url := "https://public.bsky.social/xrpc/app.bsky.feed.getPostThread?depth=0&parentHeight=1&uri=" + uri
+	url := "https://public.bsky.social/xrpc/app.bsky.feed.getPostThread?depth=" + fmt.Sprintf("%d", depth) + "&parentHeight=" + fmt.Sprintf("%d", parentHeight) + "&uri=" + uri
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -348,4 +380,64 @@ func UpdateStatus(token string, status string) error {
 		return nil
 	}
 	return errors.New("failed to update status")
+}
+
+func ReTweet(token string, id string) (error, *ThreadRoot, *string) {
+	url := "https://public.bsky.social/xrpc/com.atproto.repo.createRecord"
+
+	err, thread := GetPost(token, id, 0, 1)
+
+	if err != nil {
+		return errors.New("failed to fetch post"), nil, nil
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return err, nil, nil
+	}
+	payload := RepostPayload{
+		Collection: "app.bsky.feed.repost",
+		Repo:       thread.Thread.Post.Author.DID,
+		Record: RepostRecord{
+			Type:      "app.bsky.feed.repost",
+			CreatedAt: time.Now().UTC().Format(time.RFC3339),
+			Subject: RepostSubject{
+				URI: thread.Thread.Post.URI,
+				CID: thread.Thread.Post.CID,
+			},
+		},
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return errors.New("failed to marshal payload"), nil, nil
+	}
+
+	req.Body = io.NopCloser(bytes.NewReader(reqBody))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	// if it works, we should get something like:
+	// {"uri":"at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.repost/3lcm7b2pjio22","cid":"bafyreidw2uvnhns5bacdii7gozrou4rg25cpcxhe6cbhfws2c5hpsvycdm","commit":{"cid":"bafyreicu7db6k3vxbvtwiumggynbps7cuozsofbvo3kq7lz723smvpxne4","rev":"3lcm7b2ptb622"},"validationStatus":"valid"}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err, nil, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to retweet: " + bodyString), nil, nil
+	}
+
+	repost := Repost{}
+	if err := json.NewDecoder(resp.Body).Decode(&repost); err != nil {
+		return err, nil, nil
+	}
+
+	return nil, thread, &repost.URI
 }

@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+type Retweet struct {
+	Tweet
+	RetweetedStatus Tweet `json:"retweeted_status"`
+}
+
 type Tweet struct {
 	Coordinates          interface{} `json:"coordinates"`
 	Favourited           bool        `json:"favorited"`

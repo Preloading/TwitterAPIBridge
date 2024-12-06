@@ -26,7 +26,7 @@ func InitServer() {
 	// Initialize default config
 	app.Use(logger.New())
 
-	// Custom middleware to log request details
+	// // Custom middleware to log request details
 	// app.Use(func(c *fiber.Ctx) error {
 	// 	fmt.Println("Request Method:", c.Method())
 	// 	fmt.Println("Request URL:", c.OriginalURL())
@@ -43,8 +43,9 @@ func InitServer() {
 	// Auth
 	app.Post("/oauth/access_token", access_token)
 
-	// Posting
+	// Interactions
 	app.Post("/1/statuses/update.json", status_update)
+	app.Post("/1/statuses/retweet/:id.json", retweet)
 
 	// Posts
 	app.Get("/1/statuses/home_timeline.json", home_timeline)
@@ -122,6 +123,42 @@ func status_update(c *fiber.Ctx) error {
 	return c.SendString("Not implemented")
 }
 
+// https://web.archive.org/web/20120407091252/https://dev.twitter.com/docs/api/1/post/statuses/retweet/%3Aid
+func retweet(c *fiber.Ctx) error {
+	postId := c.Params("id")
+	authHeader := c.Get("Authorization")
+	// Define a regular expression to match the oauth_token
+	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
+	matches := re.FindStringSubmatch(authHeader)
+
+	if len(matches) < 2 {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	oauthToken := matches[1]
+
+	idBigInt, ok := new(big.Int).SetString(postId, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	err, originalPost, retweetPostURI := blueskyapi.ReTweet(oauthToken, bridge.TwitterIDToBlueSky(idBigInt))
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
+	}
+
+	retweet := TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID)
+	retweet.Retweeted = true
+	retweet.ID = *bridge.BlueSkyToTwitterID(*retweetPostURI)
+	retweet.IDStr = bridge.BlueSkyToTwitterID(*retweetPostURI).String()
+
+	return c.JSON(bridge.Retweet{
+		Tweet:           retweet,
+		RetweetedStatus: TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID),
+	})
+}
+
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
 func home_timeline(c *fiber.Ctx) error {
 	authHeader := c.Get("Authorization")
@@ -152,6 +189,7 @@ func home_timeline(c *fiber.Ctx) error {
 
 }
 
+// https://web.archive.org/web/20120708204036/https://dev.twitter.com/docs/api/1/get/statuses/show/%3Aid
 func GetStatusFromId(c *fiber.Ctx) error {
 	encodedId := c.Params("id")
 	idBigInt, ok := new(big.Int).SetString(encodedId, 10)
@@ -173,7 +211,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 
 	oauthToken := matches[1]
 
-	err, thread := blueskyapi.GetPost(oauthToken, uri)
+	err, thread := blueskyapi.GetPost(oauthToken, uri, 0, 1)
 
 	if err != nil {
 		return err
@@ -241,7 +279,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		Contributors:      nil,
 		ID:                *bridge.BlueSkyToTwitterID(tweet.URI),
 		IDStr:             bridge.BlueSkyToTwitterID(tweet.URI).String(),
-		Retweeted:         tweet.Viewer.Repost,
+		Retweeted:         tweet.Viewer.Repost != nil,
 		RetweetCount:      tweet.RepostCount,
 		Geo:               nil,
 		Place:             nil,
