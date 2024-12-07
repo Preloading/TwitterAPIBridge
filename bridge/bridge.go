@@ -43,47 +43,82 @@ type Tweet struct {
 	Retweeted bool `json:"retweeted"`
 }
 
-type TwitterUser struct {
-	Name                           string  `json:"name"`
-	ProfileSidebarBorderColor      string  `json:"profile_sidebar_border_color"`
-	ProfileBackgroundTile          bool    `json:"profile_background_tile"`
-	ProfileSidebarFillColor        string  `json:"profile_sidebar_fill_color"`
-	CreatedAt                      string  `json:"created_at"`
-	ProfileImageURL                string  `json:"profile_image_url"`
-	ProfileImageURLHttps           string  `json:"profile_image_url_https"`
-	Location                       string  `json:"location"`
-	ProfileLinkColor               string  `json:"profile_link_color"`
-	FollowRequestSent              bool    `json:"follow_request_sent"`
-	URL                            string  `json:"url"`
-	FavouritesCount                int     `json:"favourites_count"`
-	ContributorsEnabled            bool    `json:"contributors_enabled"`
-	UtcOffset                      *int    `json:"utc_offset"`
-	ID                             big.Int `json:"id"`
-	IDStr                          string  `json:"id_str"`
-	ProfileUseBackgroundImage      bool    `json:"profile_use_background_image"`
-	ProfileTextColor               string  `json:"profile_text_color"`
-	Protected                      bool    `json:"protected"`
-	FollowersCount                 int     `json:"followers_count"`
-	Lang                           string  `json:"lang"`
-	Notifications                  *bool   `json:"notifications"` // TODO: Are we sure this is a bool? It's set to null on https://web.archive.org/web/20120708204036/https://dev.twitter.com/docs/api/1/get/statuses/show/%3Aid
-	TimeZone                       *string `json:"time_zone"`
-	Verified                       bool    `json:"verified"`
-	ProfileBackgroundColor         string  `json:"profile_background_color"`
-	GeoEnabled                     bool    `json:"geo_enabled"`
-	Description                    string  `json:"description"`
-	FriendsCount                   int     `json:"friends_count"`
-	StatusesCount                  int     `json:"statuses_count"`
-	ProfileBackgroundImageURL      string  `json:"profile_background_image_url"`
-	ProfileBackgroundImageURLHttps string  `json:"profile_background_image_url_https"`
-	Following                      *bool   `json:"following"` // TODO: Are we sure this is a bool? It's set to null on https://web.archive.org/web/20120708204036/https://dev.twitter.com/docs/api/1/get/statuses/show/%3Aid
-	ScreenName                     string  `json:"screen_name"`
-	ShowAllInlineMedia             bool    `json:"show_all_inline_media"`
-	IsTranslator                   bool    `json:"is_translator"`
-	ListedCount                    int     `json:"listed_count"`
+// TODO: Find a better way of doing this.
+type TweetWithoutUserData struct {
+	Coordinates          interface{} `json:"coordinates"`
+	Favourited           bool        `json:"favorited"`
+	CreatedAt            string      `json:"created_at"`
+	Truncated            bool        `json:"truncated"`
+	Entities             Entities    `json:"entities"`
+	Text                 string      `json:"text"`
+	Annotations          interface{} `json:"annotations"`
+	Contributors         interface{} `json:"contributors"`
+	ID                   big.Int     `json:"id"`
+	IDStr                string      `json:"id_str"`
+	Geo                  interface{} `json:"geo"`
+	Place                interface{} `json:"place"`
+	InReplyToUserID      *big.Int    `json:"in_reply_to_user_id"`
+	InReplyToUserIDStr   *string     `json:"in_reply_to_user_id_str"`
+	Source               string      `json:"source"`
+	InReplyToStatusID    *big.Int    `json:"in_reply_to_status_id"`
+	InReplyToStatusIDStr *string     `json:"in_reply_to_status_id_str"`
+	InReplyToScreenName  *string     `json:"in_reply_to_screen_name"`
 
-	// not found in home_timeline
-	DefaultProfile      bool `json:"default_profile"`
-	DefaultProfileImage bool `json:"default_profile_image"`
+	// The following aren't found in home_timeline, but can be found when directly fetching a tweet.
+
+	PossiblySensitive bool `json:"possibly_sensitive"`
+
+	// Tweet... stats?
+	RetweetCount int `json:"retweet_count"`
+
+	// Our user's interaction with the tweet
+	Retweeted bool `json:"retweeted"`
+}
+
+type TwitterUser struct {
+	Name                           string  `json:"name" xml:"name"`
+	ProfileSidebarBorderColor      string  `json:"profile_sidebar_border_color" xml:"profile_sidebar_border_color"`
+	ProfileBackgroundTile          bool    `json:"profile_background_tile" xml:"profile_background_tile"`
+	ProfileSidebarFillColor        string  `json:"profile_sidebar_fill_color" xml:"profile_sidebar_fill_color"`
+	CreatedAt                      string  `json:"created_at" xml:"created_at"`
+	ProfileImageURL                string  `json:"profile_image_url" xml:"profile_image_url"`
+	ProfileImageURLHttps           string  `json:"profile_image_url_https" xml:"profile_image_url_https"`
+	Location                       string  `json:"location" xml:"location"`
+	ProfileLinkColor               string  `json:"profile_link_color" xml:"profile_link_color"`
+	FollowRequestSent              bool    `json:"follow_request_sent" xml:"follow_request_sent"`
+	URL                            string  `json:"url" xml:"url"`
+	FavouritesCount                int     `json:"favourites_count" xml:"favourites_count"`
+	ContributorsEnabled            bool    `json:"contributors_enabled" xml:"contributors_enabled"`
+	UtcOffset                      *int    `json:"utc_offset" xml:"utc_offset"`
+	ID                             big.Int `json:"id" xml:"id"`
+	IDStr                          string  `json:"id_str" xml:"id_str"`
+	ProfileUseBackgroundImage      bool    `json:"profile_use_background_image" xml:"profile_use_background_image"`
+	ProfileTextColor               string  `json:"profile_text_color" xml:"profile_text_color"`
+	Protected                      bool    `json:"protected" xml:"protected"`
+	FollowersCount                 int     `json:"followers_count" xml:"followers_count"`
+	Lang                           string  `json:"lang" xml:"lang"`
+	Notifications                  *bool   `json:"notifications" xml:"notifications"`
+	TimeZone                       *string `json:"time_zone" xml:"time_zone"`
+	Verified                       bool    `json:"verified" xml:"verified"`
+	ProfileBackgroundColor         string  `json:"profile_background_color" xml:"profile_background_color"`
+	GeoEnabled                     bool    `json:"geo_enabled" xml:"geo_enabled"`
+	Description                    string  `json:"description" xml:"description"`
+	FriendsCount                   int     `json:"friends_count" xml:"friends_count"`
+	StatusesCount                  int     `json:"statuses_count" xml:"statuses_count"`
+	ProfileBackgroundImageURL      string  `json:"profile_background_image_url" xml:"profile_background_image_url"`
+	ProfileBackgroundImageURLHttps string  `json:"profile_background_image_url_https" xml:"profile_background_image_url_https"`
+	Following                      *bool   `json:"following" xml:"following"`
+	ScreenName                     string  `json:"screen_name" xml:"screen_name"`
+	ShowAllInlineMedia             bool    `json:"show_all_inline_media" xml:"show_all_inline_media"`
+	IsTranslator                   bool    `json:"is_translator" xml:"is_translator"`
+	ListedCount                    int     `json:"listed_count" xml:"listed_count"`
+	DefaultProfile                 bool    `json:"default_profile" xml:"default_profile"`
+	DefaultProfileImage            bool    `json:"default_profile_image" xml:"default_profile_image"`
+}
+
+type TwitterUserWithStatus struct {
+	TwitterUser
+	// Status TweetWithoutUserData `json:"status"`
 }
 
 type MediaSize struct {

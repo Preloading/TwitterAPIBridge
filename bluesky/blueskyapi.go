@@ -253,7 +253,7 @@ func RefreshToken(refreshToken string) (*AuthResponse, error) {
 	return &authResp, nil
 }
 
-func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
+func GetUserInfo(token string, screen_name string) (*bridge.TwitterUserWithStatus, error) {
 	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
 
 	client := &http.Client{}
@@ -283,35 +283,38 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 		return nil, err
 	}
 
-	return &bridge.TwitterUser{
-		ProfileSidebarFillColor:   "e0ff92",
-		Name:                      user.DisplayName,
-		ProfileSidebarBorderColor: "87bc44",
-		ProfileBackgroundTile:     false,
-		CreatedAt:                 user.CreatedAt,
-		ProfileImageURL:           user.Avatar,
-		Location:                  "",
-		ProfileLinkColor:          "0000ff",
-		IsTranslator:              false,
-		ContributorsEnabled:       false,
-		URL:                       "",
-		FavouritesCount:           0,
-		UtcOffset:                 nil,
-		ID:                        *bridge.BlueSkyToTwitterID(user.DID),
-		ProfileUseBackgroundImage: false,
-		ListedCount:               0,
-		ProfileTextColor:          "000000",
-		Protected:                 false,
-		FollowersCount:            user.FollowersCount,
-		Lang:                      "en",
-		Notifications:             nil,
-		Verified:                  false,
-		ProfileBackgroundColor:    "c0deed",
-		GeoEnabled:                false,
-		Description:               user.Description,
-		FriendsCount:              user.FollowsCount,
-		StatusesCount:             user.PostsCount,
-		ScreenName:                user.Handle,
+	return &bridge.TwitterUserWithStatus{
+		TwitterUser: bridge.TwitterUser{
+			ProfileSidebarFillColor:   "e0ff92",
+			Name:                      user.DisplayName,
+			ProfileSidebarBorderColor: "87bc44",
+			ProfileBackgroundTile:     false,
+			CreatedAt:                 user.CreatedAt,
+			ProfileImageURL:           user.Avatar,
+			Location:                  "",
+			ProfileLinkColor:          "0000ff",
+			IsTranslator:              false,
+			ContributorsEnabled:       false,
+			URL:                       "",
+			FavouritesCount:           0,
+			UtcOffset:                 nil,
+			ID:                        *bridge.BlueSkyToTwitterID(user.DID),
+			IDStr:                     bridge.BlueSkyToTwitterID(user.DID).String(),
+			ProfileUseBackgroundImage: false,
+			ListedCount:               0,
+			ProfileTextColor:          "000000",
+			Protected:                 false,
+			FollowersCount:            user.FollowersCount,
+			Lang:                      "en",
+			Notifications:             nil,
+			Verified:                  false,
+			ProfileBackgroundColor:    "c0deed",
+			GeoEnabled:                false,
+			Description:               user.Description,
+			FriendsCount:              user.FollowsCount,
+			StatusesCount:             user.PostsCount,
+			ScreenName:                user.Handle,
+		},
 	}, nil
 }
 
