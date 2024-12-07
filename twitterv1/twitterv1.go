@@ -110,17 +110,11 @@ func access_token(c *fiber.Ctx) error {
 			fmt.Println("Error:", err)
 			return c.SendStatus(500)
 		}
-		fmt.Println("Encryption Key:", encryptionkey)
 		encryptionkey = strings.ReplaceAll(encryptionkey, "+", "-")
 		encryptionkey = strings.ReplaceAll(encryptionkey, "/", "_")
 		encryptionkey = strings.ReplaceAll(encryptionkey, "=", "") // remove padding
 
 		oauth_token := fmt.Sprintf("%s.%s.%s", bridge.Base64URLEncode(res.DID), bridge.Base64URLEncode(*uuid), encryptionkey)
-
-		fmt.Println("AccessJwt:", res.AccessJwt)
-		fmt.Println("RefreshJwt:", res.RefreshJwt)
-		fmt.Println("User ID:", res.DID)
-		fmt.Println("Client Token:", oauth_token)
 
 		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=twitterapi&x_auth_expires=%f", oauth_token, oauth_token, bridge.BlueSkyToTwitterID(res.DID).String(), *access_token_expiry))
 	}
@@ -163,7 +157,6 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, error) {
 	encryptionKey := oauthTokenSegments[2] + "="
 	encryptionKey = strings.ReplaceAll(encryptionKey, "-", "+")
 	encryptionKey = strings.ReplaceAll(encryptionKey, "_", "/")
-	fmt.Println("Encryption Key:", encryptionKey)
 
 	// Now onto getting the access token from the database.
 	accessJwt, refreshJwt, access_expiry, refresh_expiry, err := db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey)
