@@ -142,7 +142,12 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		}(),
 		InReplyToScreenName: &tweet.Author.DisplayName,
 		User: bridge.TwitterUser{
-			Name:                           tweet.Author.DisplayName,
+			Name: func() string {
+				if tweet.Author.DisplayName == "" {
+					return tweet.Author.Handle
+				}
+				return tweet.Author.DisplayName
+			}(),
 			ProfileSidebarBorderColor:      "eeeeee",
 			ProfileBackgroundTile:          false,
 			ProfileSidebarFillColor:        "efefef",
