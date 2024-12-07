@@ -219,6 +219,40 @@ func Authenticate(username, password string) (*AuthResponse, error) {
 	return &authResp, nil
 }
 
+// TODO: This looks like it's a bsky.social specific endpoint, can we get the user's server?
+func RefreshToken(refreshToken string) (*AuthResponse, error) {
+	url := "https://bsky.social/xrpc/com.atproto.server.refreshSession"
+
+	client := &http.Client{}
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+refreshToken)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("reauth failed")
+	}
+
+	var authResp AuthResponse
+	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+		return nil, err
+	}
+
+	return &authResp, nil
+}
+
 func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
 	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
 
