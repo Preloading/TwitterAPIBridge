@@ -299,7 +299,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUserWithStatu
 			FavouritesCount:           0,
 			UtcOffset:                 nil,
 			ID:                        *bridge.BlueSkyToTwitterID(user.DID),
-			IDStr:                     bridge.BlueSkyToTwitterID(user.DID).String(),
+			// IDStr:                     bridge.BlueSkyToTwitterID(user.DID).String(),
 			ProfileUseBackgroundImage: false,
 			ListedCount:               0,
 			ProfileTextColor:          "000000",
@@ -419,8 +419,8 @@ func UpdateStatus(token string, status string) error {
 	return errors.New("failed to update status")
 }
 
-func ReTweet(token string, id string) (error, *ThreadRoot, *string) {
-	url := "https://public.bsky.social/xrpc/com.atproto.repo.createRecord"
+func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *string) {
+	url := "https://bsky.social/xrpc/com.atproto.repo.createRecord"
 
 	err, thread := GetPost(token, id, 0, 1)
 
@@ -435,7 +435,7 @@ func ReTweet(token string, id string) (error, *ThreadRoot, *string) {
 	}
 	payload := RepostPayload{
 		Collection: "app.bsky.feed.repost",
-		Repo:       thread.Thread.Post.Author.DID,
+		Repo:       my_did,
 		Record: RepostRecord{
 			Type:      "app.bsky.feed.repost",
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),

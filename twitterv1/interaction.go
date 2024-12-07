@@ -38,7 +38,7 @@ func status_update(c *fiber.Ctx) error {
 // https://web.archive.org/web/20120407091252/https://dev.twitter.com/docs/api/1/post/statuses/retweet/%3Aid
 func retweet(c *fiber.Ctx) error {
 	postId := c.Params("id")
-	_, oauthToken, err := GetAuthFromReq(c)
+	user_did, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -48,7 +48,7 @@ func retweet(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*oauthToken, bridge.TwitterIDToBlueSky(idBigInt))
+	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*oauthToken, bridge.TwitterIDToBlueSky(idBigInt), *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)

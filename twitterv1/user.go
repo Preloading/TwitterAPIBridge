@@ -12,6 +12,7 @@ import (
 // https://web.archive.org/web/20120508075505/https://dev.twitter.com/docs/api/1/get/users/show
 func user_info(c *fiber.Ctx) error {
 	screen_name := c.Query("screen_name")
+	fmt.Println("screen_name:", screen_name)
 	_, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
