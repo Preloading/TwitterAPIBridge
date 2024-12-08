@@ -44,6 +44,7 @@ func InitServer() {
 
 	// Setings
 	app.Get("/1/account/settings.xml", GetSettings)
+	app.Get("/1/account/push_destinations/device.xml", PushDestinations)
 
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)

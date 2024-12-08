@@ -61,6 +61,14 @@ type PostRecord struct {
 	Text      string    `json:"text"`
 }
 
+// Specifically for reposts
+type PostReason struct {
+	CreatedAt time.Time `json:"createdAt"`
+	Type      string    `json:"$type"`
+	By        Author    `json:"by"`
+	IndexedAt time.Time `json:"indexedAt"`
+}
+
 type Embed struct {
 	Type   string  `json:"$type"`
 	Images []Image `json:"images"`
@@ -134,7 +142,8 @@ type Feed struct {
 		Root   Post `json:"root"`
 		Parent Post `json:"parent"`
 	} `json:"reply"`
-	FeedContext string `json:"feedContext"`
+	Reason      *PostReason `json:"reason"`
+	FeedContext string      `json:"feedContext"`
 }
 
 type Timeline struct {
@@ -318,6 +327,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUserWithStatu
 	}, nil
 }
 
+// https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
 func GetTimeline(token string) (error, *Timeline) {
 	url := "https://public.bsky.social/xrpc/app.bsky.feed.getTimeline"
 
@@ -334,7 +344,7 @@ func GetTimeline(token string) (error, *Timeline) {
 	}
 	defer resp.Body.Close()
 
-	// // Print the response body
+	// // Print the response body for debugging
 	// bodyBytes, _ := io.ReadAll(resp.Body)
 	// bodyString := string(bodyBytes)
 	// fmt.Println("Response Body:", bodyString)

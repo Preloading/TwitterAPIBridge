@@ -1,6 +1,9 @@
 package bridge
 
 import (
+	"bytes"
+	"encoding/xml"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -40,7 +43,8 @@ type Tweet struct {
 	RetweetCount int `json:"retweet_count"`
 
 	// Our user's interaction with the tweet
-	Retweeted bool `json:"retweeted"`
+	Retweeted       bool   `json:"retweeted"`
+	RetweetedStatus *Tweet `json:"retweeted_status,omitempty"`
 }
 
 // TODO: Find a better way of doing this.
@@ -72,7 +76,8 @@ type TweetWithoutUserData struct {
 	RetweetCount int `json:"retweet_count"`
 
 	// Our user's interaction with the tweet
-	Retweeted bool `json:"retweeted"`
+	Retweeted       bool   `json:"retweeted"`
+	RetweetedStatus *Tweet `json:"retweeted_status"`
 }
 
 type TwitterUser struct {
@@ -168,39 +173,39 @@ type UserMention struct {
 }
 
 type SleepTime struct {
-	EndTime   *string `json:"end_time"`
-	Enabled   bool    `json:"enabled"`
-	StartTime *string `json:"start_time"`
+	EndTime   *string `json:"end_time" xml:"end_time"`
+	Enabled   bool    `json:"enabled" xml:"enabled"`
+	StartTime *string `json:"start_time" xml:"start_time"`
 }
 
 type PlaceType struct {
-	Name string `json:"name"`
-	Code int    `json:"code"`
+	Name string `json:"name" xml:"name"`
+	Code int    `json:"code" xml:"code"`
 }
 
 type TrendLocation struct {
-	Name        string    `json:"name"`
-	Woeid       int       `json:"woeid"`
-	PlaceType   PlaceType `json:"placeType"`
-	Country     string    `json:"country"`
-	URL         string    `json:"url"`
-	CountryCode *string   `json:"countryCode"`
+	Name        string    `json:"name" xml:"name"`
+	Woeid       int       `json:"woeid" xml:"woeid"`
+	PlaceType   PlaceType `json:"placeType" xml:"placeType"`
+	Country     string    `json:"country" xml:"country"`
+	URL         string    `json:"url" xml:"url"`
+	CountryCode *string   `json:"countryCode" xml:"countryCode"`
 }
 
 type TimeZone struct {
-	Name       string `json:"name"`
-	TzinfoName string `json:"tzinfo_name"`
-	UtcOffset  int    `json:"utc_offset"`
+	Name       string `json:"name" xml:"name"`
+	TzinfoName string `json:"tzinfo_name" xml:"tzinfo_name"`
+	UtcOffset  int    `json:"utc_offset" xml:"utc_offset"`
 }
 
 type Config struct {
-	SleepTime           SleepTime       `json:"sleep_time"`
-	TrendLocation       []TrendLocation `json:"trend_location"`
-	Language            string          `json:"language"`
-	AlwaysUseHttps      bool            `json:"always_use_https"`
-	DiscoverableByEmail bool            `json:"discoverable_by_email"`
-	TimeZone            TimeZone        `json:"time_zone"`
-	GeoEnabled          bool            `json:"geo_enabled"`
+	SleepTime           SleepTime       `json:"sleep_time" xml:"sleep_time"`
+	TrendLocation       []TrendLocation `json:"trend_location" xml:"trend_location"`
+	Language            string          `json:"language" xml:"language"`
+	AlwaysUseHttps      bool            `json:"always_use_https" xml:"always_use_https"`
+	DiscoverableByEmail bool            `json:"discoverable_by_email" xml:"discoverable_by_email"`
+	TimeZone            TimeZone        `json:"time_zone" xml:"time_zone"`
+	GeoEnabled          bool            `json:"geo_enabled" xml:"geo_enabled"`
 }
 
 // Bluesky's API returns a letter ID for each user,
@@ -246,21 +251,47 @@ func TwitterIDToBlueSky(numericID *big.Int) string {
 	return letterID
 }
 
-// EncodeIDs concatenates two IDs into one string with a delimiter
-func EncodeBlueskyMessageID(userid, messageid string) big.Int {
-	return *BlueSkyToTwitterID(userid + "/" + messageid)
-}
-
-// DecodeIDs splits the encoded string back into the original two IDs
-func DecodeBlueskyMessageID(encoded *big.Int) (string, string) {
-	ids := strings.Split(TwitterIDToBlueSky(encoded), "/")
-	if len(ids) != 2 {
-		return "", ""
+// This is here soley because we have to use psudo ids for retweets
+func TwitterMsgIdToBluesky(id *big.Int) (string, *string) {
+	parts := strings.Split(TwitterIDToBlueSky(id), ":/:")
+	if len(parts) < 2 {
+		return parts[0], nil
 	}
-	return ids[0], ids[1]
+	return parts[0], &parts[1]
 }
 
 // FormatTime converts Go's time.Time into the format "Wed Sep 01 00:00:00 +0000 2021"
 func TwitterTimeConverter(t time.Time) string {
 	return t.Format("Mon Jan 02 15:04:05 -0700 2006")
+}
+
+func XMLEncoder(data interface{}, oldHeaderName string, newHeaderName string) (*string, error) {
+	// Encode the data to XML
+	var buf bytes.Buffer
+	enc := xml.NewEncoder(&buf)
+	enc.Indent("", "  ")
+	if err := enc.Encode(data); err != nil {
+		fmt.Println("Error encoding XML:", err)
+		return nil, err
+	}
+
+	// Remove the root element and replace with custom header
+	xmlContent := buf.Bytes()
+	start := bytes.Index(xmlContent, []byte("<"+oldHeaderName+">"))
+	end := bytes.LastIndex(xmlContent, []byte("</"+oldHeaderName+">"))
+	if start == -1 || end == -1 {
+		return nil, fmt.Errorf("invalid XML format")
+	}
+	xmlContent = xmlContent[start+len("<"+oldHeaderName+">") : end]
+
+	// Add custom XML header and root element
+	customHeader := []byte(`<?xml version="1.0" encoding="UTF-8"?>` + "\n" + `<` + newHeaderName + `>` + "\n")
+	xmlContent = append(customHeader, xmlContent...)
+
+	// Add custom footer
+	customFooter := []byte("\n</" + newHeaderName + ">")
+	xmlContent = append(xmlContent, customFooter...)
+
+	result := string(xmlContent)
+	return &result, nil
 }

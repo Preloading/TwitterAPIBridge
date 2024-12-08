@@ -30,7 +30,7 @@ func home_timeline(c *fiber.Ctx) error {
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
-		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID))
+		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, item.Reason))
 	}
 
 	return c.JSON(tweets)
@@ -44,7 +44,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	uri := bridge.TwitterIDToBlueSky(idBigInt)
+	uri, _ := bridge.TwitterMsgIdToBluesky(idBigInt) // TODO: maybe look up with the retweet? idk
 
 	_, oauthToken, err := GetAuthFromReq(c)
 
@@ -58,10 +58,10 @@ func GetStatusFromId(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", ""))
+	return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil))
 }
 
-func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string) bridge.Tweet {
+func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, postReason *blueskyapi.PostReason) bridge.Tweet {
 	tweetEntities := bridge.Entities{
 		Hashtags:     nil,
 		Urls:         nil,
@@ -109,17 +109,45 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		}
 
 	}
+
+	isRetweet := false
+	// Checking if this tweet is a retweet
+	if postReason != nil {
+		// This might contain other things in the future, idk
+		if postReason.Type == "app.bsky.feed.defs#reasonRepost" {
+			// We are a retweet.
+			fmt.Println("This is a retweet")
+			isRetweet = true
+		}
+	}
+
 	convertedTweet := bridge.Tweet{
-		Coordinates:       nil,
-		Favourited:        tweet.Viewer.Like,
-		CreatedAt:         bridge.TwitterTimeConverter(tweet.Record.CreatedAt),
-		Truncated:         false,
-		Text:              tweet.Record.Text,
-		Entities:          tweetEntities,
-		Annotations:       nil, // I am curious what annotations are
-		Contributors:      nil,
-		ID:                *bridge.BlueSkyToTwitterID(tweet.URI),
-		IDStr:             bridge.BlueSkyToTwitterID(tweet.URI).String(),
+		Coordinates: nil,
+		Favourited:  tweet.Viewer.Like,
+		CreatedAt: func() string {
+			if isRetweet {
+				return bridge.TwitterTimeConverter(postReason.CreatedAt)
+			}
+			return bridge.TwitterTimeConverter(tweet.Record.CreatedAt)
+		}(),
+		Truncated:    false,
+		Text:         tweet.Record.Text,
+		Entities:     tweetEntities,
+		Annotations:  nil, // I am curious what annotations are
+		Contributors: nil,
+		ID: func() big.Int {
+			// we have to use psudo ids because of https://github.com/bluesky-social/atproto/issues/1811
+			if isRetweet {
+				return *bridge.BlueSkyToTwitterID(fmt.Sprintf("%s:/:%s", tweet.URI, postReason.By.DID))
+			}
+			return *bridge.BlueSkyToTwitterID(tweet.URI)
+		}(),
+		IDStr: func() string {
+			if isRetweet {
+				return bridge.BlueSkyToTwitterID(fmt.Sprintf("%s:/:%s", tweet.URI, postReason.By.DID)).String()
+			}
+			return bridge.BlueSkyToTwitterID(tweet.URI).String()
+		}(),
 		Retweeted:         tweet.Viewer.Repost != nil,
 		RetweetCount:      tweet.RepostCount,
 		Geo:               nil,
@@ -180,15 +208,15 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 			// huh
 			DefaultProfile:      false,
-			DefaultProfileImage: true,
+			DefaultProfileImage: false,
 			ShowAllInlineMedia:  false,
 
 			// User Stats
-			ListedCount:     0,
-			FavouritesCount: 0,
-			FollowersCount:  200,
-			FriendsCount:    100,
-			StatusesCount:   333,
+			// ListedCount:     0,
+			// FavouritesCount: 0,
+			// FollowersCount:  200,
+			// FriendsCount:    100,
+			// StatusesCount:   333,
 		},
 		Source: "Bluesky",
 		InReplyToStatusID: func() *big.Int {
@@ -205,6 +233,15 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			}
 			idStr := id.String()
 			return &idStr
+		}(),
+		RetweetedStatus: func() *bridge.Tweet {
+			if isRetweet {
+				retweet_bsky := tweet
+				retweet_bsky.Author = postReason.By
+				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, nil)
+				return &translatedTweet
+			}
+			return nil
 		}(),
 	}
 	return convertedTweet

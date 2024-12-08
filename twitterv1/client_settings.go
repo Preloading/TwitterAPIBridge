@@ -1,20 +1,31 @@
 package twitterv1
 
 import (
+	"fmt"
+
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
 	"github.com/gofiber/fiber/v2"
 )
 
-// TODO: Find anything about this request
+// Thanks to bag.xml for helping me get what this request returns
 func PushDestinations(c *fiber.Ctx) error {
-	// This request is /1/account/push_destinations/device.xml, and i cannot find any info on this.
-	return c.SendStatus(fiber.StatusNotImplemented)
+	old_udid := c.Query("old_udid")
+	udid := c.Query("udid")
+	environment := c.Query("environment")
+
+	return c.SendString(fmt.Sprintf(`
+	<?xml version="1.0" encoding="UTF-8"?>
+	<device>
+		<udid>%s</udid>
+		<old_udid>%s</old_udid>
+		<environment>%s</environment>
+	</device>
+	`, udid, old_udid, environment))
 }
 
 // TODO
-// 99% sure this relies on PushDestinations, which i have no data on.
 func GetSettings(c *fiber.Ctx) error {
-	return c.XML(bridge.Config{
+	settings := bridge.Config{
 		SleepTime: bridge.SleepTime{
 			EndTime:   nil,
 			Enabled:   true,
@@ -42,6 +53,12 @@ func GetSettings(c *fiber.Ctx) error {
 			UtcOffset:  -28800,
 		},
 		GeoEnabled: true,
-	})
+	}
+	xml, err := bridge.XMLEncoder(settings, "Config", "settings")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode settings")
+	}
+	return c.SendString(*xml)
 
 }

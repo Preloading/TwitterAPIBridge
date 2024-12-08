@@ -48,20 +48,22 @@ func retweet(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*oauthToken, bridge.TwitterIDToBlueSky(idBigInt), *user_did)
+	postId, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+
+	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*oauthToken, postId, *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
 	}
 
-	retweet := TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID)
+	retweet := TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, nil)
 	retweet.Retweeted = true
 	retweet.ID = *bridge.BlueSkyToTwitterID(*retweetPostURI)
 	retweet.IDStr = bridge.BlueSkyToTwitterID(*retweetPostURI).String()
 
 	return c.JSON(bridge.Retweet{
 		Tweet:           retweet,
-		RetweetedStatus: TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID),
+		RetweetedStatus: TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, nil), // TODO: make this respond with proper retweet data
 	})
 }

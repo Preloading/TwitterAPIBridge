@@ -48,6 +48,13 @@ type Token struct {
 	RefreshExpiry         float64 `gorm:"column:refresh_expiry"`
 }
 
+type MessageContext struct {
+	UserDID         string `gorm:"column:user_did"`
+	TokenUUID       string `gorm:"column:token_uuid"`
+	LastMessageId   string `gorm:"column:message_id"`
+	TimelineContext string `gorm:"column:timeline_context"`
+}
+
 var db *gorm.DB
 
 func InitDB() {
@@ -67,6 +74,7 @@ func InitDB() {
 
 	// Auto-migrate the schema
 	db.AutoMigrate(&Token{})
+	db.AutoMigrate(&MessageContext{})
 }
 
 // StoreToken stores an encrypted access token and refresh token in the database.
@@ -143,4 +151,64 @@ func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *str
 	}
 
 	return &accessToken, &refreshToken, &token.AccessExpiry, &token.RefreshExpiry, nil
+}
+
+// SetMessageContext stores or updates the message context in the database.
+// Parameters:
+// - did: The decentralized identifier of the user.
+// - tokenUUID: The UUID of the token.
+// - lastMessageId: The ID of the last message.
+// - timelineContext: The context of the timeline.
+// - encryptionKey: The key used to encrypt the context.
+func SetMessageContext(did string, tokenUUID string, lastMessageId string, timelineContext string, encryptionKey string) error {
+	encryptedLastMessageId, err := bridge.Encrypt(lastMessageId, encryptionKey)
+	if err != nil {
+		return err
+	}
+
+	encryptedTimelineContext, err := bridge.Encrypt(timelineContext, encryptionKey)
+	if err != nil {
+		return err
+	}
+
+	messageContext := MessageContext{
+		UserDID:         did,
+		TokenUUID:       tokenUUID,
+		LastMessageId:   encryptedLastMessageId,
+		TimelineContext: encryptedTimelineContext,
+	}
+
+	if err := db.Where("user_did = ? AND token_uuid = ?", did, tokenUUID).Assign(&messageContext).FirstOrCreate(&messageContext).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetMessageContext retrieves the message context from the database.
+// Parameters:
+// - did: The decentralized identifier of the user.
+// - tokenUUID: The UUID of the token.
+// - encryptionKey: The key used to decrypt the context.
+// Returns:
+// - The last message ID.
+// - The timeline context.
+// - An error if the operation fails.
+func GetMessageContext(did string, tokenUUID string, encryptionKey string) (*string, *string, error) {
+	var messageContext MessageContext
+	if err := db.Where("user_did = ? AND token_uuid = ?", did, tokenUUID).First(&messageContext).Error; err != nil {
+		return nil, nil, err
+	}
+
+	lastMessageId, err := bridge.Decrypt(messageContext.LastMessageId, encryptionKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	timelineContext, err := bridge.Decrypt(messageContext.TimelineContext, encryptionKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &lastMessageId, &timelineContext, nil
 }
