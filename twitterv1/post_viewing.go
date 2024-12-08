@@ -148,6 +148,8 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	}
 
+	bsky_retweet_author := tweet.Author
+
 	isRetweet := false
 	// Checking if this tweet is a retweet
 	if postReason != nil {
@@ -155,6 +157,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		if postReason.Type == "app.bsky.feed.defs#reasonRepost" {
 			// We are a retweet.
 			isRetweet = true
+			tweet.Author = postReason.By
 		}
 	}
 
@@ -274,7 +277,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		RetweetedStatus: func() *bridge.Tweet {
 			if isRetweet {
 				retweet_bsky := tweet
-				retweet_bsky.Author = postReason.By
+				retweet_bsky.Author = bsky_retweet_author
 				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, nil)
 				return &translatedTweet
 			}
