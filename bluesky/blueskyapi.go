@@ -164,19 +164,19 @@ type ThreadRoot struct {
 }
 
 // Reposting/Retweeting
-type RepostPayload struct {
+type CreateRecordPayload struct {
 	Collection string       `json:"collection"`
 	Repo       string       `json:"repo"`
 	Record     RepostRecord `json:"record"`
 }
 
 type RepostRecord struct {
-	Type      string        `json:"$type"`
-	CreatedAt string        `json:"createdAt"`
-	Subject   RepostSubject `json:"subject"`
+	Type      string              `json:"$type"`
+	CreatedAt string              `json:"createdAt"`
+	Subject   CreateRecordSubject `json:"subject"`
 }
 
-type RepostSubject struct {
+type CreateRecordSubject struct {
 	URI string `json:"uri"`
 	CID string `json:"cid"`
 }
@@ -446,13 +446,13 @@ func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *strin
 	if err != nil {
 		return err, nil, nil
 	}
-	payload := RepostPayload{
+	payload := CreateRecordPayload{
 		Collection: "app.bsky.feed.repost",
 		Repo:       my_did,
 		Record: RepostRecord{
 			Type:      "app.bsky.feed.repost",
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
-			Subject: RepostSubject{
+			Subject: CreateRecordSubject{
 				URI: thread.Thread.Post.URI,
 				CID: thread.Thread.Post.CID,
 			},
@@ -490,4 +490,61 @@ func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *strin
 	}
 
 	return nil, thread, &repost.URI
+}
+
+func LikePost(token string, id string, my_did string) (error, *ThreadRoot) {
+	url := "https://bsky.social/xrpc/com.atproto.repo.createRecord"
+
+	err, thread := GetPost(token, id, 0, 1)
+
+	if err != nil {
+		return errors.New("failed to fetch post"), nil
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return err, nil
+	}
+	payload := CreateRecordPayload{
+		Collection: "app.bsky.feed.like",
+		Repo:       my_did,
+		Record: RepostRecord{
+			Type:      "app.bsky.feed.like",
+			CreatedAt: time.Now().UTC().Format(time.RFC3339),
+			Subject: CreateRecordSubject{
+				URI: thread.Thread.Post.URI,
+				CID: thread.Thread.Post.CID,
+			},
+		},
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return errors.New("failed to marshal payload"), nil
+	}
+
+	req.Body = io.NopCloser(bytes.NewReader(reqBody))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	// if it works, we should get something like:
+	// {"uri":"at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.repost/3lcm7b2pjio22","cid":"bafyreidw2uvnhns5bacdii7gozrou4rg25cpcxhe6cbhfws2c5hpsvycdm","commit":{"cid":"bafyreicu7db6k3vxbvtwiumggynbps7cuozsofbvo3kq7lz723smvpxne4","rev":"3lcm7b2ptb622"},"validationStatus":"valid"}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to retweet: " + bodyString), nil
+	}
+
+	thread.Thread.Post.Viewer.Like = true
+
+	return nil, thread
 }

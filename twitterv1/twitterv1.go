@@ -33,6 +33,7 @@ func InitServer() {
 	// Interactions
 	app.Post("/1/statuses/update.json", status_update)
 	app.Post("/1/statuses/retweet/:id.json", retweet)
+	app.Post("/1/favorites/create/:id.json", favourite)
 
 	// Posts
 	app.Get("/1/statuses/home_timeline.json", home_timeline)

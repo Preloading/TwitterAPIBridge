@@ -67,3 +67,30 @@ func retweet(c *fiber.Ctx) error {
 		RetweetedStatus: TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, nil), // TODO: make this respond with proper retweet data
 	})
 }
+
+// https://web.archive.org/web/20120412065707/https://dev.twitter.com/docs/api/1/post/favorites/create/%3Aid
+func favourite(c *fiber.Ctx) error {
+	postId := c.Params("id")
+	user_did, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	idBigInt, ok := new(big.Int).SetString(postId, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	postId, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+
+	err, post := blueskyapi.LikePost(*oauthToken, postId, *user_did)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to like post")
+	}
+
+	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, nil)
+
+	return c.JSON(newTweet)
+}

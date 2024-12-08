@@ -42,11 +42,6 @@ func home_timeline(c *fiber.Ctx) error {
 		contextPtr, err := db_controller.GetTimelineContext(*user_did, *session_uuid, *maxIDBigInt, *encryptionKey)
 		if err == nil {
 			context = *contextPtr
-
-			if err != nil {
-				fmt.Println("Error:", err)
-				return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline context")
-			}
 		}
 	}
 
