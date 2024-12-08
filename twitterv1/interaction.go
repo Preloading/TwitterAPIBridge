@@ -11,7 +11,7 @@ import (
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/post/statuses/update
 func status_update(c *fiber.Ctx) error {
-	_, oauthToken, err := GetAuthFromReq(c)
+	_, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -38,7 +38,7 @@ func status_update(c *fiber.Ctx) error {
 // https://web.archive.org/web/20120407091252/https://dev.twitter.com/docs/api/1/post/statuses/retweet/%3Aid
 func retweet(c *fiber.Ctx) error {
 	postId := c.Params("id")
-	user_did, oauthToken, err := GetAuthFromReq(c)
+	user_did, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")

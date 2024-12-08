@@ -1,6 +1,8 @@
 package db_controller
 
 import (
+	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 
@@ -153,15 +155,17 @@ func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *str
 	return &accessToken, &refreshToken, &token.AccessExpiry, &token.RefreshExpiry, nil
 }
 
-// SetMessageContext stores or updates the message context in the database.
+// SetTimelineContext stores or updates the message context in the database.
 // Parameters:
 // - did: The decentralized identifier of the user.
 // - tokenUUID: The UUID of the token.
 // - lastMessageId: The ID of the last message.
 // - timelineContext: The context of the timeline.
 // - encryptionKey: The key used to encrypt the context.
-func SetMessageContext(did string, tokenUUID string, lastMessageId string, timelineContext string, encryptionKey string) error {
-	encryptedLastMessageId, err := bridge.Encrypt(lastMessageId, encryptionKey)
+func SetTimelineContext(did string, tokenUUID string, lastMessageId big.Int, timelineContext string, encryptionKey string) error {
+	fmt.Println("Last Message ID: " + lastMessageId.String())
+	fmt.Println("Decoded ID: " + bridge.TwitterIDToBlueSky(&lastMessageId))
+	encryptedLastMessageId, err := bridge.Encrypt(lastMessageId.String(), encryptionKey)
 	if err != nil {
 		return err
 	}
@@ -189,26 +193,26 @@ func SetMessageContext(did string, tokenUUID string, lastMessageId string, timel
 // Parameters:
 // - did: The decentralized identifier of the user.
 // - tokenUUID: The UUID of the token.
+// - message_id: The ID of the last message.
 // - encryptionKey: The key used to decrypt the context.
 // Returns:
-// - The last message ID.
 // - The timeline context.
 // - An error if the operation fails.
-func GetMessageContext(did string, tokenUUID string, encryptionKey string) (*string, *string, error) {
-	var messageContext MessageContext
-	if err := db.Where("user_did = ? AND token_uuid = ?", did, tokenUUID).First(&messageContext).Error; err != nil {
-		return nil, nil, err
+func GetTimelineContext(did string, tokenUUID string, message_id big.Int, encryptionKey string) (*string, error) {
+	encryptedLastMessageId, err := bridge.Encrypt(message_id.String(), encryptionKey)
+	if err != nil {
+		return nil, err
 	}
 
-	lastMessageId, err := bridge.Decrypt(messageContext.LastMessageId, encryptionKey)
-	if err != nil {
-		return nil, nil, err
+	var messageContext MessageContext
+	if err := db.Where("user_did = ? AND token_uuid = ? AND message_id = ?", did, tokenUUID, encryptedLastMessageId).First(&messageContext).Error; err != nil {
+		return nil, err
 	}
 
 	timelineContext, err := bridge.Decrypt(messageContext.TimelineContext, encryptionKey)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return &lastMessageId, &timelineContext, nil
+	return &timelineContext, nil
 }

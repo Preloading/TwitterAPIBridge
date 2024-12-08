@@ -68,14 +68,14 @@ func access_token(c *fiber.Ctx) error {
 
 // GetAuthFromReq is a helper function to get the user DID and access token from the request.
 // Also does some maintenance tasks like refreshing the access token if it has expired.
-func GetAuthFromReq(c *fiber.Ctx) (*string, *string, error) {
+func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, error) {
 	authHeader := c.Get("Authorization")
 	// Define a regular expression to match the oauth_token
 	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
 	matches := re.FindStringSubmatch(authHeader)
 
 	if len(matches) < 2 {
-		return nil, nil, errors.New("oauth token not found")
+		return nil, nil, nil, errors.New("oauth token not found")
 	}
 
 	oauthToken := matches[1]
@@ -87,14 +87,14 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, error) {
 	userDID, err := bridge.Base64URLDecode(oauthTokenSegments[0])
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Get our token UUID. This is used to look up the token in the database.
 	tokenUUID, err := bridge.Base64URLDecode(oauthTokenSegments[1])
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Get the encryption key for the data.
@@ -106,7 +106,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, error) {
 	accessJwt, refreshJwt, access_expiry, refresh_expiry, err := db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Check if the access token has expired
@@ -116,30 +116,51 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, error) {
 		// Lets check if our refresh token has expired
 		if time.Unix(int64(*refresh_expiry), 0).Before(time.Now()) {
 			// Our refresh token has expired. We need to re-authenticate.
-			return nil, nil, errors.New("refresh token has expired")
+			return nil, nil, nil, errors.New("refresh token has expired")
 		}
 
 		// Our refresh token is still valid. Lets refresh our access token.
 		new_auth, err := blueskyapi.RefreshToken(*refreshJwt)
 
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		accessJwt = &new_auth.AccessJwt
 
 		access_token_expiry, err := bridge.GetJWTTokenExpirationUnix(new_auth.AccessJwt)
 		if err != nil {
-			return nil, nil, errors.New("failed to get access token expiry")
+			return nil, nil, nil, errors.New("failed to get access token expiry")
 		}
 		refresh_token_expiry, err := bridge.GetJWTTokenExpirationUnix(new_auth.RefreshJwt)
 		if err != nil {
-			return nil, nil, errors.New("failed to get refresh token expiry")
+			return nil, nil, nil, errors.New("failed to get refresh token expiry")
 		}
 
 		db_controller.UpdateToken(string(tokenUUID), string(userDID), new_auth.AccessJwt, new_auth.RefreshJwt, encryptionKey, *access_token_expiry, *refresh_token_expiry)
 	}
 
 	userDIDStr := string(userDID)
-	return &userDIDStr, accessJwt, nil
+	return &userDIDStr, &tokenUUID, accessJwt, nil
+}
+
+func GetEncryptionKeyFromRequest(c *fiber.Ctx) (*string, error) {
+	authHeader := c.Get("Authorization")
+	// Define a regular expression to match the oauth_token
+	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
+	matches := re.FindStringSubmatch(authHeader)
+
+	if len(matches) < 2 {
+		return nil, errors.New("oauth token not found")
+	}
+
+	oauthToken := matches[1]
+	oauthTokenSegments := strings.Split(oauthToken, ".")
+
+	// Get the encryption key for the data.
+	encryptionKey := oauthTokenSegments[2] + "="
+	encryptionKey = strings.ReplaceAll(encryptionKey, "-", "+")
+	encryptionKey = strings.ReplaceAll(encryptionKey, "_", "/")
+
+	return &encryptionKey, nil
 }

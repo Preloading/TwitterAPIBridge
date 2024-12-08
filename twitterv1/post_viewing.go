@@ -8,29 +8,68 @@ import (
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
+	"github.com/Preloading/MastodonTwitterAPI/db_controller"
 	"github.com/gofiber/fiber/v2"
 )
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
 func home_timeline(c *fiber.Ctx) error {
-	_, oauthToken, err := GetAuthFromReq(c)
+	// Get all of our keys, beeps, and bops
+	user_did, session_uuid, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
-	err, res := blueskyapi.GetTimeline(*oauthToken)
+	encryptionKey, err := GetEncryptionKeyFromRequest(c)
+
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// Check for context
+	max_id := c.Query("max_id")
+	context := ""
+
+	// Handle getting things in the past
+	if max_id != "" {
+		// Get the timeline context from the DB
+		maxIDBigInt, ok := new(big.Int).SetString(max_id, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+		}
+		fmt.Println("Max ID:", bridge.TwitterIDToBlueSky(maxIDBigInt))
+		contextPtr, err := db_controller.GetTimelineContext(*user_did, *session_uuid, *maxIDBigInt, *encryptionKey)
+		if err == nil {
+			context = *contextPtr
+
+			if err != nil {
+				fmt.Println("Error:", err)
+				return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline context")
+			}
+		}
+	}
+
+	err, res := blueskyapi.GetTimeline(*oauthToken, context)
 
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
 	}
 
+	// Translate the posts to tweets
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
 		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, item.Reason))
+	}
+
+	// Store the last message id, along with our context in the DB
+	err = db_controller.SetTimelineContext(*user_did, *session_uuid, tweets[len(tweets)-1].ID, res.Cursor, *encryptionKey)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to save timeline context")
 	}
 
 	return c.JSON(tweets)
@@ -46,7 +85,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	}
 	uri, _ := bridge.TwitterMsgIdToBluesky(idBigInt) // TODO: maybe look up with the retweet? idk
 
-	_, oauthToken, err := GetAuthFromReq(c)
+	_, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -95,7 +134,6 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		// fmt.Println(faucet.Features[0].Type)
 		switch faucet.Features[0].Type {
 		case "app.bsky.richtext.facet#mention":
-			fmt.Println("we found a mention")
 			tweetEntities.UserMentions = append(tweetEntities.UserMentions, bridge.UserMention{
 				Name:       "test",
 				ScreenName: "test",
@@ -116,7 +154,6 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		// This might contain other things in the future, idk
 		if postReason.Type == "app.bsky.feed.defs#reasonRepost" {
 			// We are a retweet.
-			fmt.Println("This is a retweet")
 			isRetweet = true
 		}
 	}

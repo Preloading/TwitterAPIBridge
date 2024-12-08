@@ -13,7 +13,7 @@ import (
 func user_info(c *fiber.Ctx) error {
 	screen_name := c.Query("screen_name")
 	fmt.Println("screen_name:", screen_name)
-	_, oauthToken, err := GetAuthFromReq(c)
+	_, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		blankstring := ""

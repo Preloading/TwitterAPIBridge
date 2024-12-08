@@ -328,8 +328,11 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUserWithStatu
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
-func GetTimeline(token string) (error, *Timeline) {
+func GetTimeline(token string, context string) (error, *Timeline) {
 	url := "https://public.bsky.social/xrpc/app.bsky.feed.getTimeline"
+	if context != "" {
+		url = "https://public.bsky.social/xrpc/app.bsky.feed.getTimeline?context=" + context
+	}
 
 	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
