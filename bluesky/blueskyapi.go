@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
@@ -114,7 +115,7 @@ type Index struct {
 
 type PostViewer struct {
 	Repost            *string `json:"repost"`
-	Like              bool    `json:"like"`
+	Like              *string `json:"like"` // Can someone please tell me why this is a string.
 	Muted             bool    `json:"muted"`
 	BlockedBy         bool    `json:"blockedBy"`
 	ThreadMute        bool    `json:"threadMute"`
@@ -170,6 +171,12 @@ type CreateRecordPayload struct {
 	Record     RepostRecord `json:"record"`
 }
 
+type DeleteRecordPayload struct {
+	Collection string `json:"collection"`
+	Repo       string `json:"repo"`
+	RKey       string `json:"rkey"`
+}
+
 type RepostRecord struct {
 	Type      string              `json:"$type"`
 	CreatedAt string              `json:"createdAt"`
@@ -186,7 +193,7 @@ type Commit struct {
 	Rev string `json:"rev"`
 }
 
-type Repost struct {
+type CreateRecordResult struct {
 	URI              string `json:"uri"`
 	CID              string `json:"cid"`
 	Commit           Commit `json:"commit"`
@@ -484,7 +491,7 @@ func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *strin
 		return errors.New("failed to retweet: " + bodyString), nil, nil
 	}
 
-	repost := Repost{}
+	repost := CreateRecordResult{}
 	if err := json.NewDecoder(resp.Body).Decode(&repost); err != nil {
 		return err, nil, nil
 	}
@@ -544,7 +551,67 @@ func LikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 		return errors.New("failed to retweet: " + bodyString), nil
 	}
 
-	thread.Thread.Post.Viewer.Like = true
+	likeRes := CreateRecordResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&likeRes); err != nil {
+		return err, nil
+	}
+
+	thread.Thread.Post.Viewer.Like = &strings.Split(likeRes.URI, "/app.bsky.feed.like/")[1]
+
+	return nil, thread
+}
+
+func UnlikePost(token string, id string, my_did string) (error, *ThreadRoot) {
+	url := "https://bsky.social/xrpc/com.atproto.repo.deleteRecord"
+
+	err, thread := GetPost(token, id, 0, 1)
+
+	if err != nil {
+		return errors.New("failed to fetch post"), nil
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return err, nil
+	}
+	payload := DeleteRecordPayload{
+		Collection: "app.bsky.feed.like",
+		Repo:       my_did,
+		RKey:       strings.Split(*thread.Thread.Post.Viewer.Like, "/app.bsky.feed.like/")[1],
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return errors.New("failed to marshal payload"), nil
+	}
+
+	req.Body = io.NopCloser(bytes.NewReader(reqBody))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	// if it works, we should get something like:
+	// {"uri":"at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.repost/3lcm7b2pjio22","cid":"bafyreidw2uvnhns5bacdii7gozrou4rg25cpcxhe6cbhfws2c5hpsvycdm","commit":{"cid":"bafyreicu7db6k3vxbvtwiumggynbps7cuozsofbvo3kq7lz723smvpxne4","rev":"3lcm7b2ptb622"},"validationStatus":"valid"}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to retweet: " + bodyString), nil
+	}
+
+	likeRes := CreateRecordResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&likeRes); err != nil {
+		return err, nil
+	}
+
+	thread.Thread.Post.Viewer.Like = &likeRes.URI // maybe?
 
 	return nil, thread
 }

@@ -158,7 +158,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	convertedTweet := bridge.Tweet{
 		Coordinates: nil,
-		Favourited:  tweet.Viewer.Like,
+		Favourited:  tweet.Viewer.Like != nil,
 		CreatedAt: func() string {
 			if isRetweet {
 				return bridge.TwitterTimeConverter(postReason.CreatedAt)

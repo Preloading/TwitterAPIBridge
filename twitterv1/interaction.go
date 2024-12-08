@@ -94,3 +94,30 @@ func favourite(c *fiber.Ctx) error {
 
 	return c.JSON(newTweet)
 }
+
+// https://web.archive.org/web/20120412041153/https://dev.twitter.com/docs/api/1/post/favorites/destroy/%3Aid
+func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
+	postId := c.Params("id")
+	user_did, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	idBigInt, ok := new(big.Int).SetString(postId, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	postId, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+
+	err, post := blueskyapi.UnlikePost(*oauthToken, postId, *user_did)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to unlike post")
+	}
+
+	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, nil)
+
+	return c.JSON(newTweet)
+}
