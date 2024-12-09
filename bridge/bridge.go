@@ -251,13 +251,39 @@ func TwitterIDToBlueSky(numericID *big.Int) string {
 	return letterID
 }
 
-// This is here soley because we have to use psudo ids for retweets
-func TwitterMsgIdToBluesky(id *big.Int) (string, *string) {
-	parts := strings.Split(TwitterIDToBlueSky(id), ":/:")
-	if len(parts) < 2 {
-		return parts[0], nil
+func BskyMsgToTwitterID(uri string, unixTime int64) big.Int {
+	// Convert the URI to a numeric ID
+	encodedId := BlueSkyToTwitterID(uri)
+
+	// Convert the numeric ID to a string and pad with zeros if necessary
+	encodedIdStr := encodedId.Text(10)
+	if len(encodedIdStr) < 167 {
+		encodedIdStr = strings.Repeat("0", 167-len(encodedIdStr)) + encodedIdStr
+	} else if len(encodedIdStr) > 167 {
+		fmt.Println("Encoded ID exceeds 167 digits")
 	}
-	return parts[0], &parts[1]
+
+	// Add the Unix timestamp at the start
+	finalId := fmt.Sprintf("%d%s", unixTime, encodedIdStr)
+
+	finalBigInt, _ := new(big.Int).SetString(finalId, 10)
+	return *finalBigInt
+}
+
+// This is here soley because we have to use psudo ids for retweets. And because we need to store the unix time inside of it
+func TwitterMsgIdToBluesky(id *big.Int) (string, *string) {
+	idStr := id.Text(10)
+	if len(idStr) <= 10 {
+		return TwitterIDToBlueSky(id), nil
+	}
+
+	unixTimeStr := idStr[:10]
+	encodedIdStr := idStr[10:]
+
+	encodedId, _ := new(big.Int).SetString(encodedIdStr, 10)
+	uri := TwitterIDToBlueSky(encodedId)
+
+	return uri, &unixTimeStr
 }
 
 // FormatTime converts Go's time.Time into the format "Wed Sep 01 00:00:00 +0000 2021"
