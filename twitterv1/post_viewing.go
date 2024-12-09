@@ -59,8 +59,28 @@ func home_timeline(c *fiber.Ctx) error {
 		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, item.Reason))
 	}
 
-	// Store the last message id, along with our context in the DB
-	err = db_controller.SetTimelineContext(*user_did, *session_uuid, tweets[len(tweets)-1].ID, res.Cursor, *encryptionKey)
+	// Store the oldest message id, along with our context in the DB
+	oldestTweet := tweets[0]
+	for _, tweet := range tweets {
+
+		// TODO: Remove this later once retweets are working better
+		if tweet.RetweetedStatus != nil {
+			continue
+		}
+
+		tweetTime, err := bridge.TwitterTimeParser(tweet.CreatedAt)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to parse tweet time")
+		}
+		oldestTweetTime, err := bridge.TwitterTimeParser(oldestTweet.CreatedAt)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to parse oldest tweet time")
+		}
+		if tweetTime.Before(oldestTweetTime) {
+			oldestTweet = tweet
+		}
+	}
+	err = db_controller.SetTimelineContext(*user_did, *session_uuid, oldestTweet.ID, res.Cursor, *encryptionKey)
 
 	if err != nil {
 		fmt.Println("Error:", err)

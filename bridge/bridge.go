@@ -265,6 +265,11 @@ func TwitterTimeConverter(t time.Time) string {
 	return t.Format("Mon Jan 02 15:04:05 -0700 2006")
 }
 
+func TwitterTimeParser(timeStr string) (time.Time, error) {
+	layout := "Mon Jan 02 15:04:05 -0700 2006"
+	return time.Parse(layout, timeStr)
+}
+
 func XMLEncoder(data interface{}, oldHeaderName string, newHeaderName string) (*string, error) {
 	// Encode the data to XML
 	var buf bytes.Buffer

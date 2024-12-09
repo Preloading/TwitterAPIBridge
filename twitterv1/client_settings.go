@@ -15,11 +15,11 @@ func PushDestinations(c *fiber.Ctx) error {
 
 	return c.SendString(fmt.Sprintf(`
 	<?xml version="1.0" encoding="UTF-8"?>
-	<notifications>
+	<push_notifications>
 		<udid>%s</udid>
 		<old_udid>%s</old_udid>
 		<environment>%s</environment>
-	</notifications>
+	</push_notifications>
 	`, udid, old_udid, environment))
 }
 
