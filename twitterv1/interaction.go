@@ -3,6 +3,7 @@ package twitterv1
 import (
 	"fmt"
 	"math/big"
+	"time"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
@@ -48,7 +49,7 @@ func retweet(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	postId, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+	postId, _, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
 
 	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*oauthToken, postId, *user_did)
 
@@ -57,14 +58,14 @@ func retweet(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
 	}
 
-	retweet := TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, nil)
+	retweet := TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil)
 	retweet.Retweeted = true
-	retweet.ID = *bridge.BlueSkyToTwitterID(*retweetPostURI)
-	retweet.IDStr = bridge.BlueSkyToTwitterID(*retweetPostURI).String()
+	retweet.ID = bridge.BskyMsgToTwitterID(*retweetPostURI, time.Now(), nil) // TODO: Fix this ID retweet stuff
+	retweet.IDStr = retweet.ID.String()
 
 	return c.JSON(bridge.Retweet{
 		Tweet:           retweet,
-		RetweetedStatus: TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, nil), // TODO: make this respond with proper retweet data
+		RetweetedStatus: TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil), // TODO: make this respond with proper retweet data
 	})
 }
 
@@ -81,7 +82,7 @@ func favourite(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	postId, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+	postId, _, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
 
 	err, post := blueskyapi.LikePost(*oauthToken, postId, *user_did)
 
@@ -90,7 +91,7 @@ func favourite(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to like post")
 	}
 
-	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, nil)
+	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil)
 
 	return c.JSON(newTweet)
 }
@@ -108,7 +109,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	postId, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+	postId, _, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
 
 	err, post := blueskyapi.UnlikePost(*oauthToken, postId, *user_did)
 
@@ -117,7 +118,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to unlike post")
 	}
 
-	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, nil)
+	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil)
 
 	return c.JSON(newTweet)
 }

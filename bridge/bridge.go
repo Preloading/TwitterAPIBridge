@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -251,9 +252,13 @@ func TwitterIDToBlueSky(numericID *big.Int) string {
 	return letterID
 }
 
-func BskyMsgToTwitterID(uri string, unixTime int64) big.Int {
-	// Convert the URI to a numeric ID
-	encodedId := BlueSkyToTwitterID(uri)
+func BskyMsgToTwitterID(uri string, creationTime time.Time, retweetUserId *string) big.Int {
+	var encodedId *big.Int
+	if retweetUserId != nil {
+		encodedId = BlueSkyToTwitterID(fmt.Sprintf("%s:/:%s", uri, *retweetUserId))
+	} else {
+		encodedId = BlueSkyToTwitterID(uri)
+	}
 
 	// Convert the numeric ID to a string and pad with zeros if necessary
 	encodedIdStr := encodedId.Text(10)
@@ -264,26 +269,35 @@ func BskyMsgToTwitterID(uri string, unixTime int64) big.Int {
 	}
 
 	// Add the Unix timestamp at the start
-	finalId := fmt.Sprintf("%d%s", unixTime, encodedIdStr)
+	finalId := fmt.Sprintf("%d%s", creationTime.Unix(), encodedIdStr)
 
 	finalBigInt, _ := new(big.Int).SetString(finalId, 10)
 	return *finalBigInt
 }
 
 // This is here soley because we have to use psudo ids for retweets. And because we need to store the unix time inside of it
-func TwitterMsgIdToBluesky(id *big.Int) (string, *string) {
+func TwitterMsgIdToBluesky(id *big.Int) (string, time.Time, *string) {
 	idStr := id.Text(10)
 	if len(idStr) <= 10 {
-		return TwitterIDToBlueSky(id), nil
+		return TwitterIDToBlueSky(id), time.Time{}, nil
 	}
 
-	unixTimeStr := idStr[:10]
-	encodedIdStr := idStr[10:]
+	unixTimeStr := idStr[:9]
+	encodedIdStr := idStr[9:]
 
 	encodedId, _ := new(big.Int).SetString(encodedIdStr, 10)
-	uri := TwitterIDToBlueSky(encodedId)
+	uri, retweetUserId := TwitterIDToBlueSky(encodedId), ""
 
-	return uri, &unixTimeStr
+	if strings.Contains(uri, ":/:") {
+		parts := strings.Split(uri, ":/:")
+		if len(parts) == 2 {
+			uri = parts[0]
+			retweetUserId = parts[1]
+		}
+	}
+
+	unixTime, _ := strconv.ParseInt(unixTimeStr, 10, 64)
+	return uri, time.Unix(unixTime, 0), &retweetUserId
 }
 
 // FormatTime converts Go's time.Time into the format "Wed Sep 01 00:00:00 +0000 2021"

@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"net/url"
 	"strconv"
+	"time"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
@@ -56,7 +57,7 @@ func home_timeline(c *fiber.Ctx) error {
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
-		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, item.Reason))
+		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason))
 	}
 
 	// Store the oldest message id, along with our context in the DB
@@ -98,7 +99,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	uri, _ := bridge.TwitterMsgIdToBluesky(idBigInt) // TODO: maybe look up with the retweet? idk
+	uri, _, _ := bridge.TwitterMsgIdToBluesky(idBigInt) // TODO: maybe look up with the retweet? idk
 
 	_, _, oauthToken, err := GetAuthFromReq(c)
 
@@ -112,10 +113,10 @@ func GetStatusFromId(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil))
+	return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil))
 }
 
-func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, postReason *blueskyapi.PostReason) bridge.Tweet {
+func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason) bridge.Tweet {
 	tweetEntities := bridge.Entities{
 		Hashtags:     nil,
 		Urls:         nil,
@@ -193,15 +194,17 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		ID: func() big.Int {
 			// we have to use psudo ids because of https://github.com/bluesky-social/atproto/issues/1811
 			if isRetweet {
-				return *bridge.BlueSkyToTwitterID(fmt.Sprintf("%s:/:%s", tweet.URI, postReason.By.DID))
+				return bridge.BskyMsgToTwitterID(tweet.URI, postReason.CreatedAt, &postReason.By.DID)
 			}
-			return *bridge.BlueSkyToTwitterID(tweet.URI)
+			return bridge.BskyMsgToTwitterID(tweet.URI, tweet.Record.CreatedAt, nil)
 		}(),
 		IDStr: func() string {
 			if isRetweet {
-				return bridge.BlueSkyToTwitterID(fmt.Sprintf("%s:/:%s", tweet.URI, postReason.By.DID)).String()
+				id := bridge.BskyMsgToTwitterID(tweet.URI, postReason.CreatedAt, &postReason.By.DID)
+				return id.String()
 			}
-			return bridge.BlueSkyToTwitterID(tweet.URI).String()
+			id := bridge.BskyMsgToTwitterID(tweet.URI, tweet.Record.CreatedAt, nil)
+			return id.String()
 		}(),
 		Retweeted:         tweet.Viewer.Repost != nil,
 		RetweetCount:      tweet.RepostCount,
@@ -293,7 +296,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			if isRetweet {
 				retweet_bsky := tweet
 				retweet_bsky.Author = bsky_retweet_author
-				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, nil)
+				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil)
 				return &translatedTweet
 			}
 			return nil
