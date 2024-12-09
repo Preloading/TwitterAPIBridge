@@ -83,6 +83,7 @@ func favourite(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	postId, _, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+	fmt.Println("Post ID:", postId)
 
 	err, post := blueskyapi.LikePost(*oauthToken, postId, *user_did)
 

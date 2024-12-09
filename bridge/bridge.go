@@ -282,8 +282,8 @@ func TwitterMsgIdToBluesky(id *big.Int) (string, time.Time, *string) {
 		return TwitterIDToBlueSky(id), time.Time{}, nil
 	}
 
-	unixTimeStr := idStr[:9]
-	encodedIdStr := idStr[9:]
+	unixTimeStr := idStr[:10]
+	encodedIdStr := idStr[10:]
 
 	encodedId, _ := new(big.Int).SetString(encodedIdStr, 10)
 	uri, retweetUserId := TwitterIDToBlueSky(encodedId), ""
