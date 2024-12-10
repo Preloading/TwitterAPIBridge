@@ -50,6 +50,10 @@ func InitServer() {
 	app.Get("/1/account/settings.xml", GetSettings)
 	app.Get("/1/account/push_destinations/device.xml", PushDestinations)
 
+	// Legal cuz why not?
+	app.Get("/1/legal/tos.json", TOS)
+	app.Get("/1/legal/privacy.json", PrivacyPolicy)
+
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)
 

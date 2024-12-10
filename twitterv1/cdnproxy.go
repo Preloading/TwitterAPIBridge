@@ -30,6 +30,7 @@ func CDNDownscaler(c *fiber.Ctx) error {
 		imageURL = strings.TrimSuffix(imageURL, ":small")
 
 		// TODO: Find what these values actually used to be
+		// They used to be https://web.archive.org/web/20120412055327/https://dev.twitter.com/docs/api/1/get/help/configuration
 		widthStr = "320"
 		heightStr = ""
 	}
