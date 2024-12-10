@@ -64,7 +64,6 @@ type PostRecord struct {
 
 // Specifically for reposts
 type PostReason struct {
-	CreatedAt time.Time `json:"createdAt"`
 	Type      string    `json:"$type"`
 	By        Author    `json:"by"`
 	IndexedAt time.Time `json:"indexedAt"`

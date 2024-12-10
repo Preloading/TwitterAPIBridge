@@ -182,7 +182,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		Favourited:  tweet.Viewer.Like != nil,
 		CreatedAt: func() string {
 			if isRetweet {
-				return bridge.TwitterTimeConverter(postReason.CreatedAt)
+				return bridge.TwitterTimeConverter(postReason.IndexedAt)
 			}
 			return bridge.TwitterTimeConverter(tweet.Record.CreatedAt)
 		}(),
@@ -194,13 +194,13 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		ID: func() big.Int {
 			// we have to use psudo ids because of https://github.com/bluesky-social/atproto/issues/1811
 			if isRetweet {
-				return bridge.BskyMsgToTwitterID(tweet.URI, postReason.CreatedAt, &postReason.By.DID)
+				return bridge.BskyMsgToTwitterID(tweet.URI, postReason.IndexedAt, &postReason.By.DID)
 			}
 			return bridge.BskyMsgToTwitterID(tweet.URI, tweet.Record.CreatedAt, nil)
 		}(),
 		IDStr: func() string {
 			if isRetweet {
-				id := bridge.BskyMsgToTwitterID(tweet.URI, postReason.CreatedAt, &postReason.By.DID)
+				id := bridge.BskyMsgToTwitterID(tweet.URI, postReason.IndexedAt, &postReason.By.DID)
 				return id.String()
 			}
 			id := bridge.BskyMsgToTwitterID(tweet.URI, tweet.Record.CreatedAt, nil)
@@ -278,17 +278,17 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		},
 		Source: "Bluesky",
 		InReplyToStatusID: func() *big.Int {
-			id := bridge.BlueSkyToTwitterID(replyMsgBskyURI) // hack, later probably do this more efficently
-			if id.Cmp(big.NewInt(0)) == 0 {
+			if replyTimeStamp == nil {
 				return nil
 			}
-			return bridge.BlueSkyToTwitterID(replyMsgBskyURI)
+			id := bridge.BskyMsgToTwitterID(replyMsgBskyURI, *replyTimeStamp, &replyUserBskyId)
+			return &id
 		}(),
 		InReplyToStatusIDStr: func() *string {
-			id := bridge.BlueSkyToTwitterID(replyMsgBskyURI) // hack, later probably do this more efficently
-			if id.Cmp(big.NewInt(0)) == 0 {
+			if replyTimeStamp == nil {
 				return nil
 			}
+			id := bridge.BskyMsgToTwitterID(replyMsgBskyURI, *replyTimeStamp, &replyUserBskyId)
 			idStr := id.String()
 			return &idStr
 		}(),
