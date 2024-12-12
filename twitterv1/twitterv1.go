@@ -39,6 +39,7 @@ func InitServer() {
 	// Posts
 	app.Get("/1/statuses/home_timeline.json", home_timeline)
 	app.Get("/1/statuses/show/:id.json", GetStatusFromId)
+	app.Get("/i/statuses/:id/activity/summary.json", TweetSummaries)
 
 	// Users
 	app.Get("/1/users/show.xml", user_info)

@@ -127,6 +127,15 @@ type TwitterUserWithStatus struct {
 	// Status TweetWithoutUserData `json:"status"`
 }
 
+type TwitterActivitiySummary struct {
+	Favourites      []big.Int `json:"favoriters"` // Pretty sure this is the User ID of the favouriters
+	FavouritesCount int       `json:"favoriters_count"`
+	Repliers        []big.Int `json:"repliers"`
+	RepliersCount   int       `json:"repliers_count"`
+	Retweets        []big.Int `json:"retweeters"`
+	RetweetsCount   int       `json:"retweeters_count"`
+}
+
 type MediaSize struct {
 	W      int    `json:"w"`
 	Resize string `json:"resize"`

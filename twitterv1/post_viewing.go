@@ -39,7 +39,8 @@ func home_timeline(c *fiber.Ctx) error {
 		if !ok {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
 		}
-		fmt.Println("Max ID:", bridge.TwitterIDToBlueSky(maxIDBigInt))
+		maxID, _, _ := bridge.TwitterMsgIdToBluesky(maxIDBigInt)
+		fmt.Println("Max ID: " + maxID)
 		contextPtr, err := db_controller.GetTimelineContext(*user_did, *session_uuid, *maxIDBigInt, *encryptionKey)
 		if err == nil {
 			context = *contextPtr
@@ -303,4 +304,41 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		}(),
 	}
 	return convertedTweet
+}
+
+// This request is an "internal" request, and thus, these are very little to no docs. this is a problem.
+// The most docs I could find: https://blog.fgribreau.com/2012/01/twitter-unofficial-api-getting-tweets.html
+func TweetSummaries(c *fiber.Ctx) error {
+	_, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header (yes i know this isn't complient with the twitter api)")
+	}
+
+	encodedId := c.Params("id")
+	idBigInt, ok := new(big.Int).SetString(encodedId, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	id, _, _ := bridge.TwitterMsgIdToBluesky(idBigInt)
+
+	err, thread := blueskyapi.GetPost(*oauthToken, id, 1, 0)
+
+	if err != nil {
+		return err
+	}
+
+	repliers := []big.Int{}
+
+	for _, reply := range thread.Thread.Replies {
+		repliers = append(repliers, *bridge.BlueSkyToTwitterID(reply.URI))
+	}
+
+	return c.JSON(bridge.TwitterActivitiySummary{
+		FavouritesCount: thread.Thread.Post.LikeCount,
+		RetweetsCount:   thread.Thread.Post.RepostCount,
+		RepliersCount:   thread.Thread.Post.ReplyCount,
+		Favourites:      []big.Int{},
+		Retweets:        []big.Int{},
+		Repliers:        repliers,
+	})
 }
