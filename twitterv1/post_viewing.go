@@ -308,7 +308,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 // This request is an "internal" request, and thus, these are very little to no docs. this is a problem.
 // The most docs I could find: https://blog.fgribreau.com/2012/01/twitter-unofficial-api-getting-tweets.html
-func TweetSummaries(c *fiber.Ctx) error {
+func TweetInfo(c *fiber.Ctx) error {
 	_, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header (yes i know this isn't complient with the twitter api)")
@@ -327,18 +327,38 @@ func TweetSummaries(c *fiber.Ctx) error {
 		return err
 	}
 
+	likes, err := blueskyapi.GetLikes(*oauthToken, id, 100)
+
+	if err != nil {
+		return err
+	}
+
+	reposters, err := blueskyapi.GetRetweetAuthors(*oauthToken, id, 100)
+
+	if err != nil {
+		return err
+	}
+
 	repliers := []big.Int{}
+	favourites := []big.Int{}
+	retweeters := []big.Int{}
 
 	for _, reply := range thread.Thread.Replies {
-		repliers = append(repliers, *bridge.BlueSkyToTwitterID(reply.URI))
+		repliers = append(repliers, *bridge.BlueSkyToTwitterID(reply.Author.DID))
+	}
+	for _, like := range likes.Likes {
+		favourites = append(favourites, *bridge.BlueSkyToTwitterID(like.Actor.DID))
+	}
+	for _, reposter := range reposters.RepostedBy {
+		retweeters = append(retweeters, *bridge.BlueSkyToTwitterID(reposter.DID))
 	}
 
 	return c.JSON(bridge.TwitterActivitiySummary{
 		FavouritesCount: thread.Thread.Post.LikeCount,
 		RetweetsCount:   thread.Thread.Post.RepostCount,
 		RepliersCount:   thread.Thread.Post.ReplyCount,
-		Favourites:      []big.Int{},
-		Retweets:        []big.Int{},
+		Favourites:      favourites,
+		Retweets:        retweeters,
 		Repliers:        repliers,
 	})
 }

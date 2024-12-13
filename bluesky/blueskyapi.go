@@ -123,8 +123,7 @@ type PostViewer struct {
 	Pinned            bool    `json:"pinned"`
 }
 type Post struct {
-	URI    string     `json:"uri"`
-	CID    string     `json:"cid"`
+	Subject
 	Author Author     `json:"author"`
 	Record PostRecord `json:"record"`
 	// Embed  Embed      `json:"embed"`
@@ -177,12 +176,12 @@ type DeleteRecordPayload struct {
 }
 
 type RepostRecord struct {
-	Type      string              `json:"$type"`
-	CreatedAt string              `json:"createdAt"`
-	Subject   CreateRecordSubject `json:"subject"`
+	Type      string  `json:"$type"`
+	CreatedAt string  `json:"createdAt"`
+	Subject   Subject `json:"subject"`
 }
 
-type CreateRecordSubject struct {
+type Subject struct {
 	URI string `json:"uri"`
 	CID string `json:"cid"`
 }
@@ -193,10 +192,26 @@ type Commit struct {
 }
 
 type CreateRecordResult struct {
-	URI              string `json:"uri"`
-	CID              string `json:"cid"`
+	Subject
 	Commit           Commit `json:"commit"`
 	ValidationStatus string `json:"validationStatus"`
+}
+
+type RepostedBy struct {
+	Subject
+	Cursor     string   `json:"cursor"`
+	RepostedBy []Author `json:"repostedBy"`
+}
+type Likes struct {
+	Subject
+	Cursor string           `json:"cursor"`
+	Likes  []ItemByWithDate `json:"likes"`
+}
+
+type ItemByWithDate struct {
+	IndexedAt time.Time `json:"indexedAt"`
+	CreatedAt time.Time `json:"createdAt"`
+	Actor     Author    `json:"actor"`
 }
 
 func Authenticate(username, password string) (*AuthResponse, error) {
@@ -458,7 +473,7 @@ func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *strin
 		Record: RepostRecord{
 			Type:      "app.bsky.feed.repost",
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
-			Subject: CreateRecordSubject{
+			Subject: Subject{
 				URI: thread.Thread.Post.URI,
 				CID: thread.Thread.Post.CID,
 			},
@@ -518,7 +533,7 @@ func LikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 		Record: RepostRecord{
 			Type:      "app.bsky.feed.like",
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
-			Subject: CreateRecordSubject{
+			Subject: Subject{
 				URI: thread.Thread.Post.URI,
 				CID: thread.Thread.Post.CID,
 			},
@@ -613,4 +628,78 @@ func UnlikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 	thread.Thread.Post.Viewer.Like = &likeRes.URI // maybe?
 
 	return nil, thread
+}
+
+func GetLikes(token string, uri string, limit int) (*Likes, error) {
+	url := fmt.Sprintf("https://public.bsky.social/xrpc/app.bsky.feed.getLikes?limit=%d&uri=%s", limit, uri)
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch timeline")
+	}
+
+	likes := Likes{}
+	if err := json.NewDecoder(resp.Body).Decode(&likes); err != nil {
+		return nil, err
+	}
+
+	return &likes, nil
+}
+
+func GetRetweetAuthors(token string, uri string, limit int) (*RepostedBy, error) {
+	url := fmt.Sprintf("https://public.bsky.social/xrpc/app.bsky.feed.getRepostedBy?limit=%d&uri=%s", limit, uri)
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch timeline")
+	}
+
+	retweetAuthors := RepostedBy{}
+	if err := json.NewDecoder(resp.Body).Decode(&retweetAuthors); err != nil {
+		return nil, err
+	}
+
+	return &retweetAuthors, nil
 }
