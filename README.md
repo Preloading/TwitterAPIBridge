@@ -11,3 +11,7 @@ I will not be guarenting anything. I'll try to target both bluesky & mastodon, b
 ### This is not (and probably won't be for a while) a 100% accurate recreation of the twitter API
 
 most of this readme todo
+
+# Alternatives/Rivals
+ * [https://github.com/Savefade/SimpleTwitterServer SimpleTwitterServer by SaveFade] - A private server rather than a bridge.
+   
