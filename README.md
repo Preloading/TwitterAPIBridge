@@ -16,8 +16,4 @@ most of this readme todo
  * [https://github.com/Savefade/SimpleTwitterServer SimpleTwitterServer by SaveFade] - A private server rather than a bridge.
    
 ## Compatibility
-**iOS:** Untested
-
-**Android:** Untested
-
-**Windows Phone:** Untested 
+WIP
