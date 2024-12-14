@@ -43,6 +43,7 @@ func InitServer() {
 
 	// Users
 	app.Get("/1/users/show.xml", user_info)
+	app.Get("/1/users/lookup.json", UserLookup)
 
 	// Trends
 	app.Get("/1/trends/:woeid.json", trends_woeid)

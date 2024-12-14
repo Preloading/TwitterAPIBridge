@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -19,7 +20,12 @@ type AuthResponse struct {
 	DID        string `json:"did"`
 }
 
-type User struct {
+type AuthRequest struct {
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
+}
+
+type Author struct {
 	DID            string `json:"did"`
 	Handle         string `json:"handle"`
 	DisplayName    string `json:"displayName"`
@@ -31,25 +37,12 @@ type User struct {
 	PostsCount     int    `json:"postsCount"`
 	IndexedAt      string `json:"indexedAt"`
 	CreatedAt      string `json:"createdAt"`
-}
-type AuthRequest struct {
-	Identifier string `json:"identifier"`
-	Password   string `json:"password"`
-}
-
-type Author struct {
-	DID         string `json:"did"`
-	Handle      string `json:"handle"`
-	DisplayName string `json:"displayName"`
-	Avatar      string `json:"avatar"`
-	Associated  struct {
-		Lists        int  `json:"lists"`
-		FeedGens     int  `json:"feedgens"`
-		StarterPacks int  `json:"starterPacks"`
-		Labeler      bool `json:"labeler"`
-		//chat
-		CreatedAt time.Time `json:"created_at"`
-		//viewer
+	Associated     struct {
+		Lists        int       `json:"lists"`
+		FeedGens     int       `json:"feedgens"`
+		StarterPacks int       `json:"starterPacks"`
+		Labeler      bool      `json:"labeler"`
+		CreatedAt    time.Time `json:"created_at"`
 	}
 }
 
@@ -308,19 +301,63 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUserWithStatu
 		return nil, errors.New("failed to fetch user info")
 	}
 
-	user := User{}
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+	author := Author{}
+	if err := json.NewDecoder(resp.Body).Decode(&author); err != nil {
 		return nil, err
 	}
 
+	return AuthorTTB(author), nil
+}
+
+func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUserWithStatus, error) {
+	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(items, "&actors=")
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch user info")
+	}
+
+	var authors struct {
+		Profiles []Author `json:"profiles"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&authors); err != nil {
+		return nil, err
+	}
+
+	users := make([]*bridge.TwitterUserWithStatus, len(authors.Profiles))
+	for i, author := range authors.Profiles {
+		users[i] = AuthorTTB(author)
+	}
+
+	return users, nil
+}
+
+func AuthorTTB(author Author) *bridge.TwitterUserWithStatus {
 	return &bridge.TwitterUserWithStatus{
 		TwitterUser: bridge.TwitterUser{
 			ProfileSidebarFillColor:   "e0ff92",
-			Name:                      user.DisplayName,
+			Name:                      author.DisplayName,
 			ProfileSidebarBorderColor: "87bc44",
 			ProfileBackgroundTile:     false,
-			CreatedAt:                 user.CreatedAt,
-			ProfileImageURL:           user.Avatar,
+			CreatedAt:                 author.CreatedAt,
+			ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":thumb",
 			Location:                  "",
 			ProfileLinkColor:          "0000ff",
 			IsTranslator:              false,
@@ -328,24 +365,23 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUserWithStatu
 			URL:                       "",
 			FavouritesCount:           0,
 			UtcOffset:                 nil,
-			ID:                        *bridge.BlueSkyToTwitterID(user.DID),
-			// IDStr:                     bridge.BlueSkyToTwitterID(user.DID).String(),
+			ID:                        *bridge.BlueSkyToTwitterID(author.DID),
 			ProfileUseBackgroundImage: false,
 			ListedCount:               0,
 			ProfileTextColor:          "000000",
 			Protected:                 false,
-			FollowersCount:            user.FollowersCount,
+			FollowersCount:            author.FollowersCount,
 			Lang:                      "en",
 			Notifications:             nil,
 			Verified:                  false,
 			ProfileBackgroundColor:    "c0deed",
 			GeoEnabled:                false,
-			Description:               user.Description,
-			FriendsCount:              user.FollowsCount,
-			StatusesCount:             user.PostsCount,
-			ScreenName:                user.Handle,
+			Description:               author.Description,
+			FriendsCount:              author.FollowsCount,
+			StatusesCount:             author.PostsCount,
+			ScreenName:                author.Handle,
 		},
-	}, nil
+	}
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-feed

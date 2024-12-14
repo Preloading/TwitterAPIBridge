@@ -1,18 +1,43 @@
 package twitterv1
 
 import (
-	"bytes"
-	"encoding/xml"
 	"fmt"
+	"math/big"
+	"strings"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
+	"github.com/Preloading/MastodonTwitterAPI/bridge"
 	"github.com/gofiber/fiber/v2"
 )
+
+// groupUsers splits a slice of users into chunks of the specified size
+func groupUsers(users []string, size int) [][]string {
+	var groups [][]string
+	for size < len(users) {
+		users, groups = users[size:], append(groups, users[0:size:size])
+	}
+	groups = append(groups, users)
+	return groups
+}
 
 // https://web.archive.org/web/20120508075505/https://dev.twitter.com/docs/api/1/get/users/show
 func user_info(c *fiber.Ctx) error {
 	screen_name := c.Query("screen_name")
-	fmt.Println("screen_name:", screen_name)
+
+	if screen_name == "" {
+		userIDStr := c.Query("user_id")
+		userID, ok := new(big.Int).SetString(userIDStr, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		screen_name = bridge.TwitterIDToBlueSky(userID) // yup
+		if screen_name == "" {
+			return c.Status(fiber.StatusBadRequest).SendString("No screen_name or user_id provided")
+
+		}
+
+	}
+
 	_, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
@@ -27,33 +52,65 @@ func user_info(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
 	}
 
-	// TODO: Clean this up a bit, see if there's an easier way
-
-	// Encode the userinfo to XML
-	var buf bytes.Buffer
-	enc := xml.NewEncoder(&buf)
-	enc.Indent("", "  ")
-	if err := enc.Encode(userinfo); err != nil {
-		fmt.Println("Error encoding XML:", err)
+	xml, err := bridge.XMLEncoder(userinfo, "TwitterUserWithStatus", "user")
+	if err != nil {
+		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
 	}
 
-	// Remove the root element <TwitterUserWithStatus> and replace with custom header
-	xmlContent := buf.Bytes()
-	start := bytes.Index(xmlContent, []byte("<TwitterUserWithStatus>"))
-	end := bytes.LastIndex(xmlContent, []byte("</TwitterUserWithStatus>"))
-	if start == -1 || end == -1 {
-		return c.Status(fiber.StatusInternalServerError).SendString("Invalid XML format")
+	return c.SendString(*xml)
+}
+
+// https://web.archive.org/web/20120508165240/https://dev.twitter.com/docs/api/1/get/users/lookup
+func UserLookup(c *fiber.Ctx) error {
+	screen_name := c.Query("screen_name")
+	user_id := c.Query("user_id")
+	var usersToLookUp []string
+
+	if screen_name != "" {
+		usersToLookUp = strings.Split(screen_name, ",")
+	} else if user_id != "" {
+		userIDs := strings.Split(user_id, ",")
+		for _, idStr := range userIDs {
+			userID, ok := new(big.Int).SetString(idStr, 10)
+			if !ok {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			}
+			handle := bridge.TwitterIDToBlueSky(userID)
+			if handle != "" {
+				usersToLookUp = append(usersToLookUp, handle)
+			}
+		}
+	} else {
+		return c.Status(fiber.StatusBadRequest).SendString("No screen_name or user_id provided")
 	}
-	xmlContent = xmlContent[start+len("<TwitterUserWithStatus>") : end]
 
-	// Add custom XML header and root element
-	customHeader := []byte(`<?xml version="1.0" encoding="UTF-8"?>` + "\n" + `<user>` + "\n")
-	xmlContent = append(customHeader, xmlContent...)
+	if len(usersToLookUp) > 100 {
+		return c.Status(fiber.StatusBadRequest).SendString("Too many users to look up")
+	}
 
-	// Add custom footer
-	customFooter := []byte("\n</user>")
-	xmlContent = append(xmlContent, customFooter...)
+	_, _, oauthToken, err := GetAuthFromReq(c)
 
-	return c.Send(xmlContent)
+	if err != nil {
+		blankstring := ""
+		oauthToken = &blankstring
+	}
+
+	// here's some fun problems!
+	// twitter api's max is 100 users per call. bluesky's is 25. so we get to lookup in multiple requests
+	userLookupGroups := groupUsers(usersToLookUp, 25)
+	var users []bridge.TwitterUserWithStatus
+
+	for _, group := range userLookupGroups {
+		usersGroup, err := blueskyapi.GetUsersInfo(*oauthToken, group)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		}
+		for _, user := range usersGroup {
+			users = append(users, *user)
+		}
+	}
+
+	return c.JSON(users)
 }

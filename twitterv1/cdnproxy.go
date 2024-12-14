@@ -34,6 +34,14 @@ func CDNDownscaler(c *fiber.Ctx) error {
 		widthStr = "320"
 		heightStr = ""
 	}
+	if strings.HasSuffix(imageURL, ":thumb") {
+		imageURL = strings.TrimSuffix(imageURL, ":thumb")
+
+		// TODO: Find what these values actually used to be
+		widthStr = "150"
+		heightStr = "150"
+
+	}
 	if strings.HasSuffix(imageURL, ":large") {
 		imageURL = strings.TrimSuffix(imageURL, ":large")
 
