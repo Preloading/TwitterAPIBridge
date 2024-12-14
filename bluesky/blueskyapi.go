@@ -276,7 +276,7 @@ func RefreshToken(refreshToken string) (*AuthResponse, error) {
 	return &authResp, nil
 }
 
-func GetUserInfo(token string, screen_name string) (*bridge.TwitterUserWithStatus, error) {
+func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
 	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
 
 	client := &http.Client{}
@@ -309,7 +309,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUserWithStatu
 	return AuthorTTB(author), nil
 }
 
-func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUserWithStatus, error) {
+func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
 	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(items, "&actors=")
 
 	client := &http.Client{}
@@ -341,7 +341,7 @@ func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUserWithStatus
 		return nil, err
 	}
 
-	users := make([]*bridge.TwitterUserWithStatus, len(authors.Profiles))
+	users := make([]*bridge.TwitterUser, len(authors.Profiles))
 	for i, author := range authors.Profiles {
 		users[i] = AuthorTTB(author)
 	}
@@ -349,38 +349,36 @@ func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUserWithStatus
 	return users, nil
 }
 
-func AuthorTTB(author Author) *bridge.TwitterUserWithStatus {
-	return &bridge.TwitterUserWithStatus{
-		TwitterUser: bridge.TwitterUser{
-			ProfileSidebarFillColor:   "e0ff92",
-			Name:                      author.DisplayName,
-			ProfileSidebarBorderColor: "87bc44",
-			ProfileBackgroundTile:     false,
-			CreatedAt:                 author.CreatedAt,
-			ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":thumb",
-			Location:                  "",
-			ProfileLinkColor:          "0000ff",
-			IsTranslator:              false,
-			ContributorsEnabled:       false,
-			URL:                       "",
-			FavouritesCount:           0,
-			UtcOffset:                 nil,
-			ID:                        *bridge.BlueSkyToTwitterID(author.DID),
-			ProfileUseBackgroundImage: false,
-			ListedCount:               0,
-			ProfileTextColor:          "000000",
-			Protected:                 false,
-			FollowersCount:            author.FollowersCount,
-			Lang:                      "en",
-			Notifications:             nil,
-			Verified:                  false,
-			ProfileBackgroundColor:    "c0deed",
-			GeoEnabled:                false,
-			Description:               author.Description,
-			FriendsCount:              author.FollowsCount,
-			StatusesCount:             author.PostsCount,
-			ScreenName:                author.Handle,
-		},
+func AuthorTTB(author Author) *bridge.TwitterUser {
+	return &bridge.TwitterUser{
+		ProfileSidebarFillColor:   "e0ff92",
+		Name:                      author.DisplayName,
+		ProfileSidebarBorderColor: "87bc44",
+		ProfileBackgroundTile:     false,
+		CreatedAt:                 author.CreatedAt,
+		ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":thumb",
+		Location:                  "",
+		ProfileLinkColor:          "0000ff",
+		IsTranslator:              false,
+		ContributorsEnabled:       false,
+		URL:                       "",
+		FavouritesCount:           0,
+		UtcOffset:                 nil,
+		ID:                        *bridge.BlueSkyToTwitterID(author.DID),
+		ProfileUseBackgroundImage: false,
+		ListedCount:               0,
+		ProfileTextColor:          "000000",
+		Protected:                 false,
+		FollowersCount:            author.FollowersCount,
+		Lang:                      "en",
+		Notifications:             nil,
+		Verified:                  false,
+		ProfileBackgroundColor:    "c0deed",
+		GeoEnabled:                false,
+		Description:               author.Description,
+		FriendsCount:              author.FollowsCount,
+		StatusesCount:             author.PostsCount,
+		ScreenName:                author.Handle,
 	}
 }
 

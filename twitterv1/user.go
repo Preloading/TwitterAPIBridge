@@ -52,7 +52,7 @@ func user_info(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
 	}
 
-	xml, err := bridge.XMLEncoder(userinfo, "TwitterUserWithStatus", "user")
+	xml, err := bridge.XMLEncoder(userinfo, "TwitterUser", "user")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
@@ -99,7 +99,7 @@ func UserLookup(c *fiber.Ctx) error {
 	// here's some fun problems!
 	// twitter api's max is 100 users per call. bluesky's is 25. so we get to lookup in multiple requests
 	userLookupGroups := groupUsers(usersToLookUp, 25)
-	var users []bridge.TwitterUserWithStatus
+	var users []bridge.TwitterUser
 
 	for _, group := range userLookupGroups {
 		usersGroup, err := blueskyapi.GetUsersInfo(*oauthToken, group)

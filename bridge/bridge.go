@@ -113,18 +113,14 @@ type TwitterUser struct {
 	StatusesCount             int     `json:"statuses_count" xml:"statuses_count"`
 	ProfileBackgroundImageURL string  `json:"profile_background_image_url" xml:"profile_background_image_url"`
 	// ProfileBackgroundImageURLHttps string  `json:"profile_background_image_url_https" xml:"profile_background_image_url_https"`
-	Following           *bool  `json:"following" xml:"following"`
-	ScreenName          string `json:"screen_name" xml:"screen_name"`
-	ShowAllInlineMedia  bool   `json:"show_all_inline_media" xml:"show_all_inline_media"`
-	IsTranslator        bool   `json:"is_translator" xml:"is_translator"`
-	ListedCount         int    `json:"listed_count" xml:"listed_count"`
-	DefaultProfile      bool   `json:"default_profile" xml:"default_profile"`
-	DefaultProfileImage bool   `json:"default_profile_image" xml:"default_profile_image"`
-}
-
-type TwitterUserWithStatus struct {
-	TwitterUser
-	// Status TweetWithoutUserData `json:"status"`
+	Following           *bool                `json:"following" xml:"following"`
+	ScreenName          string               `json:"screen_name" xml:"screen_name"`
+	ShowAllInlineMedia  bool                 `json:"show_all_inline_media" xml:"show_all_inline_media"`
+	IsTranslator        bool                 `json:"is_translator" xml:"is_translator"`
+	ListedCount         int                  `json:"listed_count" xml:"listed_count"`
+	DefaultProfile      bool                 `json:"default_profile" xml:"default_profile"`
+	DefaultProfileImage bool                 `json:"default_profile_image" xml:"default_profile_image"`
+	Status              TweetWithoutUserData `json:"status,omitempty"`
 }
 
 type TwitterActivitiySummary struct {
