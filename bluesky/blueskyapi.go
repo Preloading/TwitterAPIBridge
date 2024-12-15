@@ -208,6 +208,24 @@ type ItemByWithDate struct {
 	Actor     Author    `json:"actor"`
 }
 
+func SendRequest(token *string, method string, url string, body io.Reader) (*http.Response, error) {
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	if token != nil {
+		req.Header.Set("Authorization", "Bearer "+*token)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func Authenticate(username, password string) (*AuthResponse, error) {
 	url := "https://bsky.social/xrpc/com.atproto.server.createSession"
 
@@ -221,7 +239,7 @@ func Authenticate(username, password string) (*AuthResponse, error) {
 		return nil, err
 	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(reqBody))
+	resp, err := SendRequest(nil, http.MethodPost, url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, err
 	}
@@ -247,15 +265,7 @@ func Authenticate(username, password string) (*AuthResponse, error) {
 func RefreshToken(refreshToken string) (*AuthResponse, error) {
 	url := "https://bsky.social/xrpc/com.atproto.server.refreshSession"
 
-	client := &http.Client{}
-
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+refreshToken)
-
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&refreshToken, http.MethodPost, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -280,16 +290,7 @@ func RefreshToken(refreshToken string) (*AuthResponse, error) {
 func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
 	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -313,16 +314,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
 	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(items, "&actors=")
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -395,14 +387,7 @@ func GetTimeline(token string, context string) (error, *Timeline) {
 		url = "https://public.bsky.social/xrpc/app.bsky.feed.getTimeline?context=" + context
 	}
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err, nil
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
 		return err, nil
 	}
@@ -434,14 +419,7 @@ func GetPost(token string, uri string, depth int, parentHeight int) (error, *Thr
 
 	url := "https://public.bsky.social/xrpc/app.bsky.feed.getPostThread?depth=" + fmt.Sprintf("%d", depth) + "&parentHeight=" + fmt.Sprintf("%d", parentHeight) + "&uri=" + uri
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err, nil
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
 		return err, nil
 	}
@@ -471,18 +449,12 @@ func GetPost(token string, uri string, depth int, parentHeight int) (error, *Thr
 func UpdateStatus(token string, status string) error {
 	url := "https://public.bsky.social/xrpc/com.atproto.repo.createRecord"
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodPost, url, nil)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		bodyString := string(bodyBytes)
@@ -497,16 +469,10 @@ func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *strin
 	url := "https://bsky.social/xrpc/com.atproto.repo.createRecord"
 
 	err, thread := GetPost(token, id, 0, 1)
-
 	if err != nil {
 		return errors.New("failed to fetch post"), nil, nil
 	}
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return err, nil, nil
-	}
 	payload := CreateRecordPayload{
 		Collection: "app.bsky.feed.repost",
 		Repo:       my_did,
@@ -525,13 +491,7 @@ func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *strin
 		return errors.New("failed to marshal payload"), nil, nil
 	}
 
-	req.Body = io.NopCloser(bytes.NewReader(reqBody))
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	// if it works, we should get something like:
-	// {"uri":"at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.repost/3lcm7b2pjio22","cid":"bafyreidw2uvnhns5bacdii7gozrou4rg25cpcxhe6cbhfws2c5hpsvycdm","commit":{"cid":"bafyreicu7db6k3vxbvtwiumggynbps7cuozsofbvo3kq7lz723smvpxne4","rev":"3lcm7b2ptb622"},"validationStatus":"valid"}
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
 		return err, nil, nil
 	}
@@ -557,16 +517,10 @@ func LikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 	url := "https://bsky.social/xrpc/com.atproto.repo.createRecord"
 
 	err, thread := GetPost(token, id, 0, 1)
-
 	if err != nil {
 		return errors.New("failed to fetch post"), nil
 	}
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return err, nil
-	}
 	payload := CreateRecordPayload{
 		Collection: "app.bsky.feed.like",
 		Repo:       my_did,
@@ -585,13 +539,7 @@ func LikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 		return errors.New("failed to marshal payload"), nil
 	}
 
-	req.Body = io.NopCloser(bytes.NewReader(reqBody))
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	// if it works, we should get something like:
-	// {"uri":"at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.repost/3lcm7b2pjio22","cid":"bafyreidw2uvnhns5bacdii7gozrou4rg25cpcxhe6cbhfws2c5hpsvycdm","commit":{"cid":"bafyreicu7db6k3vxbvtwiumggynbps7cuozsofbvo3kq7lz723smvpxne4","rev":"3lcm7b2ptb622"},"validationStatus":"valid"}
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
 		return err, nil
 	}
@@ -619,16 +567,10 @@ func UnlikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 	url := "https://bsky.social/xrpc/com.atproto.repo.deleteRecord"
 
 	err, thread := GetPost(token, id, 0, 1)
-
 	if err != nil {
 		return errors.New("failed to fetch post"), nil
 	}
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return err, nil
-	}
 	payload := DeleteRecordPayload{
 		Collection: "app.bsky.feed.like",
 		Repo:       my_did,
@@ -640,13 +582,7 @@ func UnlikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 		return errors.New("failed to marshal payload"), nil
 	}
 
-	req.Body = io.NopCloser(bytes.NewReader(reqBody))
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	// if it works, we should get something like:
-	// {"uri":"at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.repost/3lcm7b2pjio22","cid":"bafyreidw2uvnhns5bacdii7gozrou4rg25cpcxhe6cbhfws2c5hpsvycdm","commit":{"cid":"bafyreicu7db6k3vxbvtwiumggynbps7cuozsofbvo3kq7lz723smvpxne4","rev":"3lcm7b2ptb622"},"validationStatus":"valid"}
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
 		return err, nil
 	}
@@ -673,14 +609,7 @@ func UnlikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 func GetLikes(token string, uri string, limit int) (*Likes, error) {
 	url := fmt.Sprintf("https://public.bsky.social/xrpc/app.bsky.feed.getLikes?limit=%d&uri=%s", limit, uri)
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -710,14 +639,7 @@ func GetLikes(token string, uri string, limit int) (*Likes, error) {
 func GetRetweetAuthors(token string, uri string, limit int) (*RepostedBy, error) {
 	url := fmt.Sprintf("https://public.bsky.social/xrpc/app.bsky.feed.getRepostedBy?limit=%d&uri=%s", limit, uri)
 
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := client.Do(req)
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -743,3 +665,7 @@ func GetRetweetAuthors(token string, uri string, limit int) (*RepostedBy, error)
 
 	return &retweetAuthors, nil
 }
+
+// func UserSearch(token string, query string) (bridge.TwitterUser, error) {
+
+// }
