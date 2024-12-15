@@ -152,10 +152,20 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		switch faucet.Features[0].Type {
 		case "app.bsky.richtext.facet#mention":
 			tweetEntities.UserMentions = append(tweetEntities.UserMentions, bridge.UserMention{
-				Name:       "test",
-				ScreenName: "test",
-				//ScreenName: item.Post.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
-				ID: *bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
+				Name: tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
+				//ScreenName: "test",
+				ScreenName: tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
+				ID:         *bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
+				Indices: []int{
+					faucet.Index.ByteStart,
+					faucet.Index.ByteEnd,
+				},
+			})
+		case "app.bsky.richtext.facet#link":
+			tweetEntities.Urls = append(tweetEntities.Urls, bridge.URL{
+				ExpandedURL: faucet.Features[0].Uri,
+				URL:         faucet.Features[0].Uri, // Shortcut url
+				DisplayURL:  tweet.Record.Text[faucet.Index.ByteStart:faucet.Index.ByteEnd],
 				Indices: []int{
 					faucet.Index.ByteStart,
 					faucet.Index.ByteEnd,

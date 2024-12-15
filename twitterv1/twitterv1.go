@@ -1,8 +1,6 @@
 package twitterv1
 
 import (
-	"fmt"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
@@ -16,7 +14,7 @@ func InitServer() {
 	// Custom middleware to log request details
 	app.Use(func(c *fiber.Ctx) error {
 		// fmt.Println("Request Method:", c.Method())
-		fmt.Println("Request URL:", c.OriginalURL())
+		// fmt.Println("Request URL:", c.OriginalURL())
 		// fmt.Println("Post Body:", string(c.Body()))
 		// fmt.Println("Headers:", string(c.Request().Header.Header()))
 		// fmt.Println()
@@ -44,6 +42,7 @@ func InitServer() {
 	// Users
 	app.Get("/1/users/show.xml", user_info)
 	app.Get("/1/users/lookup.json", UserLookup)
+	app.Post("/1/users/lookup.json", UserLookup)
 
 	// Trends
 	app.Get("/1/trends/:woeid.json", trends_woeid)

@@ -97,7 +97,8 @@ type Facet struct {
 type Feature struct {
 	Type string `json:"$type"`
 	Tag  string `json:"tag"`
-	Did  string `json:"did"`
+	Did  string `json:"did,omitempty"`
+	Uri  string `json:"uri,omitempty"`
 }
 
 type Index struct {
