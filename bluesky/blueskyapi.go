@@ -352,8 +352,13 @@ func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
 
 func AuthorTTB(author Author) *bridge.TwitterUser {
 	return &bridge.TwitterUser{
-		ProfileSidebarFillColor:   "e0ff92",
-		Name:                      author.DisplayName,
+		ProfileSidebarFillColor: "e0ff92",
+		Name: func() string {
+			if author.DisplayName == "" {
+				return author.Handle
+			}
+			return author.DisplayName
+		}(),
 		ProfileSidebarBorderColor: "87bc44",
 		ProfileBackgroundTile:     false,
 		CreatedAt:                 author.CreatedAt,
