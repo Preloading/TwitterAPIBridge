@@ -2,7 +2,7 @@
 
 This custom server translates Twitter V1 requests to Bluesky for Twitter clients.
 
-The primary target for this is the iPhone 3G with Twitter 4.2.1 
+The primary target for this is the iPhone 3G with Twitter 4.1.3
 
 I do not recommend hosting a public instance of this software yet, as work is still being done, and credentials may be visible to the hoster.
 
