@@ -65,6 +65,8 @@ most of this readme todo
 
 **Mac OS X/iOS integration:** Untested
 
+**Roku OS:** Untested, lost
+
 
 
 
