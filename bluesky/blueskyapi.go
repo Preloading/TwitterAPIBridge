@@ -25,7 +25,7 @@ type AuthRequest struct {
 	Password   string `json:"password"`
 }
 
-type Author struct {
+type User struct {
 	DID            string `json:"did"`
 	Handle         string `json:"handle"`
 	DisplayName    string `json:"displayName"`
@@ -58,7 +58,7 @@ type PostRecord struct {
 // Specifically for reposts
 type PostReason struct {
 	Type      string    `json:"$type"`
-	By        Author    `json:"by"`
+	By        User      `json:"by"`
 	IndexedAt time.Time `json:"indexedAt"`
 }
 
@@ -118,7 +118,7 @@ type PostViewer struct {
 }
 type Post struct {
 	Subject
-	Author Author     `json:"author"`
+	Author User       `json:"author"`
 	Record PostRecord `json:"record"`
 	// Embed  Embed      `json:"embed"`
 	ReplyCount  int        `json:"replyCount"`
@@ -193,8 +193,8 @@ type CreateRecordResult struct {
 
 type RepostedBy struct {
 	Subject
-	Cursor     string   `json:"cursor"`
-	RepostedBy []Author `json:"repostedBy"`
+	Cursor     string `json:"cursor"`
+	RepostedBy []User `json:"repostedBy"`
 }
 type Likes struct {
 	Subject
@@ -205,7 +205,11 @@ type Likes struct {
 type ItemByWithDate struct {
 	IndexedAt time.Time `json:"indexedAt"`
 	CreatedAt time.Time `json:"createdAt"`
-	Actor     Author    `json:"actor"`
+	Actor     User      `json:"actor"`
+}
+
+type UserSearchResult struct {
+	Actors []User `json:"actors"`
 }
 
 func SendRequest(token *string, method string, url string, body io.Reader) (*http.Response, error) {
@@ -303,7 +307,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 		return nil, errors.New("failed to fetch user info")
 	}
 
-	author := Author{}
+	author := User{}
 	if err := json.NewDecoder(resp.Body).Decode(&author); err != nil {
 		return nil, err
 	}
@@ -328,7 +332,7 @@ func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
 	}
 
 	var authors struct {
-		Profiles []Author `json:"profiles"`
+		Profiles []User `json:"profiles"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&authors); err != nil {
 		return nil, err
@@ -342,7 +346,7 @@ func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
 	return users, nil
 }
 
-func AuthorTTB(author Author) *bridge.TwitterUser {
+func AuthorTTB(author User) *bridge.TwitterUser {
 	return &bridge.TwitterUser{
 		ProfileSidebarFillColor: "e0ff92",
 		Name: func() string {
@@ -666,6 +670,31 @@ func GetRetweetAuthors(token string, uri string, limit int) (*RepostedBy, error)
 	return &retweetAuthors, nil
 }
 
-// func UserSearch(token string, query string) (bridge.TwitterUser, error) {
+func UserSearch(token string, query string) ([]User, error) {
+	url := "https://public.bsky.social/xrpc/app.bsky.actor.searchActors?q=" + query
 
-// }
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch search results")
+	}
+
+	users := UserSearchResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, err
+	}
+	return users.Actors, nil
+}
