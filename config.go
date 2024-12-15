@@ -42,11 +42,11 @@ func ParseConfig() Config {
 	}
 
     // Get values from environment variables
-    if url := os.Getenv("SERVER_URL"); url != "" {
+    if url := os.Getenv("TWITTER_BRIDGE_SERVER_URL"); url != "" {
         config.URL = url
     }
 
-    if port := os.Getenv("SERVER_PORT"); port != "" {
+    if port := os.Getenv("TWITTER_BRIDGE_SERVER_PORT"); port != "" {
         if portInt, err := strconv.Atoi(port); err == nil {
             config.Port = portInt
         }
