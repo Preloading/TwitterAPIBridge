@@ -671,7 +671,7 @@ func GetRetweetAuthors(token string, uri string, limit int) (*RepostedBy, error)
 }
 
 func UserSearch(token string, query string) ([]User, error) {
-	url := "https://public.bsky.social/xrpc/app.bsky.actor.searchActors?q=" + query
+	url := "https://public.bsky.social/xrpc/app.bsky.actor.searchActors?q=" + url.QueryEscape(query)
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {

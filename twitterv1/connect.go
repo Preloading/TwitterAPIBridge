@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
+	"github.com/Preloading/MastodonTwitterAPI/bridge"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -28,6 +29,9 @@ func UserSearch(c *fiber.Ctx) error {
 	var dids []string
 	for _, user := range bskyUsers {
 		dids = append(dids, user.DID)
+	}
+	if len(dids) == 0 {
+		return c.JSON([]bridge.TwitterUser{})
 	}
 	users, err := LookupUsers(dids, oauthToken)
 	if err != nil {
