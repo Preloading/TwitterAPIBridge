@@ -62,7 +62,7 @@ func user_info(c *fiber.Ctx) error {
 }
 
 // https://web.archive.org/web/20120508165240/https://dev.twitter.com/docs/api/1/get/users/lookup
-func UserLookup(c *fiber.Ctx) error {
+func UsersLookup(c *fiber.Ctx) error {
 	screen_name := c.Query("screen_name")
 	user_id := c.Query("user_id")
 	var usersToLookUp []string

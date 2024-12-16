@@ -7,6 +7,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -16,6 +17,11 @@ import (
 
 func CDNDownscaler(c *fiber.Ctx) error {
 	imageURL := c.Query("url")
+	unescapedURL, err := url.QueryUnescape(imageURL)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid URL")
+	}
+	imageURL = unescapedURL
 	fmt.Println(imageURL)
 	if !strings.HasPrefix(imageURL, "https://cdn.bsky.app/img/") { // Later maybe lift these restrictions?
 		return c.SendStatus(fiber.StatusBadRequest)

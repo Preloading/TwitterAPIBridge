@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // I will most likely need to store auth tokens in a database, as I can only really get one auth related value from the user, and I can't change that value.
@@ -42,19 +43,19 @@ import (
 
 // Token represents the schema for the tokens table
 type Token struct {
-	UserDID               string  `gorm:"column:user_did"`
-	TokenUUID             string  `gorm:"column:token_uuid"`
-	EncryptedAccessToken  string  `gorm:"column:encrypted_access_token"`
-	EncryptedRefreshToken string  `gorm:"column:encrypted_refresh_token"`
-	AccessExpiry          float64 `gorm:"column:access_expiry"`
-	RefreshExpiry         float64 `gorm:"column:refresh_expiry"`
+	UserDid               string  `gorm:"type:string;primaryKey;not null"`
+	TokenUUID             string  `gorm:"type:string;primaryKey;not null"`
+	EncryptedAccessToken  string  `gorm:"type:string;not null"`
+	EncryptedRefreshToken string  `gorm:"type:string;not null"`
+	AccessExpiry          float64 `gorm:"type:float;not null"`
+	RefreshExpiry         float64 `gorm:"type:float;not null"`
 }
 
 type MessageContext struct {
-	UserDID         string `gorm:"column:user_did"`
-	TokenUUID       string `gorm:"column:token_uuid"`
-	LastMessageId   string `gorm:"column:message_id"`
-	TimelineContext string `gorm:"column:timeline_context"`
+	UserDid         string `gorm:"type:string;primaryKey;not null"`
+	TokenUUID       string `gorm:"type:string;primaryKey;not null"`
+	LastMessageId   string `gorm:"type:string;not null"`
+	TimelineContext string `gorm:"type:string;not null"`
 }
 
 var db *gorm.DB
@@ -121,29 +122,35 @@ func StoreToken(did string, accessToken string, refreshToken string, encryptionK
 }
 
 func UpdateToken(uuid string, did string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64) (*string, error) {
-	token := Token{
-		UserDID:   did,
-		TokenUUID: uuid,
-		EncryptedAccessToken: func() string {
-			encryptedToken, err := bridge.Encrypt(accessToken, encryptionKey)
-			if err != nil {
-				panic("failed to encrypt access token")
-			}
-			return encryptedToken
-		}(),
-		EncryptedRefreshToken: func() string {
-			encryptedToken, err := bridge.Encrypt(refreshToken, encryptionKey)
-			if err != nil {
-				panic("failed to encrypt refresh token")
-			}
-			return encryptedToken
-		}(),
-		AccessExpiry:  accessExpiry,
-		RefreshExpiry: refreshExpiry,
+	encryptedAccess, err := bridge.Encrypt(accessToken, encryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt access token: %v", err)
 	}
 
-	if err := db.Where("user_did = ? AND token_uuid = ?", did, uuid).Assign(&token).FirstOrCreate(&token).Error; err != nil {
-		return nil, err
+	encryptedRefresh, err := bridge.Encrypt(refreshToken, encryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt refresh token: %v", err)
+	}
+
+	token := Token{
+		UserDid:               did,
+		TokenUUID:             uuid,
+		EncryptedAccessToken:  encryptedAccess,
+		EncryptedRefreshToken: encryptedRefresh,
+		AccessExpiry:          accessExpiry,
+		RefreshExpiry:         refreshExpiry,
+	}
+
+	result := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "user_did"},
+			{Name: "token_uuid"},
+		},
+		UpdateAll: true,
+	}).Create(&token)
+
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
 	return &token.TokenUUID, nil
@@ -189,7 +196,7 @@ func SetTimelineContext(did string, tokenUUID string, lastMessageId big.Int, tim
 	}
 
 	messageContext := MessageContext{
-		UserDID:         did,
+		UserDid:         did,
 		TokenUUID:       tokenUUID,
 		LastMessageId:   encryptedLastMessageId,
 		TimelineContext: encryptedTimelineContext,
