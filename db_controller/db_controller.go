@@ -94,17 +94,30 @@ func InitDB() {
 // - The UUID of the stored token.
 // - An error if the operation fails.
 func StoreToken(did string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64) (*string, error) {
-	uuid, err := uuid.NewRandom()
+	// Check if token exists for this DID
+	var existingToken Token
+	result := db.Where("user_did = ?", did).First(&existingToken)
+
+	var tokenUUID string
+	if result.Error == nil {
+		// Token exists, use existing UUID
+		tokenUUID = existingToken.TokenUUID
+	} else {
+		// Generate new UUID for new token
+		uuid, err := uuid.NewRandom()
+		if err != nil {
+			return nil, err
+		}
+		tokenUUID = uuid.String()
+	}
+
+	// Update or create token
+	finalUUID, err := UpdateToken(tokenUUID, did, accessToken, refreshToken, encryptionKey, accessExpiry, refreshExpiry)
 	if err != nil {
 		return nil, err
 	}
 
-	tokenUUID, err := UpdateToken(uuid.String(), did, accessToken, refreshToken, encryptionKey, accessExpiry, refreshExpiry)
-	if err != nil {
-		return nil, err
-	}
-
-	return tokenUUID, nil
+	return finalUUID, nil
 }
 
 func UpdateToken(uuid string, did string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64) (*string, error) {

@@ -70,7 +70,6 @@ func access_token(c *fiber.Ctx) error {
 // Also does some maintenance tasks like refreshing the access token if it has expired.
 func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, error) {
 	authHeader := c.Get("Authorization")
-	fmt.Println(authHeader)
 	// Define a regular expression to match the oauth_token
 	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
 	matches := re.FindStringSubmatch(authHeader)
@@ -109,6 +108,8 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	fmt.Println("Access Token", *accessJwt)
 
 	// Check if the access token has expired
 	if time.Unix(int64(*access_expiry), 0).Before(time.Now()) {

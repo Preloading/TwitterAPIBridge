@@ -221,6 +221,7 @@ func SendRequest(token *string, method string, url string, body io.Reader) (*htt
 	if token != nil {
 		req.Header.Set("Authorization", "Bearer "+*token)
 	}
+	req.Header.Set("Content-Type", "application/json") // 99% sure all bluesky requests are json.
 
 	resp, err := client.Do(req)
 	if err != nil {
