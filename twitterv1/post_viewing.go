@@ -39,12 +39,8 @@ func home_timeline(c *fiber.Ctx) error {
 		if !ok {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
 		}
-		maxID, _, _ := bridge.TwitterMsgIdToBluesky(maxIDBigInt)
-		fmt.Println("Max ID: " + maxID)
-		contextPtr, err := db_controller.GetTimelineContext(*user_did, *session_uuid, *maxIDBigInt, *encryptionKey)
-		if err == nil {
-			context = *contextPtr
-		}
+		_, date, _ := bridge.TwitterMsgIdToBluesky(maxIDBigInt)
+		context = date.Format(time.RFC3339)
 	}
 
 	err, res := blueskyapi.GetTimeline(*oauthToken, context)

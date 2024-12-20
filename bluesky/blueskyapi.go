@@ -387,9 +387,9 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
 func GetTimeline(token string, context string) (error, *Timeline) {
-	url := "https://public.bsky.social/xrpc/app.bsky.feed.getTimeline"
+	url := "https://bsky.social/xrpc/app.bsky.feed.getTimeline"
 	if context != "" {
-		url = "https://public.bsky.social/xrpc/app.bsky.feed.getTimeline?context=" + context
+		url = "https://bsky.social/xrpc/app.bsky.feed.getTimeline?cursor=" + context
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
