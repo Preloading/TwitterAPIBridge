@@ -89,6 +89,45 @@ func home_timeline(c *fiber.Ctx) error {
 
 }
 
+func RelatedResults(c *fiber.Ctx) error {
+	encodedId := c.Params("id")
+	idBigInt, ok := new(big.Int).SetString(encodedId, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	uri, _, _ := bridge.TwitterMsgIdToBluesky(idBigInt)
+
+	_, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	err, thread := blueskyapi.GetPost(*oauthToken, uri, 1, 0)
+
+	if err != nil {
+		return err
+	}
+
+	postAuthor := bridge.BlueSkyToTwitterID(thread.Thread.Post.Author.DID)
+
+	twitterReplies := bridge.RelatedResultsQuery{
+		Annotations: nil,
+		ResultType:  "Tweet",
+		Score:       1.0,
+		GroupName:   "TweetsWithConversation",
+		Results:     []bridge.Results{},
+	}
+	for _, reply := range *thread.Thread.Replies {
+		twitterReplies.Results = append(twitterReplies.Results, bridge.Results{
+			Kind:  "Tweet",
+			Score: 1.0,
+			Value: TranslatePostToTweet(reply.Post, uri, postAuthor.String(), &thread.Thread.Post.Record.CreatedAt, nil),
+		})
+	}
+
+	return c.JSON([]bridge.RelatedResultsQuery{twitterReplies})
+}
+
 // https://web.archive.org/web/20120708204036/https://dev.twitter.com/docs/api/1/get/statuses/show/%3Aid
 func GetStatusFromId(c *fiber.Ctx) error {
 	encodedId := c.Params("id")
@@ -349,8 +388,8 @@ func TweetInfo(c *fiber.Ctx) error {
 	favourites := []big.Int{}
 	retweeters := []big.Int{}
 
-	for _, reply := range thread.Thread.Replies {
-		repliers = append(repliers, *bridge.BlueSkyToTwitterID(reply.Author.DID))
+	for _, reply := range *thread.Thread.Replies {
+		repliers = append(repliers, *bridge.BlueSkyToTwitterID(reply.Post.Author.DID))
 	}
 	for _, like := range likes.Likes {
 		favourites = append(favourites, *bridge.BlueSkyToTwitterID(like.Actor.DID))

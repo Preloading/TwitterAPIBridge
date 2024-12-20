@@ -10,31 +10,48 @@ import (
 	"time"
 )
 
+type RelatedResultsQuery struct {
+	Annotations interface{} `json:"annotations"` // TODO
+	ResultType  string      `json:"resultType"`
+	Score       float64     `json:"score"`
+	GroupName   string      `json:"groupName"`
+	Results     []Results   `json:"results"`
+}
+
+type Results struct {
+	Kind        string      `json:"kind"`
+	Score       float64     `json:"score"`
+	Annotations interface{} `json:"annotations"` // TODO
+	Value       Tweet       `json:"results"`
+}
+
 type Retweet struct {
 	Tweet
 	RetweetedStatus Tweet `json:"retweeted_status"`
 }
 
 type Tweet struct {
-	Coordinates          interface{} `json:"coordinates"`
-	Favourited           bool        `json:"favorited"`
-	CreatedAt            string      `json:"created_at"`
-	Truncated            bool        `json:"truncated"`
-	Entities             Entities    `json:"entities"`
-	Text                 string      `json:"text"`
-	Annotations          interface{} `json:"annotations"`
-	Contributors         interface{} `json:"contributors"`
-	ID                   big.Int     `json:"id"`
-	IDStr                string      `json:"id_str"`
-	Geo                  interface{} `json:"geo"`
-	Place                interface{} `json:"place"`
-	InReplyToUserID      *big.Int    `json:"in_reply_to_user_id"`
-	InReplyToUserIDStr   *string     `json:"in_reply_to_user_id_str"`
-	User                 TwitterUser `json:"user,omitempty"`
-	Source               string      `json:"source"`
-	InReplyToStatusID    *big.Int    `json:"in_reply_to_status_id"`
-	InReplyToStatusIDStr *string     `json:"in_reply_to_status_id_str"`
-	InReplyToScreenName  *string     `json:"in_reply_to_screen_name"`
+	Coordinates  interface{} `json:"coordinates"`
+	Favourited   bool        `json:"favorited"`
+	CreatedAt    string      `json:"created_at"`
+	Truncated    bool        `json:"truncated"`
+	Entities     Entities    `json:"entities"`
+	Text         string      `json:"text"`
+	Annotations  interface{} `json:"annotations"`
+	Contributors interface{} `json:"contributors"`
+	ID           big.Int     `json:"id"`
+	IDStr        string      `json:"id_str"`
+	Geo          interface{} `json:"geo"`
+	Place        interface{} `json:"place"`
+	User         TwitterUser `json:"user,omitempty"`
+	Source       string      `json:"source"`
+
+	// Reply stuff
+	InReplyToUserID      *big.Int `json:"in_reply_to_user_id"`
+	InReplyToUserIDStr   *string  `json:"in_reply_to_user_id_str"`
+	InReplyToStatusID    *big.Int `json:"in_reply_to_status_id"`
+	InReplyToStatusIDStr *string  `json:"in_reply_to_status_id_str"`
+	InReplyToScreenName  *string  `json:"in_reply_to_screen_name"`
 
 	// The following aren't found in home_timeline, but can be found when directly fetching a tweet.
 

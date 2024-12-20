@@ -26,17 +26,17 @@ type AuthRequest struct {
 }
 
 type User struct {
-	DID            string `json:"did"`
-	Handle         string `json:"handle"`
-	DisplayName    string `json:"displayName"`
-	Description    string `json:"description"`
-	Avatar         string `json:"avatar"`
-	Banner         string `json:"banner"`
-	FollowersCount int    `json:"followersCount"`
-	FollowsCount   int    `json:"followsCount"`
-	PostsCount     int    `json:"postsCount"`
-	IndexedAt      string `json:"indexedAt"`
-	CreatedAt      string `json:"createdAt"`
+	DID            string    `json:"did"`
+	Handle         string    `json:"handle"`
+	DisplayName    string    `json:"displayName"`
+	Description    string    `json:"description"`
+	Avatar         string    `json:"avatar"`
+	Banner         string    `json:"banner"`
+	FollowersCount int       `json:"followersCount"`
+	FollowsCount   int       `json:"followsCount"`
+	PostsCount     int       `json:"postsCount"`
+	IndexedAt      time.Time `json:"indexedAt"`
+	CreatedAt      time.Time `json:"createdAt"`
 	Associated     struct {
 		Lists        int       `json:"lists"`
 		FeedGens     int       `json:"feedgens"`
@@ -125,7 +125,7 @@ type Post struct {
 	RepostCount int        `json:"repostCount"`
 	LikeCount   int        `json:"likeCount"`
 	QuoteCount  int        `json:"quoteCount"`
-	IndexedAt   string     `json:"indexedAt"`
+	IndexedAt   time.Time  `json:"indexedAt"`
 	Viewer      PostViewer `json:"viewer"`
 }
 
@@ -145,10 +145,10 @@ type Timeline struct {
 }
 
 type Thread struct {
-	Type    string `json:"$type"`
-	Post    Post   `json:"post"`
-	Parent  Post   `json:"parent"`
-	Replies []Post `json:"replies"`
+	Type    string    `json:"$type"`
+	Post    Post      `json:"post"`
+	Parent  *Post     `json:"parent"`
+	Replies *[]Thread `json:"replies"`
 }
 
 // This is solely for the purpose of unmarshalling the response from the API
@@ -358,7 +358,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		}(),
 		ProfileSidebarBorderColor: "87bc44",
 		ProfileBackgroundTile:     false,
-		CreatedAt:                 author.CreatedAt,
+		CreatedAt:                 bridge.TwitterTimeConverter(author.CreatedAt),
 		ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":thumb",
 		Location:                  "",
 		ProfileLinkColor:          "0000ff",
