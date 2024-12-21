@@ -79,6 +79,8 @@ func home_timeline(c *fiber.Ctx) error {
 
 }
 
+// Replies
+// This is going to be painful to implement with lack of any docs
 func RelatedResults(c *fiber.Ctx) error {
 	encodedId := c.Params("id")
 	idBigInt, ok := new(big.Int).SetString(encodedId, 10)
@@ -109,17 +111,23 @@ func RelatedResults(c *fiber.Ctx) error {
 	postAuthor := bridge.BlueSkyToTwitterID(thread.Thread.Post.Author.DID)
 
 	twitterReplies := bridge.RelatedResultsQuery{
-		Annotations: nil,
+		Annotations: []bridge.Annotations{},
 		ResultType:  "Tweet",
 		Score:       1.0,
 		GroupName:   "TweetsWithConversation",
 		Results:     []bridge.Results{},
 	}
 	for _, reply := range *thread.Thread.Replies {
+		reply.Post.Record.CreatedAt = reply.Post.IndexedAt
 		twitterReplies.Results = append(twitterReplies.Results, bridge.Results{
 			Kind:  "Tweet",
 			Score: 1.0,
 			Value: TranslatePostToTweet(reply.Post, uri, postAuthor.String(), &thread.Thread.Post.Record.CreatedAt, nil),
+			Annotations: []bridge.Annotations{
+				{
+					ConversationRole: "Descendant",
+				},
+			},
 		})
 	}
 

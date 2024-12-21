@@ -12,18 +12,23 @@ import (
 )
 
 type RelatedResultsQuery struct {
-	Annotations interface{} `json:"annotations"` // TODO
-	ResultType  string      `json:"resultType"`
-	Score       float64     `json:"score"`
-	GroupName   string      `json:"groupName"`
-	Results     []Results   `json:"results"`
+	Annotations []Annotations `json:"annotations"` // TODO
+	ResultType  string        `json:"resultType"`
+	Score       float64       `json:"score"`
+	GroupName   string        `json:"groupName"`
+	Results     []Results     `json:"results"`
 }
 
 type Results struct {
-	Kind        string      `json:"kind"`
-	Score       float64     `json:"score"`
-	Annotations interface{} `json:"annotations"` // TODO
-	Value       Tweet       `json:"results"`
+	Kind        string        `json:"kind"`
+	Score       float64       `json:"score"`
+	Annotations []Annotations `json:"annotations"` // TODO
+	Value       Tweet         `json:"value"`
+}
+
+// TODO: Figure out what this is for, and how to use this
+type Annotations struct {
+	ConversationRole string `json:"ConversationRole"`
 }
 
 type Retweet struct {
@@ -277,10 +282,9 @@ func TwitterMsgIdToBluesky(id *big.Int) (*string, *time.Time, *string, error) {
 		if err != nil {
 			return nil, nil, nil, err
 		}
-	} else {
+	} else if len(parts) == 2 {
 		// Any other type of tweet
 		uri = parts[0]
-		fmt.Println(encodedId)
 		timestamp, err = time.Parse("20060102T15:04:05Z", strings.ToUpper(parts[1]))
 		if err != nil {
 			return nil, nil, nil, err
@@ -291,6 +295,8 @@ func TwitterMsgIdToBluesky(id *big.Int) (*string, *time.Time, *string, error) {
 		// 	return nil, nil, nil, errors.New("invalid URI format")
 		// }
 		// timestamp, err = DecodeTID(uriparts[4])
+	} else {
+		return nil, nil, nil, errors.New("invalid ID format")
 	}
 	return &uri, &timestamp, &retweetUserId, nil
 }
