@@ -45,11 +45,20 @@ func retweet(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
+	// Get our IDs
 	idBigInt, ok := new(big.Int).SetString(postId, 10)
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	postId, _, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+	postIdPtr, _, _, err := bridge.TwitterMsgIdToBluesky(idBigInt)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	postId = *postIdPtr
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
 
 	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*oauthToken, postId, *user_did)
 
@@ -60,7 +69,8 @@ func retweet(c *fiber.Ctx) error {
 
 	retweet := TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil)
 	retweet.Retweeted = true
-	retweet.ID = bridge.BskyMsgToTwitterID(*retweetPostURI, time.Now(), nil) // TODO: Fix this ID retweet stuff
+	now := time.Now() // pain, also fix this to use the proper timestamp according to the server.
+	retweet.ID = bridge.BskyMsgToTwitterID(*retweetPostURI, &now, user_did)
 	retweet.IDStr = retweet.ID.String()
 
 	return c.JSON(bridge.Retweet{
@@ -78,11 +88,20 @@ func favourite(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
+	// Fetch ID
 	idBigInt, ok := new(big.Int).SetString(postId, 10)
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	postId, _, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+	postIdPtr, _, _, err := bridge.TwitterMsgIdToBluesky(idBigInt)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	postId = *postIdPtr
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+
 	fmt.Println("Post ID:", postId)
 
 	err, post := blueskyapi.LikePost(*oauthToken, postId, *user_did)
@@ -106,11 +125,19 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
+	// Fetch ID
 	idBigInt, ok := new(big.Int).SetString(postId, 10)
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	postId, _, _ = bridge.TwitterMsgIdToBluesky(idBigInt)
+	postIdPtr, _, _, err := bridge.TwitterMsgIdToBluesky(idBigInt)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	postId = *postIdPtr
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
 
 	err, post := blueskyapi.UnlikePost(*oauthToken, postId, *user_did)
 

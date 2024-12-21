@@ -2,10 +2,11 @@ package bridge
 
 import (
 	"bytes"
+	"encoding/base32"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"math/big"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -207,6 +208,7 @@ const base38Chars = "0123456789abcdefghijklmnopqrstuvwxyz:/."
 
 // BlueSkyToTwitterID converts a letter ID to a compact numeric representation using Base37
 func BlueSkyToTwitterID(letterID string) *big.Int {
+	letterID = strings.ToLower(letterID)
 	numericID := big.NewInt(0)
 	base := big.NewInt(39)
 
@@ -241,52 +243,91 @@ func TwitterIDToBlueSky(numericID *big.Int) string {
 	return letterID
 }
 
-func BskyMsgToTwitterID(uri string, creationTime time.Time, retweetUserId *string) big.Int {
+func BskyMsgToTwitterID(uri string, creationTime *time.Time, retweetUserId *string) big.Int {
 	var encodedId *big.Int
 	if retweetUserId != nil {
-		encodedId = BlueSkyToTwitterID(fmt.Sprintf("%s:/:%s", uri, *retweetUserId))
+		encodedId = BlueSkyToTwitterID(fmt.Sprintf("%s:/:%s:/:%s", uri, creationTime.Format("20060102T15:04:05Z"), *retweetUserId))
 	} else {
-		encodedId = BlueSkyToTwitterID(uri)
+		encodedId = BlueSkyToTwitterID(fmt.Sprintf("%s:/:%s", uri, creationTime.Format("20060102T15:04:05Z")))
 	}
-
-	// Convert the numeric ID to a string and pad with zeros if necessary
-	encodedIdStr := encodedId.Text(10)
-	if len(encodedIdStr) < 167 {
-		encodedIdStr = strings.Repeat("0", 167-len(encodedIdStr)) + encodedIdStr
-	} else if len(encodedIdStr) > 167 {
-		fmt.Println("Encoded ID exceeds 167 digits")
-	}
-
-	// Add the Unix timestamp at the start
-	finalId := fmt.Sprintf("%d%s", creationTime.Unix(), encodedIdStr)
-
-	finalBigInt, _ := new(big.Int).SetString(finalId, 10)
-	return *finalBigInt
+	return *encodedId
 }
 
-// This is here soley because we have to use psudo ids for retweets. And because we need to store the unix time inside of it
-func TwitterMsgIdToBluesky(id *big.Int) (string, time.Time, *string) {
-	idStr := id.Text(10)
-	if len(idStr) <= 10 {
-		return TwitterIDToBlueSky(id), time.Time{}, nil
-	}
+// This is here soley because we have to use psudo ids for retweets.
+func TwitterMsgIdToBluesky(id *big.Int) (*string, *time.Time, *string, error) {
+	// If the tweet is not a retweet, we can use the timestamp inside of the bluesky ID
+	// Yup! I was also suprised that the timestamp is in the ID
+	// See https://atproto.com/specs/tid
 
-	unixTimeStr := idStr[:10]
-	encodedIdStr := idStr[10:]
+	// Although if it is a retweet, we can't rely on the timestamp in the ID, since we don't have the proper ID, only the reposter & the original tweet
+	// Theoretically we could hack it together since we know the time of the retweet (and the thing we are missing is the encoded timestamp), but that
+	// seems really finky
+	encodedId := TwitterIDToBlueSky(id)
+	uri := ""
+	retweetUserId := ""
+	timestamp := time.Time{}
+	err := error(nil)
 
-	encodedId, _ := new(big.Int).SetString(encodedIdStr, 10)
-	uri, retweetUserId := TwitterIDToBlueSky(encodedId), ""
-
-	if strings.Contains(uri, ":/:") {
-		parts := strings.Split(uri, ":/:")
-		if len(parts) == 2 {
-			uri = parts[0]
-			retweetUserId = parts[1]
+	parts := strings.Split(encodedId, ":/:")
+	if len(parts) == 3 {
+		// Retweet
+		uri = parts[0]
+		retweetUserId = parts[1]
+		timestamp, err = time.Parse("20060102T15:04:05Z", strings.ToUpper(parts[2]))
+		if err != nil {
+			return nil, nil, nil, err
 		}
+	} else {
+		// Any other type of tweet
+		uri = parts[0]
+		fmt.Println(encodedId)
+		timestamp, err = time.Parse("20060102T15:04:05Z", strings.ToUpper(parts[1]))
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		// Example URI: at://did:plc:sykr3znzovcjo7kkvt4z5ywh/app.bsky.feed.post/3ldlvtjyjwc22
+		// uriparts := strings.Split(encodedId, "/")
+		// if len(uriparts) != 5 {
+		// 	return nil, nil, nil, errors.New("invalid URI format")
+		// }
+		// timestamp, err = DecodeTID(uriparts[4])
+	}
+	return &uri, &timestamp, &retweetUserId, nil
+}
+
+// DecodeTID decodes a base32-sortable encoded TID and extracts the timestamp.
+// Bluesky Specific
+// Doesn't work, i can't figure out why
+func DecodeTID(tid string) (time.Time, error) {
+	fmt.Println("TID: " + tid)
+	if len(tid) != 13 {
+		return time.Time{}, errors.New("invalid TID length")
 	}
 
-	unixTime, _ := strconv.ParseInt(unixTimeStr, 10, 64)
-	return uri, time.Unix(unixTime, 0), &retweetUserId
+	// Base32-sortable character set
+	base32Chars := "234567abcdefghijklmnopqrstuvwxyz"
+	base32Encoding := base32.NewEncoding(base32Chars).WithPadding(base32.NoPadding)
+
+	// Decode the TID
+	decoded, err := base32Encoding.DecodeString(tid)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// Convert the decoded bytes to a 64-bit integer
+	var id uint64
+	for _, b := range decoded {
+		id = (id << 8) | uint64(b)
+	}
+	fmt.Println(id)
+	// Extract the timestamp (53 bits) and convert to microseconds
+	timestampMicroseconds := id >> 10
+
+	// Convert microseconds to time.Time
+	timestamp := time.Unix(0, int64(timestampMicroseconds)*1000)
+	fmt.Println("Decoded: " + timestamp.String())
+
+	return timestamp, nil
 }
 
 // FormatTime converts Go's time.Time into the format "Wed Sep 01 00:00:00 +0000 2021"

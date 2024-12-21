@@ -9,20 +9,13 @@ import (
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
-	"github.com/Preloading/MastodonTwitterAPI/db_controller"
 	"github.com/gofiber/fiber/v2"
 )
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
 func home_timeline(c *fiber.Ctx) error {
 	// Get all of our keys, beeps, and bops
-	user_did, session_uuid, oauthToken, err := GetAuthFromReq(c)
-
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
-	}
-
-	encryptionKey, err := GetEncryptionKeyFromRequest(c)
+	_, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -39,7 +32,10 @@ func home_timeline(c *fiber.Ctx) error {
 		if !ok {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
 		}
-		_, date, _ := bridge.TwitterMsgIdToBluesky(maxIDBigInt)
+		_, date, _, err := bridge.TwitterMsgIdToBluesky(maxIDBigInt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+		}
 		context = date.Format(time.RFC3339)
 	}
 
@@ -78,12 +74,6 @@ func home_timeline(c *fiber.Ctx) error {
 			oldestTweet = tweet
 		}
 	}
-	err = db_controller.SetTimelineContext(*user_did, *session_uuid, oldestTweet.ID, res.Cursor, *encryptionKey)
-
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to save timeline context")
-	}
 
 	return c.JSON(tweets)
 
@@ -95,7 +85,15 @@ func RelatedResults(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	uri, _, _ := bridge.TwitterMsgIdToBluesky(idBigInt)
+	// Fetch ID
+	uriPtr, _, _, err := bridge.TwitterMsgIdToBluesky(idBigInt)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	uri := *uriPtr
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
 
 	_, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
@@ -135,8 +133,18 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	uri, _, _ := bridge.TwitterMsgIdToBluesky(idBigInt) // TODO: maybe look up with the retweet? idk
+	// Fetch ID
+	uriPtr, _, _, err := bridge.TwitterMsgIdToBluesky(idBigInt)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	uri := *uriPtr
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
 
+	fmt.Println("URI:", uri)
 	_, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
@@ -149,7 +157,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil))
+	return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil)) // TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
 }
 
 func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason) bridge.Tweet {
@@ -240,16 +248,16 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		ID: func() big.Int {
 			// we have to use psudo ids because of https://github.com/bluesky-social/atproto/issues/1811
 			if isRetweet {
-				return bridge.BskyMsgToTwitterID(tweet.URI, postReason.IndexedAt, &postReason.By.DID)
+				return bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
 			}
-			return bridge.BskyMsgToTwitterID(tweet.URI, tweet.Record.CreatedAt, nil)
+			return bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt, nil)
 		}(),
 		IDStr: func() string {
 			if isRetweet {
-				id := bridge.BskyMsgToTwitterID(tweet.URI, postReason.IndexedAt, &postReason.By.DID)
+				id := bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
 				return id.String()
 			}
-			id := bridge.BskyMsgToTwitterID(tweet.URI, tweet.Record.CreatedAt, nil)
+			id := bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt, nil)
 			return id.String()
 		}(),
 		Retweeted:         tweet.Viewer.Repost != nil,
@@ -324,17 +332,17 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		},
 		Source: "Bluesky",
 		InReplyToStatusID: func() *big.Int {
-			if replyTimeStamp == nil {
+			if replyMsgBskyURI == "" {
 				return nil
 			}
-			id := bridge.BskyMsgToTwitterID(replyMsgBskyURI, *replyTimeStamp, &replyUserBskyId)
+			id := bridge.BskyMsgToTwitterID(replyMsgBskyURI, replyTimeStamp, nil)
 			return &id
 		}(),
 		InReplyToStatusIDStr: func() *string {
-			if replyTimeStamp == nil {
+			if replyMsgBskyURI == "" {
 				return nil
 			}
-			id := bridge.BskyMsgToTwitterID(replyMsgBskyURI, *replyTimeStamp, &replyUserBskyId)
+			id := bridge.BskyMsgToTwitterID(replyMsgBskyURI, replyTimeStamp, nil)
 			idStr := id.String()
 			return &idStr
 		}(),
@@ -364,7 +372,15 @@ func TweetInfo(c *fiber.Ctx) error {
 	if !ok {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
-	id, _, _ := bridge.TwitterMsgIdToBluesky(idBigInt)
+	// Fetch ID
+	idPtr, _, _, err := bridge.TwitterMsgIdToBluesky(idBigInt)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	id := *idPtr
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
 
 	err, thread := blueskyapi.GetPost(*oauthToken, id, 1, 0)
 
