@@ -165,7 +165,12 @@ func GetStatusFromId(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil)) // TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
+	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
+	if thread.Thread.Parent == nil {
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil))
+	} else {
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil))
+	}
 }
 
 func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason) bridge.Tweet {

@@ -158,9 +158,9 @@ type ThreadRoot struct {
 
 // Reposting/Retweeting
 type CreateRecordPayload struct {
-	Collection string       `json:"collection"`
-	Repo       string       `json:"repo"`
-	Record     RepostRecord `json:"record"`
+	Collection string      `json:"collection"`
+	Repo       string      `json:"repo"`
+	Record     interface{} `json:"record"`
 }
 
 type DeleteRecordPayload struct {
@@ -169,10 +169,16 @@ type DeleteRecordPayload struct {
 	RKey       string `json:"rkey"`
 }
 
-type RepostRecord struct {
+type PostInteractionRecord struct {
 	Type      string  `json:"$type"`
 	CreatedAt string  `json:"createdAt"`
 	Subject   Subject `json:"subject"`
+}
+
+type CreatePostRecord struct {
+	Type      string    `json:"$type"`
+	Text      string    `json:"text"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type Subject struct {
@@ -422,7 +428,7 @@ func GetTimeline(token string, context string) (error, *Timeline) {
 func GetPost(token string, uri string, depth int, parentHeight int) (error, *ThreadRoot) {
 	// Example URL at://did:plc:dqibjxtqfn6hydazpetzr2w4/app.bsky.feed.post/3lchbospvbc2j
 
-	url := "https://public.bsky.social/xrpc/app.bsky.feed.getPostThread?depth=" + fmt.Sprintf("%d", depth) + "&parentHeight=" + fmt.Sprintf("%d", parentHeight) + "&uri=" + uri
+	url := "https://bsky.social/xrpc/app.bsky.feed.getPostThread?depth=" + fmt.Sprintf("%d", depth) + "&parentHeight=" + fmt.Sprintf("%d", parentHeight) + "&uri=" + uri
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -451,13 +457,39 @@ func GetPost(token string, uri string, depth int, parentHeight int) (error, *Thr
 	return nil, &thread
 }
 
-func UpdateStatus(token string, status string) error {
+// This handles both normal & replys
+func UpdateStatus(token string, my_did string, status string, in_reply_to *string) (*ThreadRoot, error) {
 	url := "https://public.bsky.social/xrpc/com.atproto.repo.createRecord"
 
-	resp, err := SendRequest(&token, http.MethodPost, url, nil)
-	if err != nil {
-		return err
+	reqBody := []byte{}
+	var err error
+
+	if in_reply_to == nil || *in_reply_to == "" {
+
+		payload := CreateRecordPayload{
+			Collection: "app.bsky.feed.post",
+			Repo:       my_did,
+			Record: CreatePostRecord{
+				Type:      "app.bsky.feed.post",
+				Text:      status,
+				CreatedAt: time.Now().UTC(),
+			},
+		}
+
+		reqBody, err = json.Marshal(payload)
+		if err != nil {
+			return nil, errors.New("failed to marshal payload")
+		}
+
+	} else {
+		return nil, errors.New("in_reply_to not implemented")
 	}
+
+	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, errors.New("failed to post")
+	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -465,9 +497,20 @@ func UpdateStatus(token string, status string) error {
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil
+		return nil, errors.New("failed to update status")
 	}
-	return errors.New("failed to update status")
+
+	postData := CreateRecordResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&postData); err != nil {
+		return nil, err
+	}
+
+	err, thread := GetPost(token, postData.URI, 0, 1)
+	if err != nil {
+		return nil, errors.New("failed to fetch made post")
+	}
+
+	return thread, nil
 }
 
 func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *string) {
@@ -481,7 +524,7 @@ func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *strin
 	payload := CreateRecordPayload{
 		Collection: "app.bsky.feed.repost",
 		Repo:       my_did,
-		Record: RepostRecord{
+		Record: PostInteractionRecord{
 			Type:      "app.bsky.feed.repost",
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			Subject: Subject{
@@ -529,7 +572,7 @@ func LikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 	payload := CreateRecordPayload{
 		Collection: "app.bsky.feed.like",
 		Repo:       my_did,
-		Record: RepostRecord{
+		Record: PostInteractionRecord{
 			Type:      "app.bsky.feed.like",
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			Subject: Subject{

@@ -36,6 +36,7 @@ type Retweet struct {
 	RetweetedStatus Tweet `json:"retweeted_status"`
 }
 
+// https://web.archive.org/web/20120708212016/https://dev.twitter.com/docs/platform-objects/tweets
 type Tweet struct {
 	Coordinates  interface{} `json:"coordinates"`
 	Favourited   bool        `json:"favorited"`

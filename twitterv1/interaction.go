@@ -12,7 +12,7 @@ import (
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/post/statuses/update
 func status_update(c *fiber.Ctx) error {
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	my_did, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -20,20 +20,24 @@ func status_update(c *fiber.Ctx) error {
 
 	status := c.FormValue("status")
 	trim_user := c.FormValue("trim_user")
-	in_reply_to_status_id := c.FormValue("in_reply_to_status_ids")
+	in_reply_to_status_id := c.FormValue("in_reply_to_status_id")
 
 	fmt.Println("Status:", status)
 	fmt.Println("TrimUser:", trim_user)
 	fmt.Println("InReplyToStatusID:", in_reply_to_status_id)
 
-	if err := blueskyapi.UpdateStatus(*oauthToken, status); err != nil {
+	thread, err := blueskyapi.UpdateStatus(*oauthToken, *my_did, status, &in_reply_to_status_id)
+
+	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
 	}
 
-	// TODO: Implement this
-
-	return c.SendString("Not implemented")
+	if thread.Thread.Parent == nil {
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil))
+	} else {
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil))
+	}
 }
 
 // https://web.archive.org/web/20120407091252/https://dev.twitter.com/docs/api/1/post/statuses/retweet/%3Aid

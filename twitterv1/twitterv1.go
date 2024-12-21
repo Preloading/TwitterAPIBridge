@@ -28,8 +28,10 @@ func InitServer() {
 	// Auth
 	app.Post("/oauth/access_token", access_token)
 
-	// Interactions
+	// Tweeting
 	app.Post("/1/statuses/update.json", status_update)
+
+	// Interactions
 	app.Post("/1/statuses/retweet/:id.json", retweet)
 	app.Post("/1/favorites/create/:id.json", favourite)
 	app.Post("/1/favorites/destroy/:id.json", Unfavourite)
