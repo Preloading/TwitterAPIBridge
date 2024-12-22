@@ -213,6 +213,10 @@ type UserRelationship struct {
 	ScreenName  string   `json:"screen_name" xml:"screen_name"`
 }
 
+type UserRelationships struct {
+	Relationships []UserRelationship `json:"relationship" xml:"relationship"`
+}
+
 // Bluesky's API returns a letter ID for each user,
 // While twitter uses a numeric ID, meaning we
 // need to convert between the two
@@ -367,21 +371,13 @@ func XMLEncoder(data interface{}, oldHeaderName string, newHeaderName string) (*
 
 	// Remove the root element and replace with custom header
 	xmlContent := buf.Bytes()
-	fmt.Println(string(xmlContent))
-	start := bytes.Index(xmlContent, []byte("<"+oldHeaderName+">"))
-	end := bytes.LastIndex(xmlContent, []byte("</"+oldHeaderName+">"))
-	if start == -1 || end == -1 {
-		return nil, fmt.Errorf("invalid XML format")
-	}
-	xmlContent = xmlContent[start+len("<"+oldHeaderName+">") : end]
 
-	// Add custom XML header and root element
-	customHeader := []byte(`<?xml version="1.0" encoding="UTF-8"?>` + "\n" + `<` + newHeaderName + `>` + "\n")
+	xmlContent = bytes.ReplaceAll(xmlContent, []byte("<"+oldHeaderName+">"), []byte("<"+newHeaderName+">"))
+	xmlContent = bytes.ReplaceAll(xmlContent, []byte("</"+oldHeaderName+">"), []byte("</"+newHeaderName+">"))
+
+	// Add custom XML header
+	customHeader := []byte(`<?xml version="1.0" encoding="UTF-8"?>`)
 	xmlContent = append(customHeader, xmlContent...)
-
-	// Add custom footer
-	customFooter := []byte("\n</" + newHeaderName + ">")
-	xmlContent = append(xmlContent, customFooter...)
 
 	result := string(xmlContent)
 	return &result, nil

@@ -153,15 +153,25 @@ func UserRelationships(c *fiber.Ctx) error {
 			}(),
 			ScreenName:  user.Handle,
 			ID:          encodedUserId,
+			IDStr:       encodedUserId.String(),
 			Connections: connections,
 		})
 	}
 
-	xml, err := bridge.XMLEncoder(relationships, "UserRelationship", "relationship")
+	// i hate xml
 
+	root := bridge.UserRelationships{
+		Relationships: relationships,
+	}
+
+	xml, err := bridge.XMLEncoder(root, "UserRelationships", "relationships")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user relationships")
 	}
-	return c.SendString(*xml)
+
+	newXml := strings.ReplaceAll(*xml, "<UserRelationship>", "<relationship>")
+	newXml = strings.ReplaceAll(newXml, "</UserRelationship>", "</relationship>")
+
+	return c.SendString(newXml)
 }
