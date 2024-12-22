@@ -235,6 +235,8 @@ type RecordValue struct {
 	Reply *ReplySubject `json:"reply,omitempty"`
 }
 
+var userCache = bridge.NewCache(5 * time.Minute) // Cache TTL of 5 minutes
+
 func SendRequest(token *string, method string, url string, body io.Reader) (*http.Response, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, body)
@@ -316,6 +318,10 @@ func RefreshToken(refreshToken string) (*AuthResponse, error) {
 }
 
 func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
+	if user, found := userCache.Get(screen_name); found {
+		return &user, nil
+	}
+
 	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
@@ -336,11 +342,30 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 		return nil, err
 	}
 
-	return AuthorTTB(author), nil
+	twitterUser := AuthorTTB(author)
+
+	userCache.SetMultiple([]string{author.DID, author.Handle}, *twitterUser)
+
+	return twitterUser, nil
 }
 
 func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
-	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(items, "&actors=")
+	var results []*bridge.TwitterUser
+	var missing []string
+
+	for _, screen_name := range items {
+		if user, found := userCache.Get(screen_name); found {
+			results = append(results, &user)
+		} else {
+			missing = append(missing, screen_name)
+		}
+	}
+
+	if len(missing) == 0 {
+		return results, nil
+	}
+
+	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(missing, "&actors=")
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -365,9 +390,11 @@ func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
 	users := make([]*bridge.TwitterUser, len(authors.Profiles))
 	for i, author := range authors.Profiles {
 		users[i] = AuthorTTB(author)
+		userCache.SetMultiple([]string{author.DID, author.Handle}, *users[i])
+		results = append(results, users[i])
 	}
 
-	return users, nil
+	return results, nil
 }
 
 func AuthorTTB(author User) *bridge.TwitterUser {
