@@ -33,7 +33,7 @@ func UserSearch(c *fiber.Ctx) error {
 	if len(dids) == 0 {
 		return c.JSON([]bridge.TwitterUser{})
 	}
-	users, err := blueskyapi.GetUsersInfo(*oauthToken, dids)
+	users, err := blueskyapi.GetUsersInfo(*oauthToken, dids, false)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")

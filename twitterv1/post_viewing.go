@@ -66,11 +66,6 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
 	}
 
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
-	}
-
 	// Caching the user DIDs efficiently
 	userDIDs := []string{}
 
@@ -80,7 +75,7 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 		}
 	}
 
-	blueskyapi.GetUsersInfo(*oauthToken, userDIDs)
+	blueskyapi.GetUsersInfo(*oauthToken, userDIDs, false)
 
 	// Translate the posts to tweets
 	tweets := []bridge.Tweet{}
@@ -150,7 +145,7 @@ func RelatedResults(c *fiber.Ctx) error {
 		}
 	}
 
-	blueskyapi.GetUsersInfo(*oauthToken, userDIDs)
+	blueskyapi.GetUsersInfo(*oauthToken, userDIDs, false)
 
 	postAuthor := bridge.BlueSkyToTwitterID(thread.Thread.Post.Author.DID)
 

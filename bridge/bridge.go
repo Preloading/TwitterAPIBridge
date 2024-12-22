@@ -205,6 +205,14 @@ type Config struct {
 	GeoEnabled          bool            `json:"geo_enabled" xml:"geo_enabled"`
 }
 
+type UserRelationship struct {
+	Name        string   `json:"name" xml:"name"`
+	IDStr       string   `json:"id_str" xml:"id_str"`
+	ID          big.Int  `json:"id" xml:"id"`
+	Connections []string `json:"connections" xml:"connections"`
+	ScreenName  string   `json:"screen_name" xml:"screen_name"`
+}
+
 // Bluesky's API returns a letter ID for each user,
 // While twitter uses a numeric ID, meaning we
 // need to convert between the two
@@ -359,6 +367,7 @@ func XMLEncoder(data interface{}, oldHeaderName string, newHeaderName string) (*
 
 	// Remove the root element and replace with custom header
 	xmlContent := buf.Bytes()
+	fmt.Println(string(xmlContent))
 	start := bytes.Index(xmlContent, []byte("<"+oldHeaderName+">"))
 	end := bytes.LastIndex(xmlContent, []byte("</"+oldHeaderName+">"))
 	if start == -1 || end == -1 {

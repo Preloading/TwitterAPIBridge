@@ -26,6 +26,7 @@ type AuthRequest struct {
 	Password   string `json:"password"`
 }
 
+// https://docs.bsky.app/docs/api/app-bsky-actor-get-profile
 type User struct {
 	DID            string    `json:"did"`
 	Handle         string    `json:"handle"`
@@ -44,6 +45,16 @@ type User struct {
 		StarterPacks int       `json:"starterPacks"`
 		Labeler      bool      `json:"labeler"`
 		CreatedAt    time.Time `json:"created_at"`
+	}
+	Viewer struct {
+		Muted bool `json:"muted"`
+		// MutedByList
+		BlockedBy bool    `json:"blockedBy"`
+		Blocking  *string `json:"blocking,omitempty"`
+		// BlockingByList
+		Following  *string `json:"following,omitempty"`
+		FollowedBy *string `json:"followedBy,omitempty"`
+		// KnownFollowers
 	}
 }
 
@@ -350,20 +361,24 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 	return twitterUser, nil
 }
 
-func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
+func GetUsersInfo(token string, items []string, ignoreCache bool) ([]*bridge.TwitterUser, error) {
 	var results []*bridge.TwitterUser
 	var missing []string
 
-	for _, screen_name := range items {
-		if user, found := userCache.Get(screen_name); found {
-			results = append(results, &user)
-		} else {
-			missing = append(missing, screen_name)
+	if !ignoreCache {
+		for _, screen_name := range items {
+			if user, found := userCache.Get(screen_name); found {
+				results = append(results, &user)
+			} else {
+				missing = append(missing, screen_name)
+			}
 		}
-	}
 
-	if len(missing) == 0 {
-		return results, nil
+		if len(missing) == 0 {
+			return results, nil
+		}
+	} else {
+		missing = items
 	}
 
 	// Parallel fetching for chunks of up to 25 at a time
@@ -415,6 +430,61 @@ func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
 	return results, nil
 }
 
+// TODO: Combine this with GetUsersInfo... somehow
+func GetUsersInfoRaw(token string, items []string, ignoreCache bool) ([]*User, error) {
+	var results []*User
+	var missing []string
+
+	missing = items // hack
+
+	// Parallel fetching for chunks of up to 25 at a time
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	for i := 0; i < len(missing); i += 25 {
+		end := i + 25
+		if end > len(missing) {
+			end = len(missing)
+		}
+		chunk := missing[i:end]
+
+		wg.Add(1)
+		go func(c []string) {
+			defer wg.Done()
+
+			url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
+			fmt.Println(url)
+			resp, err := SendRequest(&token, http.MethodGet, url, nil)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				bodyBytes, _ := io.ReadAll(resp.Body)
+				fmt.Println("Response Status:", resp.StatusCode)
+				fmt.Println("Response Body:", string(bodyBytes))
+				return
+			}
+
+			var authors struct {
+				Profiles []User `json:"profiles"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&authors); err != nil {
+				return
+			}
+
+			mu.Lock()
+			for _, author := range authors.Profiles {
+				results = append(results, &author)
+			}
+			mu.Unlock()
+		}(chunk)
+	}
+
+	wg.Wait()
+	return results, nil
+}
+
 func AuthorTTB(author User) *bridge.TwitterUser {
 	return &bridge.TwitterUser{
 		ProfileSidebarFillColor: "e0ff92",
@@ -433,23 +503,24 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		IsTranslator:              false,
 		ContributorsEnabled:       false,
 		URL:                       "",
-		FavouritesCount:           0,
 		UtcOffset:                 nil,
 		ID:                        *bridge.BlueSkyToTwitterID(author.DID),
 		ProfileUseBackgroundImage: false,
 		ListedCount:               0,
 		ProfileTextColor:          "000000",
 		Protected:                 false,
-		FollowersCount:            author.FollowersCount,
-		Lang:                      "en",
-		Notifications:             nil,
-		Verified:                  false,
-		ProfileBackgroundColor:    "c0deed",
-		GeoEnabled:                false,
-		Description:               author.Description,
-		FriendsCount:              author.FollowsCount,
-		StatusesCount:             author.PostsCount,
-		ScreenName:                author.Handle,
+
+		Lang:                   "en",
+		Notifications:          nil,
+		Verified:               false,
+		ProfileBackgroundColor: "c0deed",
+		GeoEnabled:             false,
+		Description:            author.Description,
+		FriendsCount:           author.FollowsCount,
+		FollowersCount:         author.FollowersCount,
+		StatusesCount:          author.PostsCount,
+		//FavouritesCount:        author.,
+		ScreenName: author.Handle,
 	}
 }
 
