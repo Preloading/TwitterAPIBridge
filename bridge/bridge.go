@@ -284,10 +284,11 @@ func TwitterIDToBlueSky(numericID big.Int) string {
 
 	base := big.NewInt(39)
 	letterID := ""
+	tempID := new(big.Int).Set(&numericID) // Create a copy of numericID
 
-	for numericID.Cmp(big.NewInt(0)) > 0 {
+	for tempID.Cmp(big.NewInt(0)) > 0 {
 		remainder := new(big.Int)
-		numericID.DivMod(&numericID, base, remainder)
+		tempID.DivMod(tempID, base, remainder)
 		letterID = string(base38Chars[remainder.Int64()]) + letterID
 	}
 

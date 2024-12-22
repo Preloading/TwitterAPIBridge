@@ -28,7 +28,10 @@ func (c *Cache) Get(key string) (TwitterUser, bool) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	user, found := c.data[key]
-	return user, found
+	if !found {
+		return TwitterUser{}, false
+	}
+	return user.copy(), true
 }
 
 func (c *Cache) Set(key string, user TwitterUser) {
@@ -53,4 +56,45 @@ func (c *Cache) expireKeyAfterTTL(key string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	delete(c.data, key)
+}
+
+func (u TwitterUser) copy() TwitterUser {
+	return TwitterUser{
+		Name:                      u.Name,
+		ProfileSidebarBorderColor: u.ProfileSidebarBorderColor,
+		ProfileBackgroundTile:     u.ProfileBackgroundTile,
+		ProfileSidebarFillColor:   u.ProfileSidebarFillColor,
+		CreatedAt:                 u.CreatedAt,
+		ProfileImageURL:           u.ProfileImageURL,
+		Location:                  u.Location,
+		ProfileLinkColor:          u.ProfileLinkColor,
+		FollowRequestSent:         u.FollowRequestSent,
+		URL:                       u.URL,
+		FavouritesCount:           u.FavouritesCount,
+		ContributorsEnabled:       u.ContributorsEnabled,
+		UtcOffset:                 u.UtcOffset,
+		ID:                        u.ID,
+		ProfileUseBackgroundImage: u.ProfileUseBackgroundImage,
+		ProfileTextColor:          u.ProfileTextColor,
+		Protected:                 u.Protected,
+		FollowersCount:            u.FollowersCount,
+		Lang:                      u.Lang,
+		Notifications:             u.Notifications,
+		TimeZone:                  u.TimeZone,
+		Verified:                  u.Verified,
+		ProfileBackgroundColor:    u.ProfileBackgroundColor,
+		GeoEnabled:                u.GeoEnabled,
+		Description:               u.Description,
+		FriendsCount:              u.FriendsCount,
+		StatusesCount:             u.StatusesCount,
+		ProfileBackgroundImageURL: u.ProfileBackgroundImageURL,
+		Following:                 u.Following,
+		ScreenName:                u.ScreenName,
+		ShowAllInlineMedia:        u.ShowAllInlineMedia,
+		IsTranslator:              u.IsTranslator,
+		ListedCount:               u.ListedCount,
+		DefaultProfile:            u.DefaultProfile,
+		DefaultProfileImage:       u.DefaultProfileImage,
+		Status:                    u.Status,
+	}
 }
