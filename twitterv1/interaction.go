@@ -19,7 +19,7 @@ func status_update(c *fiber.Ctx) error {
 	}
 
 	status := c.FormValue("status")
-	trim_user := c.FormValue("trim_user")
+	//	trim_user := c.FormValue("trim_user") // Unused
 	encoded_in_reply_to_status_id_str := c.FormValue("in_reply_to_status_id")
 	encoded_in_reply_to_status_id_int := new(big.Int)
 	encoded_in_reply_to_status_id_int, ok := encoded_in_reply_to_status_id_int.SetString(encoded_in_reply_to_status_id_str, 10)
@@ -30,10 +30,6 @@ func status_update(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
 	}
-
-	fmt.Println("Status:", status)
-	fmt.Println("TrimUser:", trim_user)
-	fmt.Println("InReplyToStatusID:", encoded_in_reply_to_status_id_int)
 
 	thread, err := blueskyapi.UpdateStatus(*oauthToken, *my_did, status, in_reply_to_status_id)
 
