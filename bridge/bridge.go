@@ -278,8 +278,8 @@ func TwitterMsgIdToBluesky(id *big.Int) (*string, *time.Time, *string, error) {
 	if len(parts) == 3 {
 		// Retweet
 		uri = parts[0]
-		retweetUserId = parts[1]
-		timestamp, err = time.Parse("20060102T15:04:05Z", strings.ToUpper(parts[2]))
+		retweetUserId = parts[2]
+		timestamp, err = time.Parse("20060102T15:04:05Z", strings.ToUpper(parts[1]))
 		if err != nil {
 			return nil, nil, nil, err
 		}
