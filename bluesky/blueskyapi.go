@@ -45,7 +45,7 @@ type User struct {
 		StarterPacks int       `json:"starterPacks"`
 		Labeler      bool      `json:"labeler"`
 		CreatedAt    time.Time `json:"created_at"`
-	}
+	} `json:"associated"`
 	Viewer struct {
 		Muted bool `json:"muted"`
 		// MutedByList
@@ -55,7 +55,7 @@ type User struct {
 		Following  *string `json:"following,omitempty"`
 		FollowedBy *string `json:"followedBy,omitempty"`
 		// KnownFollowers
-	}
+	} `json:"viewer"`
 }
 
 type PostRecord struct {
@@ -334,7 +334,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 		return &user, nil
 	}
 
-	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
+	url := "https://bsky.social/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -395,7 +395,7 @@ func GetUsersInfo(token string, items []string, ignoreCache bool) ([]*bridge.Twi
 		go func(c []string) {
 			defer wg.Done()
 
-			url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
+			url := "https://bsky.social/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
 			resp, err := SendRequest(&token, http.MethodGet, url, nil)
 			if err != nil {
 				fmt.Println(err)
@@ -451,7 +451,7 @@ func GetUsersInfoRaw(token string, items []string, ignoreCache bool) ([]*User, e
 		go func(c []string) {
 			defer wg.Done()
 
-			url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
+			url := "https://bsky.social/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
 			fmt.Println(url)
 			resp, err := SendRequest(&token, http.MethodGet, url, nil)
 			if err != nil {

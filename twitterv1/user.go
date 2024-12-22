@@ -130,18 +130,19 @@ func UserRelationships(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user id")
 		}
 
-		connections := []string{}
+		connections := bridge.Connections{}
+
 		if user.Viewer.Following != nil {
-			connections = append(connections, "following")
+			connections.Connection = append(connections.Connection, bridge.Connection{Value: "following"})
 		}
 		if user.Viewer.FollowedBy != nil {
-			connections = append(connections, "followed_by")
+			connections.Connection = append(connections.Connection, bridge.Connection{Value: "followed_by"})
 		}
 		if user.Viewer.Blocking != nil {
-			connections = append(connections, "blocking") // Complete guess
+			connections.Connection = append(connections.Connection, bridge.Connection{Value: "blocked"})
 		}
 		if user.Viewer.BlockedBy {
-			connections = append(connections, "blocked_by") // Complete guess
+			connections.Connection = append(connections.Connection, bridge.Connection{Value: "blocked_by"}) // Complete guess
 		}
 
 		relationships = append(relationships, bridge.UserRelationship{

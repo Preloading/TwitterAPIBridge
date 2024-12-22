@@ -206,11 +206,21 @@ type Config struct {
 }
 
 type UserRelationship struct {
-	Name        string   `json:"name" xml:"name"`
-	IDStr       string   `json:"id_str" xml:"id_str"`
-	ID          big.Int  `json:"id" xml:"id"`
-	Connections []string `json:"connections" xml:"connections"`
-	ScreenName  string   `json:"screen_name" xml:"screen_name"`
+	Name        string      `json:"name" xml:"name"`
+	IDStr       string      `json:"id_str" xml:"id_str"`
+	ID          big.Int     `json:"id" xml:"id"`
+	Connections Connections `json:"connections" xml:"connections"`
+	ScreenName  string      `json:"screen_name" xml:"screen_name"`
+}
+
+type Connection struct {
+	XMLName xml.Name `xml:"connection"`
+	Value   string   `xml:",chardata"`
+}
+
+type Connections struct {
+	XMLName    xml.Name     `xml:"connections"`
+	Connection []Connection `xml:"connection"`
 }
 
 type UserRelationships struct {
