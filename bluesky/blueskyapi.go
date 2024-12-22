@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
@@ -365,35 +366,52 @@ func GetUsersInfo(token string, items []string) ([]*bridge.TwitterUser, error) {
 		return results, nil
 	}
 
-	url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(missing, "&actors=")
+	// Parallel fetching for chunks of up to 25 at a time
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	for i := 0; i < len(missing); i += 25 {
+		end := i + 25
+		if end > len(missing) {
+			end = len(missing)
+		}
+		chunk := missing[i:end]
 
-	resp, err := SendRequest(&token, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		bodyString := string(bodyBytes)
-		fmt.Println("Response Status:", resp.StatusCode)
-		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch user info")
+		wg.Add(1)
+		go func(c []string) {
+			defer wg.Done()
+
+			url := "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
+			resp, err := SendRequest(&token, http.MethodGet, url, nil)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				bodyBytes, _ := io.ReadAll(resp.Body)
+				fmt.Println("Response Status:", resp.StatusCode)
+				fmt.Println("Response Body:", string(bodyBytes))
+				return
+			}
+
+			var authors struct {
+				Profiles []User `json:"profiles"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&authors); err != nil {
+				return
+			}
+
+			mu.Lock()
+			for _, author := range authors.Profiles {
+				userObj := AuthorTTB(author)
+				userCache.SetMultiple([]string{author.DID, author.Handle}, *userObj)
+				results = append(results, userObj)
+			}
+			mu.Unlock()
+		}(chunk)
 	}
 
-	var authors struct {
-		Profiles []User `json:"profiles"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&authors); err != nil {
-		return nil, err
-	}
-
-	users := make([]*bridge.TwitterUser, len(authors.Profiles))
-	for i, author := range authors.Profiles {
-		users[i] = AuthorTTB(author)
-		userCache.SetMultiple([]string{author.DID, author.Handle}, *users[i])
-		results = append(results, users[i])
-	}
-
+	wg.Wait()
 	return results, nil
 }
 

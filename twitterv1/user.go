@@ -99,26 +99,10 @@ func UsersLookup(c *fiber.Ctx) error {
 	// here's some fun problems!
 	// twitter api's max is 100 users per call. bluesky's is 25. so we get to lookup in multiple requests
 
-	users, err := LookupUsers(usersToLookUp, oauthToken)
+	users, err := blueskyapi.GetUsersInfo(*oauthToken, usersToLookUp)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
 	}
 	return c.JSON(users)
-}
-
-func LookupUsers(usersToLookUp []string, oauthToken *string) ([]bridge.TwitterUser, error) {
-	userLookupGroups := groupUsers(usersToLookUp, 25)
-	var users []bridge.TwitterUser
-
-	for _, group := range userLookupGroups {
-		usersGroup, err := blueskyapi.GetUsersInfo(*oauthToken, group)
-		if err != nil {
-			return nil, err
-		}
-		for _, user := range usersGroup {
-			users = append(users, *user)
-		}
-	}
-	return users, nil
 }

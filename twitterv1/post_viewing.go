@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/url"
+	"slices"
 	"strconv"
 	"time"
 
@@ -45,6 +46,17 @@ func home_timeline(c *fiber.Ctx) error {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
 	}
+
+	// Caching the user DIDs efficiently
+	userDIDs := []string{}
+
+	for _, item := range res.Feed {
+		if !slices.Contains(userDIDs, item.Post.Author.DID) {
+			userDIDs = append(userDIDs, item.Post.Author.DID)
+		}
+	}
+
+	blueskyapi.GetUsersInfo(*oauthToken, userDIDs)
 
 	// Translate the posts to tweets
 	tweets := []bridge.Tweet{}
