@@ -28,7 +28,7 @@ func user_timeline(c *fiber.Ctx) error {
 		if !ok {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 		}
-		actor = bridge.TwitterIDToBlueSky(actorBigInt)
+		actor = bridge.TwitterIDToBlueSky(*actorBigInt)
 	}
 	return convert_timeline(c, actor, blueskyapi.GetUserTimeline)
 }

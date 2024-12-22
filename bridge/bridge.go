@@ -205,7 +205,8 @@ type Config struct {
 	GeoEnabled          bool            `json:"geo_enabled" xml:"geo_enabled"`
 }
 
-type UserRelationship struct {
+// Used in the /friends/lookup endpoint
+type UsersRelationship struct {
 	Name        string      `json:"name" xml:"name"`
 	IDStr       string      `json:"id_str" xml:"id_str"`
 	ID          big.Int     `json:"id" xml:"id"`
@@ -224,7 +225,29 @@ type Connections struct {
 }
 
 type UserRelationships struct {
-	Relationships []UserRelationship `json:"relationship" xml:"relationship"`
+	Relationships []UsersRelationship `json:"relationship" xml:"relationship"`
+}
+
+// https://web.archive.org/web/20120516154953/https://dev.twitter.com/docs/api/1/get/friendships/show
+// used in the /friendships/show endpoint
+type UserFriendship struct {
+	ID                   big.Int `json:"id" xml:"id"`
+	IDStr                string  `json:"id_str" xml:"id_str"`
+	ScreenName           string  `json:"screen_name" xml:"screen_name"`
+	Following            bool    `json:"following" xml:"following"`
+	FollowedBy           bool    `json:"followed_by" xml:"followed_by"`
+	NotificationsEnabled *bool   `json:"notifications_enabled" xml:"notifications_enabled"` // unknown
+	CanDM                *bool   `json:"can_dm,omitempty" xml:"can_dm,omitempty"`
+	Blocking             *bool   `json:"blocking" xml:"blocking"`           // unknown
+	WantRetweets         *bool   `json:"want_retweets" xml:"want_retweets"` // unknown
+	MarkedSpam           *bool   `json:"marked_spam" xml:"marked_spam"`     // unknown
+	AllReplies           *bool   `json:"all_replies" xml:"all_replies"`     // unknown
+}
+
+type SourceTargetFriendship struct {
+	XMLName xml.Name       `xml:"relationship"`
+	Source  UserFriendship `json:"source" xml:"source"`
+	Target  UserFriendship `json:"target" xml:"target"`
 }
 
 // Bluesky's API returns a letter ID for each user,
@@ -254,7 +277,7 @@ func BlueSkyToTwitterID(letterID string) *big.Int {
 }
 
 // TwitterIDToBlueSky converts a numeric ID to a letter ID representation using Base37
-func TwitterIDToBlueSky(numericID *big.Int) string {
+func TwitterIDToBlueSky(numericID big.Int) string {
 	if numericID.Cmp(big.NewInt(0)) == 0 {
 		return string(base38Chars[0])
 	}
@@ -264,7 +287,7 @@ func TwitterIDToBlueSky(numericID *big.Int) string {
 
 	for numericID.Cmp(big.NewInt(0)) > 0 {
 		remainder := new(big.Int)
-		numericID.DivMod(numericID, base, remainder)
+		numericID.DivMod(&numericID, base, remainder)
 		letterID = string(base38Chars[remainder.Int64()]) + letterID
 	}
 
@@ -290,7 +313,7 @@ func TwitterMsgIdToBluesky(id *big.Int) (*string, *time.Time, *string, error) {
 	// Although if it is a retweet, we can't rely on the timestamp in the ID, since we don't have the proper ID, only the reposter & the original tweet
 	// Theoretically we could hack it together since we know the time of the retweet (and the thing we are missing is the encoded timestamp), but that
 	// seems really finky
-	encodedId := TwitterIDToBlueSky(id)
+	encodedId := TwitterIDToBlueSky(*id)
 	uri := ""
 	retweetUserId := ""
 	timestamp := time.Time{}

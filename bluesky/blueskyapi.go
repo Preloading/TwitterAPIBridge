@@ -247,6 +247,17 @@ type RecordValue struct {
 	Reply *ReplySubject `json:"reply,omitempty"`
 }
 
+type Relationships struct {
+	DID        string `json:"did"`
+	Following  string `json:"following"`
+	FollowedBy string `json:"followedBy"`
+}
+
+type RelationshipsRes struct {
+	Actor         string          `json:"actor"`
+	Relationships []Relationships `json:"relationships"`
+}
+
 var userCache = bridge.NewCache(5 * time.Minute) // Cache TTL of 5 minutes
 
 func SendRequest(token *string, method string, url string, body io.Reader) (*http.Response, error) {
@@ -331,6 +342,7 @@ func RefreshToken(refreshToken string) (*AuthResponse, error) {
 
 func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
 	if user, found := userCache.Get(screen_name); found {
+		fmt.Println("cache hit")
 		return &user, nil
 	}
 
@@ -483,6 +495,38 @@ func GetUsersInfoRaw(token string, items []string, ignoreCache bool) ([]*User, e
 
 	wg.Wait()
 	return results, nil
+}
+
+// https://docs.bsky.app/docs/api/app-bsky-graph-get-relationships
+func GetRelationships(token string, source string, others []string) (*RelationshipsRes, error) {
+	url := "https://bsky.social/xrpc/app.bsky.graph.getRelationships" + "?actor=" + url.QueryEscape(source) + "&others=" + url.QueryEscape(strings.Join(others, ","))
+	fmt.Println(url)
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch relationships")
+	}
+
+	feeds := RelationshipsRes{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return nil, err
+	}
+
+	return &feeds, nil
 }
 
 func AuthorTTB(author User) *bridge.TwitterUser {

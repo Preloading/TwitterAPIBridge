@@ -48,6 +48,7 @@ func InitServer() {
 	app.Get("/1/users/lookup.json", UsersLookup)
 	app.Post("/1/users/lookup.json", UsersLookup)
 	app.Get("/1/friendships/lookup.xml", UserRelationships)
+	app.Get("/1/friendships/show.xml", GetUsersRelationship)
 
 	// Connect
 	app.Get("/1/users/search.json", UserSearch)

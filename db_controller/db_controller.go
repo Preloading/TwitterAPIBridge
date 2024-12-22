@@ -184,7 +184,7 @@ func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *str
 // - encryptionKey: The key used to encrypt the context.
 func SetTimelineContext(did string, tokenUUID string, lastMessageId big.Int, timelineContext string, encryptionKey string) error {
 	fmt.Println("Last Message ID: " + lastMessageId.String())
-	fmt.Println("Decoded ID: " + bridge.TwitterIDToBlueSky(&lastMessageId))
+	fmt.Println("Decoded ID: " + bridge.TwitterIDToBlueSky(lastMessageId))
 	encryptedLastMessageId, err := bridge.Encrypt(lastMessageId.String(), encryptionKey)
 	if err != nil {
 		return err

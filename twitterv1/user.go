@@ -20,7 +20,7 @@ func user_info(c *fiber.Ctx) error {
 		if !ok {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 		}
-		screen_name = bridge.TwitterIDToBlueSky(userID) // yup
+		screen_name = bridge.TwitterIDToBlueSky(*userID) // yup
 		if screen_name == "" {
 			return c.Status(fiber.StatusBadRequest).SendString("No screen_name or user_id provided")
 
@@ -66,7 +66,7 @@ func UsersLookup(c *fiber.Ctx) error {
 			if !ok {
 				return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 			}
-			handle := bridge.TwitterIDToBlueSky(userID)
+			handle := bridge.TwitterIDToBlueSky(*userID)
 			if handle != "" {
 				usersToLookUp = append(usersToLookUp, handle)
 			}
@@ -97,14 +97,17 @@ func UsersLookup(c *fiber.Ctx) error {
 	return c.JSON(users)
 }
 
+// Gets the relationship between the authenticated user and the users specified
 // another xml endpoint
 // https://github.com/RuaanV/MyTwit/blob/3466157350ad8ce2ca4e3503ae3cc5bbbe3d3de4/MyTwit/LinqToTwitterAg/Friendship/FriendshipRequestProcessor.cs#L118
 // and
 // https://web.archive.org/web/20120516155714/https://dev.twitter.com/docs/api/1/get/friendships/lookup
 func UserRelationships(c *fiber.Ctx) error {
 	actors := c.Query("user_id")
+	isID := true
 	if actors == "" {
 		actors = c.Query("screen_name")
+		isID = false
 		if actors == "" {
 			return c.Status(fiber.StatusBadRequest).SendString("No user_id provided")
 		}
@@ -120,8 +123,17 @@ func UserRelationships(c *fiber.Ctx) error {
 	if len(actorsArray) > 100 {
 		return c.Status(fiber.StatusBadRequest).SendString("Too many users to look up")
 	}
+	if isID {
+		for i, actor := range actorsArray {
+			actorID, ok := new(big.Int).SetString(actor, 10)
+			if !ok {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			}
+			actorsArray[i] = bridge.TwitterIDToBlueSky(*actorID)
+		}
+	}
 
-	relationships := []bridge.UserRelationship{}
+	relationships := []bridge.UsersRelationship{}
 	users, err := blueskyapi.GetUsersInfoRaw(*oauthToken, actorsArray, false)
 	for _, user := range users {
 		encodedUserId := *bridge.BlueSkyToTwitterID(user.DID)
@@ -145,7 +157,7 @@ func UserRelationships(c *fiber.Ctx) error {
 			connections.Connection = append(connections.Connection, bridge.Connection{Value: "blocked_by"}) // Complete guess
 		}
 
-		relationships = append(relationships, bridge.UserRelationship{
+		relationships = append(relationships, bridge.UsersRelationship{
 			Name: func() string {
 				if user.DisplayName == "" {
 					return user.Handle
@@ -175,4 +187,93 @@ func UserRelationships(c *fiber.Ctx) error {
 	newXml = strings.ReplaceAll(newXml, "</UserRelationship>", "</relationship>")
 
 	return c.SendString(newXml)
+}
+
+// Gets the relationship between two users
+// https://web.archive.org/web/20120516154953/https://dev.twitter.com/docs/api/1/get/friendships/show
+func GetUsersRelationship(c *fiber.Ctx) error {
+	// Get the actors
+	sourceActor := c.Query("source_id")
+	if sourceActor == "" {
+		sourceActor = c.Query("source_screen_name")
+		if sourceActor == "" {
+			return c.Status(fiber.StatusBadRequest).SendString("No source_id provided")
+		}
+	} else {
+		sourceIDInt, ok := new(big.Int).SetString(sourceActor, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid source_id provided")
+		}
+		sourceActor = bridge.TwitterIDToBlueSky(*sourceIDInt)
+	}
+
+	targetActor := c.Query("target_id")
+	if targetActor == "" {
+		targetActor = c.Query("target_screen_name")
+		if targetActor == "" {
+			return c.Status(fiber.StatusBadRequest).SendString("No source_id provided")
+		}
+	} else {
+		targetIDInt, ok := new(big.Int).SetString(targetActor, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid source_id provided")
+		}
+		targetActor = bridge.TwitterIDToBlueSky(*targetIDInt)
+	}
+
+	// auth
+	_, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// It looks like there's a bug where I can't pass handles into GetRelationships, but we need to get the handle anyways, so this shouldn't impact that much
+
+	targetUser, err := blueskyapi.GetUserInfo(*oauthToken, targetActor)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch target user")
+	}
+	// Possible optimization: if the source user is us, we can skip the api call, and just use viewer info
+	sourceUser, err := blueskyapi.GetUserInfo(*oauthToken, sourceActor)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch source user")
+	}
+
+	fmt.Println("ID " + sourceUser.ID.String())
+	targetDID := bridge.TwitterIDToBlueSky(targetUser.ID) // not the most efficient way to do this, but it works
+	fmt.Println("ID " + sourceUser.ID.String())
+	sourceDID := bridge.TwitterIDToBlueSky(sourceUser.ID)
+	fmt.Println("ID " + sourceUser.ID.String())
+
+	relationship, err := blueskyapi.GetRelationships(*oauthToken, sourceDID, []string{targetDID})
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch relationship")
+	}
+	defaultTrue := true // holy fuck i hate this
+
+	friendship := bridge.SourceTargetFriendship{
+		Target: bridge.UserFriendship{
+			ID:         targetUser.ID,
+			IDStr:      targetUser.ID.String(),
+			ScreenName: targetUser.ScreenName,
+			Following:  relationship.Relationships[0].Following != "",
+			FollowedBy: relationship.Relationships[0].FollowedBy != "",
+		},
+		Source: bridge.UserFriendship{
+			ID:         sourceUser.ID,
+			IDStr:      sourceUser.ID.String(),
+			ScreenName: sourceUser.ScreenName,
+			Following:  relationship.Relationships[0].FollowedBy != "",
+			FollowedBy: relationship.Relationships[0].Following != "",
+			CanDM:      &defaultTrue,
+		},
+	}
+
+	xml, err := bridge.XMLEncoder(friendship, "SourceTargetFriendship", "relationship")
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("failed to encode XML")
+	}
+
+	return c.SendString(*xml)
 }
