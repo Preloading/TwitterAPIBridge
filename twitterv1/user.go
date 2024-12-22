@@ -10,16 +10,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// groupUsers splits a slice of users into chunks of the specified size
-func groupUsers(users []string, size int) [][]string {
-	var groups [][]string
-	for size < len(users) {
-		users, groups = users[size:], append(groups, users[0:size:size])
-	}
-	groups = append(groups, users)
-	return groups
-}
-
 // https://web.archive.org/web/20120508075505/https://dev.twitter.com/docs/api/1/get/users/show
 func user_info(c *fiber.Ctx) error {
 	screen_name := c.Query("screen_name")

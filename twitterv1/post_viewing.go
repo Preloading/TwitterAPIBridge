@@ -62,7 +62,7 @@ func home_timeline(c *fiber.Ctx) error {
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
-		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason))
+		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken))
 	}
 
 	// Store the oldest message id, along with our context in the DB
@@ -105,9 +105,6 @@ func RelatedResults(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	uri := *uriPtr
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
-	}
 
 	_, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
@@ -119,6 +116,17 @@ func RelatedResults(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+
+	// Caching the user DIDs efficiently
+	userDIDs := []string{}
+
+	for _, item := range *thread.Thread.Replies {
+		if !slices.Contains(userDIDs, item.Post.Author.DID) {
+			userDIDs = append(userDIDs, item.Post.Author.DID)
+		}
+	}
+
+	blueskyapi.GetUsersInfo(*oauthToken, userDIDs)
 
 	postAuthor := bridge.BlueSkyToTwitterID(thread.Thread.Post.Author.DID)
 
@@ -134,7 +142,7 @@ func RelatedResults(c *fiber.Ctx) error {
 		twitterReplies.Results = append(twitterReplies.Results, bridge.Results{
 			Kind:  "Tweet",
 			Score: 1.0,
-			Value: TranslatePostToTweet(reply.Post, uri, postAuthor.String(), &thread.Thread.Post.Record.CreatedAt, nil),
+			Value: TranslatePostToTweet(reply.Post, uri, postAuthor.String(), &thread.Thread.Post.Record.CreatedAt, nil, *oauthToken),
 			Annotations: []bridge.Annotations{
 				{
 					ConversationRole: "Descendant",
@@ -160,9 +168,6 @@ func GetStatusFromId(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	uri := *uriPtr
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
-	}
 
 	fmt.Println("URI:", uri)
 	_, _, oauthToken, err := GetAuthFromReq(c)
@@ -179,13 +184,13 @@ func GetStatusFromId(c *fiber.Ctx) error {
 
 	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
 	if thread.Thread.Parent == nil {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil))
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken))
 	} else {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil))
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil, *oauthToken))
 	}
 }
 
-func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason) bridge.Tweet {
+func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string) bridge.Tweet {
 	tweetEntities := bridge.Entities{
 		Hashtags:     nil,
 		Urls:         nil,
@@ -256,6 +261,16 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		}
 	}
 
+	// Get the user info
+	var author *bridge.TwitterUser
+	author, err := blueskyapi.GetUserInfo(token, tweet.Author.DID)
+	if err != nil {
+		fmt.Println("Error:", err)
+		// fallback
+		authorPtr := GetUserInfoFromTweetData(tweet)
+		author = &authorPtr
+	}
+
 	convertedTweet := bridge.Tweet{
 		Coordinates: nil,
 		Favourited:  tweet.Viewer.Like != nil,
@@ -306,56 +321,8 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			return &idStr
 		}(),
 		InReplyToScreenName: &tweet.Author.DisplayName,
-		User: bridge.TwitterUser{
-			Name: func() string {
-				if tweet.Author.DisplayName == "" {
-					return tweet.Author.Handle
-				}
-				return tweet.Author.DisplayName
-			}(),
-			ProfileSidebarBorderColor: "eeeeee",
-			ProfileBackgroundTile:     false,
-			ProfileSidebarFillColor:   "efefef",
-			CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt),
-			ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
-			// ProfileImageURLHttps:           "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
-			Location:            "Twitter",
-			ProfileLinkColor:    "009999",
-			FollowRequestSent:   false,
-			URL:                 "",
-			ScreenName:          tweet.Author.Handle,
-			ContributorsEnabled: false,
-			UtcOffset:           nil,
-			IsTranslator:        false,
-			ID:                  *bridge.BlueSkyToTwitterID(tweet.URI),
-			// IDStr:                          bridge.BlueSkyToTwitterID(tweet.URI).String(),
-			ProfileUseBackgroundImage: false,
-			ProfileTextColor:          "333333",
-			Protected:                 false,
-			Lang:                      "en",
-			Notifications:             nil,
-			TimeZone:                  nil,
-			Verified:                  false,
-			ProfileBackgroundColor:    "C0DEED",
-			GeoEnabled:                true,
-			Description:               "",
-			ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
-			// ProfileBackgroundImageURLHttps: "http://a0.twimg.com/images/themes/theme1/bg.png",
-			Following: nil,
-
-			// huh
-			DefaultProfile:      false,
-			DefaultProfileImage: false,
-			ShowAllInlineMedia:  false,
-
-			// User Stats
-			// ListedCount:     0,
-			// FavouritesCount: 0,
-			// FollowersCount:  200,
-			// FriendsCount:    100,
-			// StatusesCount:   333,
-		},
-		Source: "Bluesky",
+		User:                *author,
+		Source:              "Bluesky",
 		InReplyToStatusID: func() *big.Int {
 			if replyMsgBskyURI == "" {
 				return nil
@@ -375,13 +342,66 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			if isRetweet {
 				retweet_bsky := tweet
 				retweet_bsky.Author = bsky_retweet_author
-				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil)
+				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil, token)
 				return &translatedTweet
 			}
 			return nil
 		}(),
 	}
 	return convertedTweet
+}
+
+// This is "depercated"/a togglable option in the config (eventually)
+func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
+	return bridge.TwitterUser{
+		Name: func() string {
+			if tweet.Author.DisplayName == "" {
+				return tweet.Author.Handle
+			}
+			return tweet.Author.DisplayName
+		}(),
+		ProfileSidebarBorderColor: "eeeeee",
+		ProfileBackgroundTile:     false,
+		ProfileSidebarFillColor:   "efefef",
+		CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt),
+		ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
+		// ProfileImageURLHttps:           "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
+		Location:            "Twitter",
+		ProfileLinkColor:    "009999",
+		FollowRequestSent:   false,
+		URL:                 "",
+		ScreenName:          tweet.Author.Handle,
+		ContributorsEnabled: false,
+		UtcOffset:           nil,
+		IsTranslator:        false,
+		ID:                  *bridge.BlueSkyToTwitterID(tweet.URI),
+		// IDStr:                          bridge.BlueSkyToTwitterID(tweet.URI).String(),
+		ProfileUseBackgroundImage: false,
+		ProfileTextColor:          "333333",
+		Protected:                 false,
+		Lang:                      "en",
+		Notifications:             nil,
+		TimeZone:                  nil,
+		Verified:                  false,
+		ProfileBackgroundColor:    "C0DEED",
+		GeoEnabled:                true,
+		Description:               "",
+		ProfileBackgroundImageURL: "http://a0.twimg.com/images/themes/theme1/bg.png",
+		// ProfileBackgroundImageURLHttps: "http://a0.twimg.com/images/themes/theme1/bg.png",
+		Following: nil,
+
+		// huh
+		DefaultProfile:      false,
+		DefaultProfileImage: false,
+		ShowAllInlineMedia:  false,
+
+		// User Stats
+		// ListedCount:     0,
+		// FavouritesCount: 0,
+		// FollowersCount:  200,
+		// FriendsCount:    100,
+		// StatusesCount:   333,
+	}
 }
 
 // This request is an "internal" request, and thus, these are very little to no docs. this is a problem.

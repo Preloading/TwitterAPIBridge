@@ -39,9 +39,9 @@ func status_update(c *fiber.Ctx) error {
 	}
 
 	if thread.Thread.Parent == nil {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil))
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken))
 	} else {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil))
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil, *oauthToken))
 	}
 }
 
@@ -72,7 +72,7 @@ func retweet(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
 	}
 
-	retweet := TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil)
+	retweet := TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil, *oauthToken)
 	retweet.Retweeted = true
 	now := time.Now() // pain, also fix this to use the proper timestamp according to the server.
 	retweet.ID = bridge.BskyMsgToTwitterID(*retweetPostURI, &now, user_did)
@@ -80,7 +80,7 @@ func retweet(c *fiber.Ctx) error {
 
 	return c.JSON(bridge.Retweet{
 		Tweet:           retweet,
-		RetweetedStatus: TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil), // TODO: make this respond with proper retweet data
+		RetweetedStatus: TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Post.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil, *oauthToken), // TODO: make this respond with proper retweet data
 	})
 }
 
@@ -113,7 +113,7 @@ func favourite(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to like post")
 	}
 
-	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil)
+	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil, *oauthToken)
 
 	return c.JSON(newTweet)
 }
@@ -137,9 +137,6 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	postId = *postIdPtr
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
-	}
 
 	err, post := blueskyapi.UnlikePost(*oauthToken, postId, *user_did)
 
@@ -148,7 +145,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to unlike post")
 	}
 
-	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil)
+	newTweet := TranslatePostToTweet(post.Thread.Post, post.Thread.Post.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil, *oauthToken)
 
 	return c.JSON(newTweet)
 }
