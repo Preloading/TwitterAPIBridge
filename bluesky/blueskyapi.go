@@ -342,7 +342,6 @@ func RefreshToken(refreshToken string) (*AuthResponse, error) {
 
 func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
 	if user, found := userCache.Get(screen_name); found {
-		fmt.Println("cache hit")
 		return &user, nil
 	}
 
