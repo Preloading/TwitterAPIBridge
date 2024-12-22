@@ -20,13 +20,22 @@ func status_update(c *fiber.Ctx) error {
 
 	status := c.FormValue("status")
 	trim_user := c.FormValue("trim_user")
-	in_reply_to_status_id := c.FormValue("in_reply_to_status_id")
+	encoded_in_reply_to_status_id_str := c.FormValue("in_reply_to_status_id")
+	encoded_in_reply_to_status_id_int := new(big.Int)
+	encoded_in_reply_to_status_id_int, ok := encoded_in_reply_to_status_id_int.SetString(encoded_in_reply_to_status_id_str, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
+	}
+	in_reply_to_status_id, _, _, err := bridge.TwitterMsgIdToBluesky(encoded_in_reply_to_status_id_int)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
+	}
 
 	fmt.Println("Status:", status)
 	fmt.Println("TrimUser:", trim_user)
-	fmt.Println("InReplyToStatusID:", in_reply_to_status_id)
+	fmt.Println("InReplyToStatusID:", encoded_in_reply_to_status_id_int)
 
-	thread, err := blueskyapi.UpdateStatus(*oauthToken, *my_did, status, &in_reply_to_status_id)
+	thread, err := blueskyapi.UpdateStatus(*oauthToken, *my_did, status, in_reply_to_status_id)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -59,10 +68,6 @@ func retweet(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	postId = *postIdPtr
-
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
-	}
 
 	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*oauthToken, postId, *user_did)
 
@@ -102,9 +107,6 @@ func favourite(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	postId = *postIdPtr
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
-	}
 
 	fmt.Println("Post ID:", postId)
 

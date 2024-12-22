@@ -47,12 +47,13 @@ type User struct {
 }
 
 type PostRecord struct {
-	Type      string    `json:"$type"`
-	CreatedAt time.Time `json:"createdAt"`
-	Embed     Embed     `json:"embed"`
-	Facets    []Facet   `json:"facets"`
-	Langs     []string  `json:"langs"`
-	Text      string    `json:"text"`
+	Type      string        `json:"$type"`
+	CreatedAt time.Time     `json:"createdAt"`
+	Embed     Embed         `json:"embed"`
+	Facets    []Facet       `json:"facets"`
+	Langs     []string      `json:"langs"`
+	Text      string        `json:"text"`
+	Reply     *ReplySubject `json:"reply,omitempty"`
 }
 
 // Specifically for reposts
@@ -176,14 +177,20 @@ type PostInteractionRecord struct {
 }
 
 type CreatePostRecord struct {
-	Type      string    `json:"$type"`
-	Text      string    `json:"text"`
-	CreatedAt time.Time `json:"createdAt"`
+	Type      string        `json:"$type"`
+	Text      string        `json:"text"`
+	CreatedAt time.Time     `json:"createdAt"`
+	Reply     *ReplySubject `json:"reply,omitempty"`
 }
 
 type Subject struct {
 	URI string `json:"uri"`
 	CID string `json:"cid"`
+}
+
+type ReplySubject struct {
+	Root   Subject `json:"root"`
+	Parent Subject `json:"parent"`
 }
 
 type Commit struct {
@@ -216,6 +223,16 @@ type ItemByWithDate struct {
 
 type UserSearchResult struct {
 	Actors []User `json:"actors"`
+}
+
+type RecordResponse struct {
+	URI   string      `json:"uri"`
+	CID   string      `json:"cid"`
+	Value RecordValue `json:"value"`
+}
+
+type RecordValue struct {
+	Reply *ReplySubject `json:"reply,omitempty"`
 }
 
 func SendRequest(token *string, method string, url string, body io.Reader) (*http.Response, error) {
@@ -459,32 +476,34 @@ func GetPost(token string, uri string, depth int, parentHeight int) (error, *Thr
 
 // This handles both normal & replys
 func UpdateStatus(token string, my_did string, status string, in_reply_to *string) (*ThreadRoot, error) {
-	url := "https://public.bsky.social/xrpc/com.atproto.repo.createRecord"
+	url := "https://bsky.social/xrpc/com.atproto.repo.createRecord"
 
-	reqBody := []byte{}
+	var replySubject *ReplySubject
 	var err error
 
-	if in_reply_to == nil || *in_reply_to == "" {
-
-		payload := CreateRecordPayload{
-			Collection: "app.bsky.feed.post",
-			Repo:       my_did,
-			Record: CreatePostRecord{
-				Type:      "app.bsky.feed.post",
-				Text:      status,
-				CreatedAt: time.Now().UTC(),
-			},
-		}
-
-		reqBody, err = json.Marshal(payload)
+	// Replying
+	if in_reply_to != nil && *in_reply_to != "" {
+		replySubject, err = GetReplyRefs(token, *in_reply_to)
 		if err != nil {
-			return nil, errors.New("failed to marshal payload")
+			return nil, errors.New("failed to fetch reply refs")
 		}
-
-	} else {
-		return nil, errors.New("in_reply_to not implemented")
 	}
 
+	payload := CreateRecordPayload{
+		Collection: "app.bsky.feed.post",
+		Repo:       my_did,
+		Record: CreatePostRecord{
+			Type:      "app.bsky.feed.post",
+			Text:      status,
+			CreatedAt: time.Now().UTC(),
+			Reply:     replySubject,
+		},
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return nil, errors.New("failed to marshal payload")
+	}
 	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, errors.New("failed to post")
@@ -504,6 +523,8 @@ func UpdateStatus(token string, my_did string, status string, in_reply_to *strin
 	if err := json.NewDecoder(resp.Body).Decode(&postData); err != nil {
 		return nil, err
 	}
+
+	time.Sleep(100 * time.Millisecond) // Bluesky doesn't update instantly, so we wait a bit before fetching the post
 
 	err, thread := GetPost(token, postData.URI, 0, 1)
 	if err != nil {
@@ -741,4 +762,42 @@ func UserSearch(token string, query string) ([]User, error) {
 		return nil, err
 	}
 	return users.Actors, nil
+}
+
+// thank you https://docs.bsky.app/blog/create-post#replies
+func GetReplyRefs(token string, parentURI string) (*ReplySubject, error) {
+	// Get the parent post
+	err, parentThread := GetPost(token, parentURI, 0, 1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch parent post: %w", err)
+	}
+
+	// If parent has a reply reference, fetch the root post
+	var rootURI string
+	var rootCID string
+
+	if parentThread.Thread.Post.Record.Reply != nil {
+		// Get the root post
+		rootURI = parentThread.Thread.Post.Record.Reply.Root.URI
+		err, rootThread := GetPost(token, rootURI, 0, 1)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch root post: %w", err)
+		}
+		rootCID = rootThread.Thread.Post.CID
+	} else {
+		// If parent has no reply reference, it's a top-level post, so it's also the root
+		rootURI = parentThread.Thread.Post.URI
+		rootCID = parentThread.Thread.Post.CID
+	}
+
+	return &ReplySubject{
+		Root: Subject{
+			URI: rootURI,
+			CID: rootCID,
+		},
+		Parent: Subject{
+			URI: parentThread.Thread.Post.URI,
+			CID: parentThread.Thread.Post.CID,
+		},
+	}, nil
 }

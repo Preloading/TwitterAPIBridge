@@ -391,9 +391,6 @@ func TweetInfo(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	id := *idPtr
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
-	}
 
 	err, thread := blueskyapi.GetPost(*oauthToken, id, 1, 0)
 
