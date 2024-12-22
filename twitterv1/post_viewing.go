@@ -13,8 +13,28 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
 func home_timeline(c *fiber.Ctx) error {
+	return convert_timeline(c, "", blueskyapi.GetTimeline)
+}
+
+func user_timeline(c *fiber.Ctx) error {
+	actor := c.Query("screen_name")
+	if actor == "" {
+		actor = c.Query("user_id")
+		if actor == "" {
+			return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+		}
+		actorBigInt, ok := new(big.Int).SetString(actor, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		actor = bridge.TwitterIDToBlueSky(actorBigInt)
+	}
+	return convert_timeline(c, actor, blueskyapi.GetUserTimeline)
+}
+
+// https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
+func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string) (error, *blueskyapi.Timeline)) error {
 	// Get all of our keys, beeps, and bops
 	_, _, oauthToken, err := GetAuthFromReq(c)
 
@@ -40,7 +60,11 @@ func home_timeline(c *fiber.Ctx) error {
 		context = date.Format(time.RFC3339)
 	}
 
-	err, res := blueskyapi.GetTimeline(*oauthToken, context)
+	err, res := fetcher(*oauthToken, context, param)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
+	}
 
 	if err != nil {
 		fmt.Println("Error:", err)

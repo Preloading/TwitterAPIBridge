@@ -454,13 +454,47 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
-func GetTimeline(token string, context string) (error, *Timeline) {
+func GetTimeline(token string, context string, feed string) (error, *Timeline) {
 	url := "https://bsky.social/xrpc/app.bsky.feed.getTimeline"
 	if context != "" {
 		url = "https://bsky.social/xrpc/app.bsky.feed.getTimeline?cursor=" + context
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch timeline"), nil
+	}
+
+	feeds := Timeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return err, nil
+	}
+
+	return nil, &feeds
+}
+
+// https://docs.bsky.app/docs/api/app-bsky-feed-get-author-feed
+func GetUserTimeline(token string, context string, actor string) (error, *Timeline) {
+	apiURL := "https://bsky.social/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor)
+	if context != "" {
+		apiURL = "https://bsky.social/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return err, nil
 	}
