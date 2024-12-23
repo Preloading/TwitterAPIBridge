@@ -68,8 +68,13 @@ type Tweet struct {
 	RetweetCount int `json:"retweet_count"`
 
 	// Our user's interaction with the tweet
-	Retweeted       bool   `json:"retweeted"`
-	RetweetedStatus *Tweet `json:"retweeted_status,omitempty"`
+	Retweeted          bool                `json:"retweeted"`
+	RetweetedStatus    *Tweet              `json:"retweeted_status,omitempty"`
+	CurrentUserRetweet *CurrentUserRetweet `json:"current_user_retweet,omitempty"`
+}
+type CurrentUserRetweet struct {
+	ID    big.Int `json:"id"`
+	IDStr string  `json:"id_str"`
 }
 
 type TwitterUser struct {

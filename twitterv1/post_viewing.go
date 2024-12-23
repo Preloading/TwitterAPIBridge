@@ -84,28 +84,6 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken))
 	}
 
-	// Store the oldest message id, along with our context in the DB
-	oldestTweet := tweets[0]
-	for _, tweet := range tweets {
-
-		// TODO: Remove this later once retweets are working better
-		if tweet.RetweetedStatus != nil {
-			continue
-		}
-
-		tweetTime, err := bridge.TwitterTimeParser(tweet.CreatedAt)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("Failed to parse tweet time")
-		}
-		oldestTweetTime, err := bridge.TwitterTimeParser(oldestTweet.CreatedAt)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("Failed to parse oldest tweet time")
-		}
-		if tweetTime.Before(oldestTweetTime) {
-			oldestTweet = tweet
-		}
-	}
-
 	return c.JSON(tweets)
 
 }
@@ -267,7 +245,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	}
 
-	bsky_retweet_author := tweet.Author
+	// bsky_retweet_og_author := tweet.Author
 
 	isRetweet := false
 	// Checking if this tweet is a retweet
@@ -319,8 +297,6 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			id := bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt, nil)
 			return id.String()
 		}(),
-		Retweeted:         tweet.Viewer.Repost != nil,
-		RetweetCount:      tweet.RepostCount,
 		Geo:               nil,
 		Place:             nil,
 		PossiblySensitive: false,
@@ -357,12 +333,19 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			idStr := id.String()
 			return &idStr
 		}(),
-		RetweetedStatus: func() *bridge.Tweet {
-			if isRetweet {
-				retweet_bsky := tweet
-				retweet_bsky.Author = bsky_retweet_author
-				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil, token)
-				return &translatedTweet
+		Retweeted:    tweet.Viewer.Repost != nil,
+		RetweetCount: tweet.RepostCount,
+		CurrentUserRetweet: func() *bridge.CurrentUserRetweet {
+			if tweet.Viewer.Repost != nil && isRetweet {
+				retweetId := bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
+				return &bridge.CurrentUserRetweet{
+					ID:    retweetId,
+					IDStr: retweetId.String(),
+				}
+			}
+			if tweet.Viewer.Repost != nil && !isRetweet {
+				fmt.Println("what the fuck!")
+				fmt.Println("tweet.Viewer.Repost")
 			}
 			return nil
 		}(),
