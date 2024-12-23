@@ -23,12 +23,12 @@ func status_update(c *fiber.Ctx) error {
 	encoded_in_reply_to_status_id_str := c.FormValue("in_reply_to_status_id")
 	encoded_in_reply_to_status_id_int := new(big.Int)
 	encoded_in_reply_to_status_id_int, ok := encoded_in_reply_to_status_id_int.SetString(encoded_in_reply_to_status_id_str, 10)
-	if !ok {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
-	}
-	in_reply_to_status_id, _, _, err := bridge.TwitterMsgIdToBluesky(encoded_in_reply_to_status_id_int)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
+	var in_reply_to_status_id *string
+	if ok {
+		in_reply_to_status_id, _, _, err = bridge.TwitterMsgIdToBluesky(encoded_in_reply_to_status_id_int)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
+		}
 	}
 
 	thread, err := blueskyapi.UpdateStatus(*oauthToken, *my_did, status, in_reply_to_status_id)
@@ -169,4 +169,64 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	}
 
 	return c.JSON(newTweet)
+}
+
+// This handles deleting a tweet, retweet, or reply
+func DeleteTweet(c *fiber.Ctx) error {
+	postId := c.Params("id")
+	user_did, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// Fetch ID
+	idBigInt, ok := new(big.Int).SetString(postId, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	postIdPtr, _, repostUser, err := bridge.TwitterMsgIdToBluesky(idBigInt)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+	}
+	postId = *postIdPtr
+
+	err, postToDelete := blueskyapi.GetPost(*oauthToken, postId, 0, 0)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get post to delete")
+	}
+
+	collection := "app.bsky.feed.post"
+	// Check if the post is a retweet
+	if repostUser != nil && *repostUser != "" {
+		if repostUser != user_did {
+			return c.Status(fiber.StatusUnauthorized).SendString("You can only delete your own posts")
+		}
+		collection = "app.bsky.feed.repost"
+		postId = *postToDelete.Thread.Post.Viewer.Repost
+	} else {
+		if postToDelete.Thread.Post.Author.DID != *user_did {
+			return c.Status(fiber.StatusUnauthorized).SendString("You can only delete your own posts")
+		}
+	}
+
+	if err := blueskyapi.DeleteRecord(*oauthToken, postId, *user_did, collection); err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to delete post")
+	}
+
+	postToDelete.Thread.Post.URI = postId
+	postToDelete.Thread.Post.Author.DID = *user_did
+
+	return c.JSON(
+		func() bridge.Tweet { // TODO: make this respond with proper retweet data
+			if postToDelete.Thread.Parent == nil {
+				return TranslatePostToTweet(postToDelete.Thread.Post, "", "", nil, nil, *oauthToken)
+			} else {
+				return TranslatePostToTweet(postToDelete.Thread.Post, postToDelete.Thread.Parent.URI, postToDelete.Thread.Parent.Author.DID, &postToDelete.Thread.Parent.Record.CreatedAt, nil, *oauthToken)
+			}
+		}(),
+	)
 }

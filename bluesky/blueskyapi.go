@@ -499,7 +499,6 @@ func GetUsersInfoRaw(token string, items []string, ignoreCache bool) ([]*User, e
 // https://docs.bsky.app/docs/api/app-bsky-graph-get-relationships
 func GetRelationships(token string, source string, others []string) (*RelationshipsRes, error) {
 	url := "https://bsky.social/xrpc/app.bsky.graph.getRelationships" + "?actor=" + url.QueryEscape(source) + "&others=" + url.QueryEscape(strings.Join(others, ","))
-	fmt.Println(url)
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -540,7 +539,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		ProfileSidebarBorderColor: "87bc44",
 		ProfileBackgroundTile:     false,
 		CreatedAt:                 bridge.TwitterTimeConverter(author.CreatedAt),
-		ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":thumb",
+		ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger",
 		Location:                  "",
 		ProfileLinkColor:          "0000ff",
 		IsTranslator:              false,
@@ -725,6 +724,36 @@ func UpdateStatus(token string, my_did string, status string, in_reply_to *strin
 	}
 
 	return thread, nil
+}
+
+func DeleteRecord(token string, id string, my_did string, collection string) error {
+	url := "https://bsky.social/xrpc/com.atproto.repo.deleteRecord"
+
+	payload := DeleteRecordPayload{
+		Collection: collection,
+		Repo:       my_did,
+		RKey:       strings.Split(id, "/"+collection+"/")[1],
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return errors.New("failed to marshal payload")
+	}
+
+	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to retweet: " + bodyString)
+	}
+	return nil
 }
 
 func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *string) {

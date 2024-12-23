@@ -239,11 +239,8 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch source user")
 	}
 
-	fmt.Println("ID " + sourceUser.ID.String())
 	targetDID := bridge.TwitterIDToBlueSky(targetUser.ID) // not the most efficient way to do this, but it works
-	fmt.Println("ID " + sourceUser.ID.String())
 	sourceDID := bridge.TwitterIDToBlueSky(sourceUser.ID)
-	fmt.Println("ID " + sourceUser.ID.String())
 
 	relationship, err := blueskyapi.GetRelationships(*oauthToken, sourceDID, []string{targetDID})
 	if err != nil {

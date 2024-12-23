@@ -383,7 +383,7 @@ func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
 		ProfileBackgroundTile:     false,
 		ProfileSidebarFillColor:   "efefef",
 		CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt),
-		ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
+		ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + ":profile_bigger",
 		// ProfileImageURLHttps:           "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
 		Location:            "Twitter",
 		ProfileLinkColor:    "009999",

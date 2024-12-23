@@ -35,6 +35,7 @@ func InitServer() {
 	app.Post("/1/statuses/retweet/:id.json", retweet)
 	app.Post("/1/favorites/create/:id.json", favourite)
 	app.Post("/1/favorites/destroy/:id.json", Unfavourite)
+	app.Post("/1/statuses/destroy/:id.json", DeleteTweet)
 
 	// Posts
 	app.Get("/1/statuses/home_timeline.json", home_timeline)
