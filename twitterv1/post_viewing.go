@@ -245,7 +245,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	}
 
-	// bsky_retweet_og_author := tweet.Author
+	bsky_retweet_og_author := tweet.Author
 
 	isRetweet := false
 	// Checking if this tweet is a retweet
@@ -335,17 +335,29 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		}(),
 		Retweeted:    tweet.Viewer.Repost != nil,
 		RetweetCount: tweet.RepostCount,
+		RetweetedStatus: func() *bridge.Tweet {
+			if isRetweet {
+				retweet_bsky := tweet
+				retweet_bsky.Author = bsky_retweet_og_author
+				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil, token)
+				return &translatedTweet
+			}
+			return nil
+		}(),
 		CurrentUserRetweet: func() *bridge.CurrentUserRetweet {
-			if tweet.Viewer.Repost != nil && isRetweet {
-				retweetId := bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
+			if tweet.Viewer.Repost != nil {
+				RepostRecord, err := blueskyapi.GetRecord(*tweet.Viewer.Repost)
+				if err != nil {
+					fmt.Println("Error:", err)
+					return nil
+				}
+
+				_, my_did, _ := blueskyapi.GetURIComponents(*tweet.Viewer.Repost)
+				retweetId := bridge.BskyMsgToTwitterID(tweet.URI, &RepostRecord.Value.CreatedAt, &my_did)
 				return &bridge.CurrentUserRetweet{
 					ID:    retweetId,
 					IDStr: retweetId.String(),
 				}
-			}
-			if tweet.Viewer.Repost != nil && !isRetweet {
-				fmt.Println("what the fuck!")
-				fmt.Println("tweet.Viewer.Repost")
 			}
 			return nil
 		}(),

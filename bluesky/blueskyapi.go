@@ -244,7 +244,8 @@ type RecordResponse struct {
 }
 
 type RecordValue struct {
-	Reply *ReplySubject `json:"reply,omitempty"`
+	Reply     *ReplySubject `json:"reply,omitempty"`
+	CreatedAt time.Time     `json:"createdAt,omitempty"`
 }
 
 type Relationships struct {
@@ -1022,4 +1023,47 @@ func GetReplyRefs(token string, parentURI string) (*ReplySubject, error) {
 			CID: parentThread.Thread.Post.CID,
 		},
 	}, nil
+}
+
+func GetRecord(uri string) (*RecordResponse, error) {
+	collection, repo, rkey := GetURIComponents(uri)
+
+	url := "https://public.bsky.social/xrpc/com.atproto.repo.getRecord?collection=" + collection + "&repo=" + repo + "&rkey=" + rkey
+
+	resp, err := SendRequest(nil, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch record")
+	}
+
+	record := RecordResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(&record); err != nil {
+		return nil, err
+	}
+
+	return &record, nil
+}
+
+// Gets the URI components
+//
+// @param uri: The URI to ge split
+// @return: collection, repo, rkey
+func GetURIComponents(uri string) (string, string, string) {
+	uriSplit := strings.Split(uri, "/")
+	// Example URI
+	// at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.repost/3lcq7ddjinu2h
+	return uriSplit[3], uriSplit[2], uriSplit[4]
 }
