@@ -280,67 +280,6 @@ func SendRequest(token *string, method string, url string, body io.Reader) (*htt
 	return resp, nil
 }
 
-func Authenticate(username, password string) (*AuthResponse, error) {
-	url := "https://bsky.social/xrpc/com.atproto.server.createSession"
-
-	authReq := AuthRequest{
-		Identifier: username,
-		Password:   password,
-	}
-
-	reqBody, err := json.Marshal(authReq)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := SendRequest(nil, http.MethodPost, url, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		bodyString := string(bodyBytes)
-		fmt.Println("Response Status:", resp.StatusCode)
-		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("authentication failed")
-	}
-
-	var authResp AuthResponse
-	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
-		return nil, err
-	}
-
-	return &authResp, nil
-}
-
-// TODO: This looks like it's a bsky.social specific endpoint, can we get the user's server?
-func RefreshToken(refreshToken string) (*AuthResponse, error) {
-	url := "https://bsky.social/xrpc/com.atproto.server.refreshSession"
-
-	resp, err := SendRequest(&refreshToken, http.MethodPost, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		bodyString := string(bodyBytes)
-		fmt.Println("Response Status:", resp.StatusCode)
-		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("reauth failed")
-	}
-
-	var authResp AuthResponse
-	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
-		return nil, err
-	}
-
-	return &authResp, nil
-}
-
 func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
 	if user, found := userCache.Get(screen_name); found {
 		return &user, nil

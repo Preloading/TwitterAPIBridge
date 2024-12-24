@@ -24,7 +24,7 @@ func access_token(c *fiber.Ctx) error {
 	authUsername := c.FormValue("x_auth_username")
 
 	if authMode == "client_auth" {
-		res, err := blueskyapi.Authenticate(authUsername, authPassword)
+		res, pds, err := blueskyapi.Authenticate(authUsername, authPassword)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return c.SendStatus(401)
@@ -48,7 +48,7 @@ func access_token(c *fiber.Ctx) error {
 			return c.SendStatus(500)
 		}
 
-		uuid, err := db_controller.StoreToken(res.DID, res.AccessJwt, res.RefreshJwt, encryptionkey, *access_token_expiry, *refresh_token_expiry)
+		uuid, err := db_controller.StoreToken(res.DID, *pds, res.AccessJwt, res.RefreshJwt, encryptionkey, *access_token_expiry, *refresh_token_expiry)
 
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -104,7 +104,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, error) {
 	encryptionKey = strings.ReplaceAll(encryptionKey, "_", "/")
 
 	// Now onto getting the access token from the database.
-	accessJwt, refreshJwt, access_expiry, refresh_expiry, err := db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey)
+	accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, err := db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey)
 
 	if err != nil {
 		return nil, nil, nil, err
@@ -123,7 +123,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, error) {
 		}
 
 		// Our refresh token is still valid. Lets refresh our access token.
-		new_auth, err := blueskyapi.RefreshToken(*refreshJwt)
+		new_auth, err := blueskyapi.RefreshToken(*userPDS, *refreshJwt)
 
 		if err != nil {
 			return nil, nil, nil, err
