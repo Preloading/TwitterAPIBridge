@@ -65,7 +65,7 @@ func retweet(c *fiber.Ctx) error {
 	}
 	postId = *postIdPtr
 
-	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*pds, *oauthToken, postId, *user_did)
+	err, originalPost, blueskyRepostURI := blueskyapi.ReTweet(*pds, *oauthToken, postId, *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -80,9 +80,10 @@ func retweet(c *fiber.Ctx) error {
 	}
 	retweet.Retweeted = true
 	now := time.Now() // pain, also fix this to use the proper timestamp according to the server.
-	retweetId := bridge.BskyMsgToTwitterID(*retweetPostURI, &now, user_did)
+	retweetId := bridge.BskyMsgToTwitterID(originalPost.Thread.Post.URI, &now, user_did)
 	retweet.ID = &retweetId
 	retweet.IDStr = retweet.ID.String()
+	originalPost.Thread.Post.Viewer.Repost = blueskyRepostURI
 
 	return c.JSON(bridge.Retweet{
 		Tweet: retweet,
@@ -202,7 +203,7 @@ func DeleteTweet(c *fiber.Ctx) error {
 	collection := "app.bsky.feed.post"
 	// Check if the post is a retweet
 	if repostUser != nil && *repostUser != "" {
-		if repostUser != user_did {
+		if *repostUser != *user_did {
 			return c.Status(fiber.StatusUnauthorized).SendString("You can only delete your own posts")
 		}
 		collection = "app.bsky.feed.repost"
