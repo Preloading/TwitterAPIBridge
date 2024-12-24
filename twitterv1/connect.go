@@ -10,13 +10,13 @@ import (
 
 func UserSearch(c *fiber.Ctx) error {
 	searchQuery := c.Query("q")
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 	// Search for users
-	bskyUsers, err := blueskyapi.UserSearch(*oauthToken, searchQuery)
+	bskyUsers, err := blueskyapi.UserSearch(*pds, *oauthToken, searchQuery)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -33,7 +33,7 @@ func UserSearch(c *fiber.Ctx) error {
 	if len(dids) == 0 {
 		return c.JSON([]bridge.TwitterUser{})
 	}
-	users, err := blueskyapi.GetUsersInfo(*oauthToken, dids, false)
+	users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, dids, false)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")

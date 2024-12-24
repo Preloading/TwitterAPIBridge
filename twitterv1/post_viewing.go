@@ -34,9 +34,9 @@ func user_timeline(c *fiber.Ctx) error {
 }
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
-func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string) (error, *blueskyapi.Timeline)) error {
+func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string, string) (error, *blueskyapi.Timeline)) error {
 	// Get all of our keys, beeps, and bops
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -60,7 +60,7 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 		context = date.Format(time.RFC3339)
 	}
 
-	err, res := fetcher(*oauthToken, context, param)
+	err, res := fetcher(*pds, *oauthToken, context, param)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
@@ -75,13 +75,13 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 		}
 	}
 
-	blueskyapi.GetUsersInfo(*oauthToken, userDIDs, false)
+	blueskyapi.GetUsersInfo(*pds, *oauthToken, userDIDs, false)
 
 	// Translate the posts to tweets
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
-		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken))
+		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds))
 	}
 
 	return c.JSON(tweets)
@@ -103,12 +103,12 @@ func RelatedResults(c *fiber.Ctx) error {
 	}
 	uri := *uriPtr
 
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
-	err, thread := blueskyapi.GetPost(*oauthToken, uri, 1, 0)
+	err, thread := blueskyapi.GetPost(*pds, *oauthToken, uri, 1, 0)
 
 	if err != nil {
 		return err
@@ -123,7 +123,7 @@ func RelatedResults(c *fiber.Ctx) error {
 		}
 	}
 
-	blueskyapi.GetUsersInfo(*oauthToken, userDIDs, false)
+	blueskyapi.GetUsersInfo(*pds, *oauthToken, userDIDs, false)
 
 	postAuthor := bridge.BlueSkyToTwitterID(thread.Thread.Post.Author.DID)
 
@@ -139,7 +139,7 @@ func RelatedResults(c *fiber.Ctx) error {
 		twitterReplies.Results = append(twitterReplies.Results, bridge.Results{
 			Kind:  "Tweet",
 			Score: 1.0,
-			Value: TranslatePostToTweet(reply.Post, uri, postAuthor.String(), &thread.Thread.Post.Record.CreatedAt, nil, *oauthToken),
+			Value: TranslatePostToTweet(reply.Post, uri, postAuthor.String(), &thread.Thread.Post.Record.CreatedAt, nil, *oauthToken, *pds),
 			Annotations: []bridge.Annotations{
 				{
 					ConversationRole: "Descendant",
@@ -167,13 +167,13 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	uri := *uriPtr
 
 	fmt.Println("URI:", uri)
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
-	err, thread := blueskyapi.GetPost(*oauthToken, uri, 0, 1)
+	err, thread := blueskyapi.GetPost(*pds, *oauthToken, uri, 0, 1)
 
 	if err != nil {
 		return err
@@ -181,13 +181,13 @@ func GetStatusFromId(c *fiber.Ctx) error {
 
 	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
 	if thread.Thread.Parent == nil {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken))
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil, *oauthToken))
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil, *oauthToken, *pds))
 	}
 }
 
-func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string) bridge.Tweet {
+func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string, pds string) bridge.Tweet {
 	tweetEntities := bridge.Entities{
 		Hashtags:     nil,
 		Urls:         nil,
@@ -260,7 +260,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	// Get the user info
 	var author *bridge.TwitterUser
-	author, err := blueskyapi.GetUserInfo(token, tweet.Author.DID)
+	author, err := blueskyapi.GetUserInfo(pds, token, tweet.Author.DID)
 	if err != nil {
 		fmt.Println("Error:", err)
 		// fallback
@@ -339,14 +339,14 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			if isRetweet {
 				retweet_bsky := tweet
 				retweet_bsky.Author = bsky_retweet_og_author
-				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil, token)
+				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil, token, pds)
 				return &translatedTweet
 			}
 			return nil
 		}(),
 		CurrentUserRetweet: func() *bridge.CurrentUserRetweet {
 			if tweet.Viewer.Repost != nil {
-				RepostRecord, err := blueskyapi.GetRecord(*tweet.Viewer.Repost)
+				RepostRecord, err := blueskyapi.GetRecord(pds, *tweet.Viewer.Repost)
 				if err != nil {
 					fmt.Println("Error:", err)
 					return nil
@@ -421,7 +421,7 @@ func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
 // This request is an "internal" request, and thus, these are very little to no docs. this is a problem.
 // The most docs I could find: https://blog.fgribreau.com/2012/01/twitter-unofficial-api-getting-tweets.html
 func TweetInfo(c *fiber.Ctx) error {
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header (yes i know this isn't complient with the twitter api)")
 	}
@@ -438,19 +438,19 @@ func TweetInfo(c *fiber.Ctx) error {
 	}
 	id := *idPtr
 
-	err, thread := blueskyapi.GetPost(*oauthToken, id, 1, 0)
+	err, thread := blueskyapi.GetPost(*pds, *oauthToken, id, 1, 0)
 
 	if err != nil {
 		return err
 	}
 
-	likes, err := blueskyapi.GetLikes(*oauthToken, id, 100)
+	likes, err := blueskyapi.GetLikes(*pds, *oauthToken, id, 100)
 
 	if err != nil {
 		return err
 	}
 
-	reposters, err := blueskyapi.GetRetweetAuthors(*oauthToken, id, 100)
+	reposters, err := blueskyapi.GetRetweetAuthors(*pds, *oauthToken, id, 100)
 
 	if err != nil {
 		return err

@@ -103,7 +103,7 @@ func StoreToken(did string, pds string, accessToken string, refreshToken string,
 	}
 
 	// Update or create token
-	finalUUID, err := UpdateToken(uuid.String(), did, accessToken, refreshToken, encryptionKey, accessExpiry, refreshExpiry)
+	finalUUID, err := UpdateToken(uuid.String(), did, pds, accessToken, refreshToken, encryptionKey, accessExpiry, refreshExpiry)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func StoreToken(did string, pds string, accessToken string, refreshToken string,
 	return finalUUID, nil
 }
 
-func UpdateToken(uuid string, did string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64) (*string, error) {
+func UpdateToken(uuid string, did string, pds string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64) (*string, error) {
 	encryptedAccess, err := bridge.Encrypt(accessToken, encryptionKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt access token: %v", err)
@@ -125,6 +125,7 @@ func UpdateToken(uuid string, did string, accessToken string, refreshToken strin
 	token := Token{
 		UserDid:               did,
 		TokenUUID:             uuid,
+		UserPDS:               pds,
 		EncryptedAccessToken:  encryptedAccess,
 		EncryptedRefreshToken: encryptedRefresh,
 		AccessExpiry:          accessExpiry,

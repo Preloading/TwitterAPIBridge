@@ -28,14 +28,14 @@ func user_info(c *fiber.Ctx) error {
 
 	}
 
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		blankstring := ""
 		oauthToken = &blankstring
 	}
 
-	userinfo, err := blueskyapi.GetUserInfo(*oauthToken, screen_name)
+	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, screen_name)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -79,7 +79,7 @@ func UsersLookup(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Too many users to look up")
 	}
 
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		blankstring := ""
@@ -89,7 +89,7 @@ func UsersLookup(c *fiber.Ctx) error {
 	// here's some fun problems!
 	// twitter api's max is 100 users per call. bluesky's is 25. so we get to lookup in multiple requests
 
-	users, err := blueskyapi.GetUsersInfo(*oauthToken, usersToLookUp, false)
+	users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersToLookUp, false)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
@@ -113,7 +113,7 @@ func UserRelationships(c *fiber.Ctx) error {
 		}
 	}
 
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -134,7 +134,7 @@ func UserRelationships(c *fiber.Ctx) error {
 	}
 
 	relationships := []bridge.UsersRelationship{}
-	users, err := blueskyapi.GetUsersInfoRaw(*oauthToken, actorsArray, false)
+	users, err := blueskyapi.GetUsersInfoRaw(*pds, *oauthToken, actorsArray, false)
 	for _, user := range users {
 		encodedUserId := *bridge.BlueSkyToTwitterID(user.DID)
 		if err != nil {
@@ -222,19 +222,19 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 	}
 
 	// auth
-	_, _, oauthToken, err := GetAuthFromReq(c)
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
 	// It looks like there's a bug where I can't pass handles into GetRelationships, but we need to get the handle anyways, so this shouldn't impact that much
 
-	targetUser, err := blueskyapi.GetUserInfo(*oauthToken, targetActor)
+	targetUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, targetActor)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch target user")
 	}
 	// Possible optimization: if the source user is us, we can skip the api call, and just use viewer info
-	sourceUser, err := blueskyapi.GetUserInfo(*oauthToken, sourceActor)
+	sourceUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, sourceActor)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch source user")
 	}
@@ -242,7 +242,7 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 	targetDID := bridge.TwitterIDToBlueSky(targetUser.ID) // not the most efficient way to do this, but it works
 	sourceDID := bridge.TwitterIDToBlueSky(sourceUser.ID)
 
-	relationship, err := blueskyapi.GetRelationships(*oauthToken, sourceDID, []string{targetDID})
+	relationship, err := blueskyapi.GetRelationships(*pds, *oauthToken, sourceDID, []string{targetDID})
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch relationship")

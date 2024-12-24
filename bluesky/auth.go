@@ -61,9 +61,8 @@ func Authenticate(username, password string) (*AuthResponse, *string, error) {
 	return &authResp, userPDS, nil
 }
 
-// TODO: This looks like it's a bsky.social specific endpoint, can we get the user's server?
 func RefreshToken(pds string, refreshToken string) (*AuthResponse, error) {
-	url := "https://bsky.social/xrpc/com.atproto.server.refreshSession"
+	url := pds + "/xrpc/com.atproto.server.refreshSession"
 
 	resp, err := SendRequest(&refreshToken, http.MethodPost, url, nil)
 	if err != nil {

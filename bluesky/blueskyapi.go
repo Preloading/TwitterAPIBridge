@@ -280,12 +280,12 @@ func SendRequest(token *string, method string, url string, body io.Reader) (*htt
 	return resp, nil
 }
 
-func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) {
+func GetUserInfo(pds string, token string, screen_name string) (*bridge.TwitterUser, error) {
 	if user, found := userCache.Get(screen_name); found {
 		return &user, nil
 	}
 
-	url := "https://bsky.social/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
+	url := pds + "/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -312,7 +312,7 @@ func GetUserInfo(token string, screen_name string) (*bridge.TwitterUser, error) 
 	return twitterUser, nil
 }
 
-func GetUsersInfo(token string, items []string, ignoreCache bool) ([]*bridge.TwitterUser, error) {
+func GetUsersInfo(pds string, token string, items []string, ignoreCache bool) ([]*bridge.TwitterUser, error) {
 	var results []*bridge.TwitterUser
 	var missing []string
 
@@ -346,7 +346,7 @@ func GetUsersInfo(token string, items []string, ignoreCache bool) ([]*bridge.Twi
 		go func(c []string) {
 			defer wg.Done()
 
-			url := "https://bsky.social/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
+			url := pds + "xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
 			resp, err := SendRequest(&token, http.MethodGet, url, nil)
 			if err != nil {
 				fmt.Println(err)
@@ -382,7 +382,7 @@ func GetUsersInfo(token string, items []string, ignoreCache bool) ([]*bridge.Twi
 }
 
 // TODO: Combine this with GetUsersInfo... somehow
-func GetUsersInfoRaw(token string, items []string, ignoreCache bool) ([]*User, error) {
+func GetUsersInfoRaw(pds string, token string, items []string, ignoreCache bool) ([]*User, error) {
 	var results []*User
 	var missing []string
 
@@ -402,7 +402,7 @@ func GetUsersInfoRaw(token string, items []string, ignoreCache bool) ([]*User, e
 		go func(c []string) {
 			defer wg.Done()
 
-			url := "https://bsky.social/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
+			url := pds + "/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
 			fmt.Println(url)
 			resp, err := SendRequest(&token, http.MethodGet, url, nil)
 			if err != nil {
@@ -437,8 +437,8 @@ func GetUsersInfoRaw(token string, items []string, ignoreCache bool) ([]*User, e
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-graph-get-relationships
-func GetRelationships(token string, source string, others []string) (*RelationshipsRes, error) {
-	url := "https://bsky.social/xrpc/app.bsky.graph.getRelationships" + "?actor=" + url.QueryEscape(source) + "&others=" + url.QueryEscape(strings.Join(others, ","))
+func GetRelationships(pds string, token string, source string, others []string) (*RelationshipsRes, error) {
+	url := pds + "/xrpc/app.bsky.graph.getRelationships" + "?actor=" + url.QueryEscape(source) + "&others=" + url.QueryEscape(strings.Join(others, ","))
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -507,10 +507,10 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
-func GetTimeline(token string, context string, feed string) (error, *Timeline) {
-	url := "https://bsky.social/xrpc/app.bsky.feed.getTimeline"
+func GetTimeline(pds string, token string, context string, feed string) (error, *Timeline) {
+	url := pds + "/xrpc/app.bsky.feed.getTimeline"
 	if context != "" {
-		url = "https://bsky.social/xrpc/app.bsky.feed.getTimeline?cursor=" + context
+		url = pds + "/xrpc/app.bsky.feed.getTimeline?cursor=" + context
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
@@ -541,10 +541,10 @@ func GetTimeline(token string, context string, feed string) (error, *Timeline) {
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-author-feed
-func GetUserTimeline(token string, context string, actor string) (error, *Timeline) {
-	apiURL := "https://bsky.social/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor)
+func GetUserTimeline(pds string, token string, context string, actor string) (error, *Timeline) {
+	apiURL := pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor)
 	if context != "" {
-		apiURL = "https://bsky.social/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context
+		apiURL = pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
@@ -574,10 +574,10 @@ func GetUserTimeline(token string, context string, actor string) (error, *Timeli
 	return nil, &feeds
 }
 
-func GetPost(token string, uri string, depth int, parentHeight int) (error, *ThreadRoot) {
+func GetPost(pds string, token string, uri string, depth int, parentHeight int) (error, *ThreadRoot) {
 	// Example URL at://did:plc:dqibjxtqfn6hydazpetzr2w4/app.bsky.feed.post/3lchbospvbc2j
 
-	url := "https://bsky.social/xrpc/app.bsky.feed.getPostThread?depth=" + fmt.Sprintf("%d", depth) + "&parentHeight=" + fmt.Sprintf("%d", parentHeight) + "&uri=" + uri
+	url := pds + "/xrpc/app.bsky.feed.getPostThread?depth=" + fmt.Sprintf("%d", depth) + "&parentHeight=" + fmt.Sprintf("%d", parentHeight) + "&uri=" + uri
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -607,15 +607,15 @@ func GetPost(token string, uri string, depth int, parentHeight int) (error, *Thr
 }
 
 // This handles both normal & replys
-func UpdateStatus(token string, my_did string, status string, in_reply_to *string) (*ThreadRoot, error) {
-	url := "https://bsky.social/xrpc/com.atproto.repo.createRecord"
+func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string) (*ThreadRoot, error) {
+	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
 	var replySubject *ReplySubject
 	var err error
 
 	// Replying
 	if in_reply_to != nil && *in_reply_to != "" {
-		replySubject, err = GetReplyRefs(token, *in_reply_to)
+		replySubject, err = GetReplyRefs(pds, token, *in_reply_to)
 		if err != nil {
 			return nil, errors.New("failed to fetch reply refs")
 		}
@@ -658,7 +658,7 @@ func UpdateStatus(token string, my_did string, status string, in_reply_to *strin
 
 	time.Sleep(100 * time.Millisecond) // Bluesky doesn't update instantly, so we wait a bit before fetching the post
 
-	err, thread := GetPost(token, postData.URI, 0, 1)
+	err, thread := GetPost(pds, token, postData.URI, 0, 1)
 	if err != nil {
 		return nil, errors.New("failed to fetch made post")
 	}
@@ -666,8 +666,8 @@ func UpdateStatus(token string, my_did string, status string, in_reply_to *strin
 	return thread, nil
 }
 
-func DeleteRecord(token string, id string, my_did string, collection string) error {
-	url := "https://bsky.social/xrpc/com.atproto.repo.deleteRecord"
+func DeleteRecord(pds string, token string, id string, my_did string, collection string) error {
+	url := pds + "/xrpc/com.atproto.repo.deleteRecord"
 
 	payload := DeleteRecordPayload{
 		Collection: collection,
@@ -696,10 +696,10 @@ func DeleteRecord(token string, id string, my_did string, collection string) err
 	return nil
 }
 
-func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *string) {
-	url := "https://bsky.social/xrpc/com.atproto.repo.createRecord"
+func ReTweet(pds string, token string, id string, my_did string) (error, *ThreadRoot, *string) {
+	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
-	err, thread := GetPost(token, id, 0, 1)
+	err, thread := GetPost(pds, token, id, 0, 1)
 	if err != nil {
 		return errors.New("failed to fetch post"), nil, nil
 	}
@@ -744,10 +744,10 @@ func ReTweet(token string, id string, my_did string) (error, *ThreadRoot, *strin
 	return nil, thread, &repost.URI
 }
 
-func LikePost(token string, id string, my_did string) (error, *ThreadRoot) {
-	url := "https://bsky.social/xrpc/com.atproto.repo.createRecord"
+func LikePost(pds string, token string, id string, my_did string) (error, *ThreadRoot) {
+	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
-	err, thread := GetPost(token, id, 0, 1)
+	err, thread := GetPost(pds, token, id, 0, 1)
 	if err != nil {
 		return errors.New("failed to fetch post"), nil
 	}
@@ -794,10 +794,10 @@ func LikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 	return nil, thread
 }
 
-func UnlikePost(token string, id string, my_did string) (error, *ThreadRoot) {
-	url := "https://bsky.social/xrpc/com.atproto.repo.deleteRecord"
+func UnlikePost(pds string, token string, id string, my_did string) (error, *ThreadRoot) {
+	url := pds + "/xrpc/com.atproto.repo.deleteRecord"
 
-	err, thread := GetPost(token, id, 0, 1)
+	err, thread := GetPost(pds, token, id, 0, 1)
 	if err != nil {
 		return errors.New("failed to fetch post"), nil
 	}
@@ -837,8 +837,8 @@ func UnlikePost(token string, id string, my_did string) (error, *ThreadRoot) {
 	return nil, thread
 }
 
-func GetLikes(token string, uri string, limit int) (*Likes, error) {
-	url := fmt.Sprintf("https://public.bsky.social/xrpc/app.bsky.feed.getLikes?limit=%d&uri=%s", limit, uri)
+func GetLikes(pds string, token string, uri string, limit int) (*Likes, error) {
+	url := fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getLikes?limit=%d&uri=%s", limit, uri)
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -867,8 +867,8 @@ func GetLikes(token string, uri string, limit int) (*Likes, error) {
 	return &likes, nil
 }
 
-func GetRetweetAuthors(token string, uri string, limit int) (*RepostedBy, error) {
-	url := fmt.Sprintf("https://public.bsky.social/xrpc/app.bsky.feed.getRepostedBy?limit=%d&uri=%s", limit, uri)
+func GetRetweetAuthors(pds string, token string, uri string, limit int) (*RepostedBy, error) {
+	url := fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getRepostedBy?limit=%d&uri=%s", limit, uri)
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -897,8 +897,8 @@ func GetRetweetAuthors(token string, uri string, limit int) (*RepostedBy, error)
 	return &retweetAuthors, nil
 }
 
-func UserSearch(token string, query string) ([]User, error) {
-	url := "https://public.bsky.social/xrpc/app.bsky.actor.searchActors?q=" + url.QueryEscape(query)
+func UserSearch(pds string, token string, query string) ([]User, error) {
+	url := pds + "/xrpc/app.bsky.actor.searchActors?q=" + url.QueryEscape(query)
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -927,9 +927,9 @@ func UserSearch(token string, query string) ([]User, error) {
 }
 
 // thank you https://docs.bsky.app/blog/create-post#replies
-func GetReplyRefs(token string, parentURI string) (*ReplySubject, error) {
+func GetReplyRefs(pds string, token string, parentURI string) (*ReplySubject, error) {
 	// Get the parent post
-	err, parentThread := GetPost(token, parentURI, 0, 1)
+	err, parentThread := GetPost(pds, token, parentURI, 0, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch parent post: %w", err)
 	}
@@ -941,7 +941,7 @@ func GetReplyRefs(token string, parentURI string) (*ReplySubject, error) {
 	if parentThread.Thread.Post.Record.Reply != nil {
 		// Get the root post
 		rootURI = parentThread.Thread.Post.Record.Reply.Root.URI
-		err, rootThread := GetPost(token, rootURI, 0, 1)
+		err, rootThread := GetPost(pds, token, rootURI, 0, 1)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch root post: %w", err)
 		}
@@ -964,10 +964,10 @@ func GetReplyRefs(token string, parentURI string) (*ReplySubject, error) {
 	}, nil
 }
 
-func GetRecord(uri string) (*RecordResponse, error) {
+func GetRecord(pds string, uri string) (*RecordResponse, error) {
 	collection, repo, rkey := GetURIComponents(uri)
 
-	url := "https://public.bsky.social/xrpc/com.atproto.repo.getRecord?collection=" + collection + "&repo=" + repo + "&rkey=" + rkey
+	url := pds + "/xrpc/com.atproto.repo.getRecord?collection=" + collection + "&repo=" + repo + "&rkey=" + rkey
 
 	resp, err := SendRequest(nil, http.MethodGet, url, nil)
 	if err != nil {

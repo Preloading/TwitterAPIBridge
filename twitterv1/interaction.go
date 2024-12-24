@@ -12,7 +12,7 @@ import (
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/post/statuses/update
 func status_update(c *fiber.Ctx) error {
-	my_did, _, oauthToken, err := GetAuthFromReq(c)
+	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -31,7 +31,7 @@ func status_update(c *fiber.Ctx) error {
 		}
 	}
 
-	thread, err := blueskyapi.UpdateStatus(*oauthToken, *my_did, status, in_reply_to_status_id)
+	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -39,16 +39,16 @@ func status_update(c *fiber.Ctx) error {
 	}
 
 	if thread.Thread.Parent == nil {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken))
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil, *oauthToken))
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil, *oauthToken, *pds))
 	}
 }
 
 // https://web.archive.org/web/20120407091252/https://dev.twitter.com/docs/api/1/post/statuses/retweet/%3Aid
 func retweet(c *fiber.Ctx) error {
 	postId := c.Params("id")
-	user_did, _, oauthToken, err := GetAuthFromReq(c)
+	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -65,7 +65,7 @@ func retweet(c *fiber.Ctx) error {
 	}
 	postId = *postIdPtr
 
-	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*oauthToken, postId, *user_did)
+	err, originalPost, retweetPostURI := blueskyapi.ReTweet(*pds, *oauthToken, postId, *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -74,9 +74,9 @@ func retweet(c *fiber.Ctx) error {
 
 	var retweet bridge.Tweet
 	if originalPost.Thread.Parent == nil {
-		retweet = TranslatePostToTweet(originalPost.Thread.Post, "", "", nil, nil, *oauthToken)
+		retweet = TranslatePostToTweet(originalPost.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
 	} else {
-		retweet = TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Parent.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil, *oauthToken)
+		retweet = TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Parent.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil, *oauthToken, *pds)
 	}
 	retweet.Retweeted = true
 	now := time.Now() // pain, also fix this to use the proper timestamp according to the server.
@@ -87,9 +87,9 @@ func retweet(c *fiber.Ctx) error {
 		Tweet: retweet,
 		RetweetedStatus: func() bridge.Tweet { // TODO: make this respond with proper retweet data
 			if originalPost.Thread.Parent == nil {
-				return TranslatePostToTweet(originalPost.Thread.Post, "", "", nil, nil, *oauthToken)
+				return TranslatePostToTweet(originalPost.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
 			} else {
-				return TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Parent.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil, *oauthToken)
+				return TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Parent.URI, originalPost.Thread.Parent.Author.DID, &originalPost.Thread.Parent.Record.CreatedAt, nil, *oauthToken, *pds)
 			}
 		}(),
 	})
@@ -98,7 +98,7 @@ func retweet(c *fiber.Ctx) error {
 // https://web.archive.org/web/20120412065707/https://dev.twitter.com/docs/api/1/post/favorites/create/%3Aid
 func favourite(c *fiber.Ctx) error {
 	postId := c.Params("id")
-	user_did, _, oauthToken, err := GetAuthFromReq(c)
+	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -117,7 +117,7 @@ func favourite(c *fiber.Ctx) error {
 
 	fmt.Println("Post ID:", postId)
 
-	err, post := blueskyapi.LikePost(*oauthToken, postId, *user_did)
+	err, post := blueskyapi.LikePost(*pds, *oauthToken, postId, *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -126,9 +126,9 @@ func favourite(c *fiber.Ctx) error {
 
 	var newTweet bridge.Tweet
 	if post.Thread.Parent == nil {
-		newTweet = TranslatePostToTweet(post.Thread.Post, "", "", nil, nil, *oauthToken)
+		newTweet = TranslatePostToTweet(post.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
 	} else {
-		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil, *oauthToken)
+		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil, *oauthToken, *pds)
 	}
 
 	return c.JSON(newTweet)
@@ -137,7 +137,7 @@ func favourite(c *fiber.Ctx) error {
 // https://web.archive.org/web/20120412041153/https://dev.twitter.com/docs/api/1/post/favorites/destroy/%3Aid
 func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	postId := c.Params("id")
-	user_did, _, oauthToken, err := GetAuthFromReq(c)
+	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -154,7 +154,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	}
 	postId = *postIdPtr
 
-	err, post := blueskyapi.UnlikePost(*oauthToken, postId, *user_did)
+	err, post := blueskyapi.UnlikePost(*pds, *oauthToken, postId, *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -163,9 +163,9 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 
 	var newTweet bridge.Tweet
 	if post.Thread.Parent == nil {
-		newTweet = TranslatePostToTweet(post.Thread.Post, "", "", nil, nil, *oauthToken)
+		newTweet = TranslatePostToTweet(post.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
 	} else {
-		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil, *oauthToken)
+		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.URI, post.Thread.Parent.Author.DID, &post.Thread.Parent.Record.CreatedAt, nil, *oauthToken, *pds)
 	}
 
 	return c.JSON(newTweet)
@@ -174,7 +174,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 // This handles deleting a tweet, retweet, or reply
 func DeleteTweet(c *fiber.Ctx) error {
 	postId := c.Params("id")
-	user_did, _, oauthToken, err := GetAuthFromReq(c)
+	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
@@ -191,7 +191,7 @@ func DeleteTweet(c *fiber.Ctx) error {
 	}
 	postId = *postIdPtr
 
-	err, postToDelete := blueskyapi.GetPost(*oauthToken, postId, 0, 0)
+	err, postToDelete := blueskyapi.GetPost(*pds, *oauthToken, postId, 0, 0)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -212,7 +212,7 @@ func DeleteTweet(c *fiber.Ctx) error {
 		}
 	}
 
-	if err := blueskyapi.DeleteRecord(*oauthToken, postId, *user_did, collection); err != nil {
+	if err := blueskyapi.DeleteRecord(*pds, *oauthToken, postId, *user_did, collection); err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to delete post")
 	}
@@ -223,9 +223,9 @@ func DeleteTweet(c *fiber.Ctx) error {
 	return c.JSON(
 		func() bridge.Tweet { // TODO: make this respond with proper retweet data
 			if postToDelete.Thread.Parent == nil {
-				return TranslatePostToTweet(postToDelete.Thread.Post, "", "", nil, nil, *oauthToken)
+				return TranslatePostToTweet(postToDelete.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
 			} else {
-				return TranslatePostToTweet(postToDelete.Thread.Post, postToDelete.Thread.Parent.URI, postToDelete.Thread.Parent.Author.DID, &postToDelete.Thread.Parent.Record.CreatedAt, nil, *oauthToken)
+				return TranslatePostToTweet(postToDelete.Thread.Post, postToDelete.Thread.Parent.URI, postToDelete.Thread.Parent.Author.DID, &postToDelete.Thread.Parent.Record.CreatedAt, nil, *oauthToken, *pds)
 			}
 		}(),
 	)
