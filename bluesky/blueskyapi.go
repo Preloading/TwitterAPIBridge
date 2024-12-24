@@ -346,7 +346,7 @@ func GetUsersInfo(pds string, token string, items []string, ignoreCache bool) ([
 		go func(c []string) {
 			defer wg.Done()
 
-			url := pds + "xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
+			url := pds + "/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
 			resp, err := SendRequest(&token, http.MethodGet, url, nil)
 			if err != nil {
 				fmt.Println(err)
