@@ -46,7 +46,7 @@ type Tweet struct {
 	Text         string      `json:"text"`
 	Annotations  interface{} `json:"annotations"`
 	Contributors interface{} `json:"contributors"`
-	ID           big.Int     `json:"id"`
+	ID           *big.Int    `json:"id"`
 	IDStr        string      `json:"id_str"`
 	Geo          interface{} `json:"geo"`
 	Place        interface{} `json:"place"`
@@ -73,8 +73,8 @@ type Tweet struct {
 	CurrentUserRetweet *CurrentUserRetweet `json:"current_user_retweet,omitempty"`
 }
 type CurrentUserRetweet struct {
-	ID    big.Int `json:"id"`
-	IDStr string  `json:"id_str"`
+	ID    *big.Int `json:"id"`
+	IDStr string   `json:"id_str"`
 }
 
 type TwitterUser struct {
@@ -85,14 +85,14 @@ type TwitterUser struct {
 	CreatedAt                 string `json:"created_at" xml:"created_at"`
 	ProfileImageURL           string `json:"profile_image_url" xml:"profile_image_url"`
 	// ProfileImageURLHttps      string  `json:"profile_image_url_https" xml:"profile_image_url_https"`
-	Location            string  `json:"location" xml:"location"`
-	ProfileLinkColor    string  `json:"profile_link_color" xml:"profile_link_color"`
-	FollowRequestSent   bool    `json:"follow_request_sent" xml:"follow_request_sent"`
-	URL                 string  `json:"url" xml:"url"`
-	FavouritesCount     int     `json:"favourites_count" xml:"favourites_count"`
-	ContributorsEnabled bool    `json:"contributors_enabled" xml:"contributors_enabled"`
-	UtcOffset           *int    `json:"utc_offset" xml:"utc_offset"`
-	ID                  big.Int `json:"id" xml:"id"`
+	Location            string   `json:"location" xml:"location"`
+	ProfileLinkColor    string   `json:"profile_link_color" xml:"profile_link_color"`
+	FollowRequestSent   bool     `json:"follow_request_sent" xml:"follow_request_sent"`
+	URL                 string   `json:"url" xml:"url"`
+	FavouritesCount     int      `json:"favourites_count" xml:"favourites_count"`
+	ContributorsEnabled bool     `json:"contributors_enabled" xml:"contributors_enabled"`
+	UtcOffset           *int     `json:"utc_offset" xml:"utc_offset"`
+	ID                  *big.Int `json:"id" xml:"id"`
 	// IDStr                          string  `json:"id_str" xml:"id_str"`
 	ProfileUseBackgroundImage bool    `json:"profile_use_background_image" xml:"profile_use_background_image"`
 	ProfileTextColor          string  `json:"profile_text_color" xml:"profile_text_color"`
@@ -135,7 +135,7 @@ type MediaSize struct {
 }
 
 type Media struct {
-	ID            big.Int              `json:"id"`
+	ID            *big.Int             `json:"id"`
 	IDStr         string               `json:"id_str"`
 	MediaURL      string               `json:"media_url"`
 	MediaURLHttps string               `json:"media_url_https"`
@@ -167,11 +167,11 @@ type Hashtag struct {
 }
 
 type UserMention struct {
-	Name       string  `json:"name"`
-	ID         big.Int `json:"id"`
-	IDStr      string  `json:"id_str"`
-	Indices    []int   `json:"indices"`
-	ScreenName string  `json:"screen_name"`
+	Name       string   `json:"name"`
+	ID         *big.Int `json:"id"`
+	IDStr      string   `json:"id_str"`
+	Indices    []int    `json:"indices"`
+	ScreenName string   `json:"screen_name"`
 }
 
 type SleepTime struct {
@@ -214,7 +214,7 @@ type Config struct {
 type UsersRelationship struct {
 	Name        string      `json:"name" xml:"name"`
 	IDStr       string      `json:"id_str" xml:"id_str"`
-	ID          big.Int     `json:"id" xml:"id"`
+	ID          *big.Int    `json:"id" xml:"id"`
 	Connections Connections `json:"connections" xml:"connections"`
 	ScreenName  string      `json:"screen_name" xml:"screen_name"`
 }
@@ -236,17 +236,17 @@ type UserRelationships struct {
 // https://web.archive.org/web/20120516154953/https://dev.twitter.com/docs/api/1/get/friendships/show
 // used in the /friendships/show endpoint
 type UserFriendship struct {
-	ID                   big.Int `json:"id" xml:"id"`
-	IDStr                string  `json:"id_str" xml:"id_str"`
-	ScreenName           string  `json:"screen_name" xml:"screen_name"`
-	Following            bool    `json:"following" xml:"following"`
-	FollowedBy           bool    `json:"followed_by" xml:"followed_by"`
-	NotificationsEnabled *bool   `json:"notifications_enabled" xml:"notifications_enabled"` // unknown
-	CanDM                *bool   `json:"can_dm,omitempty" xml:"can_dm,omitempty"`
-	Blocking             *bool   `json:"blocking" xml:"blocking"`           // unknown
-	WantRetweets         *bool   `json:"want_retweets" xml:"want_retweets"` // unknown
-	MarkedSpam           *bool   `json:"marked_spam" xml:"marked_spam"`     // unknown
-	AllReplies           *bool   `json:"all_replies" xml:"all_replies"`     // unknown
+	ID                   *big.Int `json:"id" xml:"id"`
+	IDStr                string   `json:"id_str" xml:"id_str"`
+	ScreenName           string   `json:"screen_name" xml:"screen_name"`
+	Following            bool     `json:"following" xml:"following"`
+	FollowedBy           bool     `json:"followed_by" xml:"followed_by"`
+	NotificationsEnabled *bool    `json:"notifications_enabled" xml:"notifications_enabled"` // unknown
+	CanDM                *bool    `json:"can_dm,omitempty" xml:"can_dm,omitempty"`
+	Blocking             *bool    `json:"blocking" xml:"blocking"`           // unknown
+	WantRetweets         *bool    `json:"want_retweets" xml:"want_retweets"` // unknown
+	MarkedSpam           *bool    `json:"marked_spam" xml:"marked_spam"`     // unknown
+	AllReplies           *bool    `json:"all_replies" xml:"all_replies"`     // unknown
 }
 
 type SourceTargetFriendship struct {

@@ -170,7 +170,8 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		emptyString := ""
+		oauthToken = &emptyString
 	}
 
 	err, thread := blueskyapi.GetPost(*pds, *oauthToken, uri, 0, 1)
@@ -200,7 +201,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		// Process each image
 		// fmt.Println("Image:", "http://10.0.0.77:3000/cdn/img/?url="+url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+item.Post.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"))
 		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
-			ID:       *big.NewInt(int64(id)),
+			ID:       big.NewInt(int64(id)),
 			IDStr:    strconv.Itoa(id),
 			MediaURL: "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
 			// MediaURLHttps: "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"),
@@ -225,7 +226,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				Name: tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
 				//ScreenName: "test",
 				ScreenName: tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
-				ID:         *bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
+				ID:         bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
 				Indices: []int{
 					faucet.Index.ByteStart,
 					faucet.Index.ByteEnd,
@@ -282,12 +283,14 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		Entities:     tweetEntities,
 		Annotations:  nil, // I am curious what annotations are
 		Contributors: nil,
-		ID: func() big.Int {
+		ID: func() *big.Int {
 			// we have to use psudo ids because of https://github.com/bluesky-social/atproto/issues/1811
 			if isRetweet {
-				return bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
+				id := bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
+				return &id
 			}
-			return bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt, nil)
+			id := bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt, nil)
+			return &id
 		}(),
 		IDStr: func() string {
 			if isRetweet {
@@ -355,7 +358,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				_, my_did, _ := blueskyapi.GetURIComponents(*tweet.Viewer.Repost)
 				retweetId := bridge.BskyMsgToTwitterID(tweet.URI, &RepostRecord.Value.CreatedAt, &my_did)
 				return &bridge.CurrentUserRetweet{
-					ID:    retweetId,
+					ID:    &retweetId,
 					IDStr: retweetId.String(),
 				}
 			}
@@ -388,7 +391,7 @@ func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
 		ContributorsEnabled: false,
 		UtcOffset:           nil,
 		IsTranslator:        false,
-		ID:                  *bridge.BlueSkyToTwitterID(tweet.URI),
+		ID:                  bridge.BlueSkyToTwitterID(tweet.URI),
 		// IDStr:                          bridge.BlueSkyToTwitterID(tweet.URI).String(),
 		ProfileUseBackgroundImage: false,
 		ProfileTextColor:          "333333",

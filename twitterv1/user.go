@@ -165,7 +165,7 @@ func UserRelationships(c *fiber.Ctx) error {
 				return user.DisplayName
 			}(),
 			ScreenName:  user.Handle,
-			ID:          encodedUserId,
+			ID:          &encodedUserId,
 			IDStr:       encodedUserId.String(),
 			Connections: connections,
 		})
@@ -239,8 +239,8 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch source user")
 	}
 
-	targetDID := bridge.TwitterIDToBlueSky(targetUser.ID) // not the most efficient way to do this, but it works
-	sourceDID := bridge.TwitterIDToBlueSky(sourceUser.ID)
+	targetDID := bridge.TwitterIDToBlueSky(*targetUser.ID) // not the most efficient way to do this, but it works
+	sourceDID := bridge.TwitterIDToBlueSky(*sourceUser.ID)
 
 	relationship, err := blueskyapi.GetRelationships(*pds, *oauthToken, sourceDID, []string{targetDID})
 	if err != nil {

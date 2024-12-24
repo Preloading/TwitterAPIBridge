@@ -80,7 +80,8 @@ func retweet(c *fiber.Ctx) error {
 	}
 	retweet.Retweeted = true
 	now := time.Now() // pain, also fix this to use the proper timestamp according to the server.
-	retweet.ID = bridge.BskyMsgToTwitterID(*retweetPostURI, &now, user_did)
+	retweetId := bridge.BskyMsgToTwitterID(*retweetPostURI, &now, user_did)
+	retweet.ID = &retweetId
 	retweet.IDStr = retweet.ID.String()
 
 	return c.JSON(bridge.Retweet{
