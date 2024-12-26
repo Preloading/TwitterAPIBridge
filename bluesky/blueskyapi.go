@@ -160,7 +160,7 @@ type Timeline struct {
 type Thread struct {
 	Type    string    `json:"$type"`
 	Post    Post      `json:"post"`
-	Parent  *Post     `json:"parent"`
+	Parent  *Thread   `json:"parent"`
 	Replies *[]Thread `json:"replies"`
 }
 

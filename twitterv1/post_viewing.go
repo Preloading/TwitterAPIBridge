@@ -184,7 +184,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	if thread.Thread.Parent == nil {
 		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.URI, thread.Thread.Parent.Author.DID, &thread.Thread.Parent.Record.CreatedAt, nil, *oauthToken, *pds))
+		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
 	}
 }
 
@@ -369,6 +369,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 }
 
 // This is "depercated"/a togglable option in the config (eventually)
+// Primarly used as a fallback if we cannot lookup user info
 func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
 	return bridge.TwitterUser{
 		Name: func() string {
