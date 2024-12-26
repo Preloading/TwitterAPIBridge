@@ -2,7 +2,12 @@ package twitterv1
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
+	"time"
 
+	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
+	"github.com/Preloading/MastodonTwitterAPI/bridge"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -14,50 +19,47 @@ func Search(c *fiber.Ctx) error {
 }
 
 // https://web.archive.org/web/20120313235613/https://dev.twitter.com/docs/api/1/get/trends/%3Awoeid
-// For now, we will be pretending WOEID doesn't exist
-// TODO: Implement this with data from bsky
+// The bluesky feature to make this possible was released 17 hours ago, and is "beta", so this is likely to break
 func trends_woeid(c *fiber.Ctx) error {
-	type Trends struct {
-		Created string `json:"created_at"`
-		Trends  []struct {
-			Name        string `json:"name"`
-			URL         string `json:"url"`
-			Promoted    bool   `json:"promoted"`
-			Query       string `json:"query"`
-			TweetVolume int    `json:"tweet_volume"`
-		} `json:"trends"`
-		AsOf      string `json:"as_of"`
-		Locations []struct {
-			Name  string `json:"name"`
-			WOEID int    `json:"woeid"`
-		} `json:"locations"`
+	// We don't have location specific trends soooooo
+	// woeid := c.Params("woeid")
+
+	//auth
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
-	return c.JSON(Trends{
-		Created: "2021-09-01T00:00:00Z",
-		Trends: []struct {
-			Name        string `json:"name"`
-			URL         string `json:"url"`
-			Promoted    bool   `json:"promoted"`
-			Query       string `json:"query"`
-			TweetVolume int    `json:"tweet_volume"`
-		}{
-			{
-				Name:        "Trending Topic",
-				URL:         "https://twitter.com/search?q=%22Trending%20Topic%22",
-				Promoted:    false,
-				Query:       "%22Trending%20Topic%22",
-				TweetVolume: 10000,
-			},
-		},
-		AsOf: "2021-09-01T00:00:00Z",
-		Locations: []struct {
-			Name  string `json:"name"`
-			WOEID int    `json:"woeid"`
-		}{
+	// Get trends
+	bsky_trends, err := blueskyapi.GetTrends(*pds, *oauthToken)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch trends")
+	}
+
+	trends := []bridge.Trend{}
+
+	for _, trend := range bsky_trends.Topics {
+		topic_query := url.QueryEscape(trend.Topic)
+		topic_query = strings.ReplaceAll(topic_query, "%20", "+")
+		trends = append(trends, bridge.Trend{
+			Name:        trend.Topic,
+			URL:         "https://twitter.com/search?q=" + topic_query,
+			Promoted:    false,
+			Query:       topic_query,
+			TweetVolume: 1337, // We can't get this data without search every, single, topic. So we just make it up.
+		})
+
+	}
+
+	return c.JSON(bridge.Trends{
+		Created: time.Now(),
+		Trends:  trends,
+		AsOf:    time.Now(), // no clue the differ
+		Locations: []bridge.TrendLocation{
 			{
 				Name:  "Worldwide",
-				WOEID: 1,
+				Woeid: 1, // Where on earth ID. Since bluesky trends are global, this is always 1
 			},
 		},
 	})

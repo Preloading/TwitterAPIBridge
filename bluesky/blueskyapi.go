@@ -259,6 +259,16 @@ type RelationshipsRes struct {
 	Relationships []Relationships `json:"relationships"`
 }
 
+type TrendingTopics struct {
+	Topics    []TrendingTopic `json:"topics"`
+	Suggested []TrendingTopic `json:"suggested"`
+}
+
+type TrendingTopic struct {
+	Topic string `json:"topic"`
+	Link  string `json:"link"`
+}
+
 var userCache = bridge.NewCache(5 * time.Minute) // Cache TTL of 5 minutes
 
 func SendRequest(token *string, method string, url string, body io.Reader) (*http.Response, error) {
@@ -994,6 +1004,37 @@ func GetRecord(pds string, uri string) (*RecordResponse, error) {
 	}
 
 	return &record, nil
+}
+
+// This feature is still in beta, and is likely to break in the future
+func GetTrends(pds string, token string) (*TrendingTopics, error) {
+	url := pds + "/xrpc/app.bsky.unspecced.getTrendingTopics"
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch trends")
+	}
+
+	trends := TrendingTopics{}
+	if err := json.NewDecoder(resp.Body).Decode(&trends); err != nil {
+		return nil, err
+	}
+
+	return &trends, nil
 }
 
 // Gets the URI components

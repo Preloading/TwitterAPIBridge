@@ -255,6 +255,21 @@ type SourceTargetFriendship struct {
 	Target  UserFriendship `json:"target" xml:"target"`
 }
 
+type Trends struct {
+	Created   time.Time       `json:"created_at"` // EVERYWHERE except here it uses a different format for time. why.
+	Trends    []Trend         `json:"trends"`
+	AsOf      time.Time       `json:"as_of"`
+	Locations []TrendLocation `json:"locations"` // no idea when i implenented thsi function, but i digress.
+}
+
+type Trend struct {
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	Promoted    bool   `json:"promoted"`
+	Query       string `json:"query"`
+	TweetVolume int    `json:"tweet_volume"`
+}
+
 // Bluesky's API returns a letter ID for each user,
 // While twitter uses a numeric ID, meaning we
 // need to convert between the two

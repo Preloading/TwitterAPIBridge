@@ -54,7 +54,7 @@ func InitServer() {
 	// Connect
 	app.Get("/1/users/search.json", UserSearch)
 
-	// Trends
+	// Discover
 	app.Get("/1/trends/:woeid.json", trends_woeid)
 
 	// Setings
