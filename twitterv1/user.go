@@ -224,7 +224,8 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		blankstring := "" // I. Hate. This.
+		oauthToken = &blankstring
 	}
 
 	// It looks like there's a bug where I can't pass handles into GetRelationships, but we need to get the handle anyways, so this shouldn't impact that much
@@ -273,4 +274,113 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 	}
 
 	return c.SendString(*xml)
+}
+
+// https://web.archive.org/web/20120407201029/https://dev.twitter.com/docs/api/1/post/friendships/create
+func FollowUser(c *fiber.Ctx) error {
+	// auth
+	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// lets get the user params
+	actor := c.FormValue("user_id")
+	if actor == "" {
+		actor = c.FormValue("screen_name")
+		if actor == "" {
+			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+		}
+	} else {
+		id, ok := new(big.Int).SetString(actor, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		actor = bridge.TwitterIDToBlueSky(*id)
+	}
+
+	// follow
+	err, user := blueskyapi.FollowUser(*pds, *oauthToken, actor, *my_did)
+
+	if err != nil {
+		if err.Error() == "already following user" {
+			return c.Status(403).SendString("already following user")
+		}
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to follow user")
+	}
+
+	// convert user into twitter format
+	twitterUser := blueskyapi.AuthorTTB(*user)
+
+	// XML Encode
+	xml, err := bridge.XMLEncoder(twitterUser, "TwitterUser", "user")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
+	}
+
+	return c.SendString(*xml)
+}
+
+// https://web.archive.org/web/20120407201029/https://dev.twitter.com/docs/api/1/post/friendships/create
+func UnfollowUser(c *fiber.Ctx, actor string) error {
+	// auth
+	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// follow
+	err, user := blueskyapi.UnfollowUser(*pds, *oauthToken, actor, *my_did)
+
+	if err != nil {
+		if err.Error() == "not following user" {
+			return c.Status(403).SendString("not following user")
+		}
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to unfollow user")
+	}
+
+	// convert user into twitter format
+	twitterUser := blueskyapi.AuthorTTB(*user)
+
+	// XML Encode
+	xml, err := bridge.XMLEncoder(twitterUser, "TwitterUser", "user")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
+	}
+
+	return c.SendString(*xml)
+}
+
+func UnfollowUserForm(c *fiber.Ctx) error {
+	// lets get the user params
+	actor := c.FormValue("user_id")
+	if actor == "" {
+		actor = c.FormValue("screen_name")
+		if actor == "" {
+			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+		}
+	} else {
+		id, ok := new(big.Int).SetString(actor, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		actor = bridge.TwitterIDToBlueSky(*id)
+	}
+	return UnfollowUser(c, actor)
+}
+
+func UnfollowUserParams(c *fiber.Ctx) error {
+	// This should allow lookup with a handle, but tbh, i'm too lazy to implement that right now as i do not see it being used.
+	actor := c.Params("id")
+	actorID, ok := new(big.Int).SetString(actor, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+	}
+	actor = bridge.TwitterIDToBlueSky(*actorID)
+
+	return UnfollowUser(c, actor)
 }

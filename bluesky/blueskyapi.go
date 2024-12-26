@@ -183,9 +183,9 @@ type DeleteRecordPayload struct {
 }
 
 type PostInteractionRecord struct {
-	Type      string  `json:"$type"`
-	CreatedAt string  `json:"createdAt"`
-	Subject   Subject `json:"subject"`
+	Type      string      `json:"$type"`
+	CreatedAt string      `json:"createdAt"`
+	Subject   interface{} `json:"subject"`
 }
 
 type CreatePostRecord struct {
@@ -320,6 +320,30 @@ func GetUserInfo(pds string, token string, screen_name string) (*bridge.TwitterU
 	userCache.SetMultiple([]string{author.DID, author.Handle}, *twitterUser)
 
 	return twitterUser, nil
+}
+
+func GetUserInfoRaw(pds string, token string, screen_name string) (*User, error) {
+	url := pds + "/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch user info")
+	}
+
+	author := User{}
+	if err := json.NewDecoder(resp.Body).Decode(&author); err != nil {
+		return nil, err
+	}
+
+	return &author, nil
 }
 
 func GetUsersInfo(pds string, token string, items []string, ignoreCache bool) ([]*bridge.TwitterUser, error) {
@@ -791,7 +815,7 @@ func LikePost(pds string, token string, id string, my_did string) (error, *Threa
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to retweet: " + bodyString), nil
+		return errors.New("failed to like: " + bodyString), nil
 	}
 
 	likeRes := CreateRecordResult{}
@@ -834,7 +858,7 @@ func UnlikePost(pds string, token string, id string, my_did string) (error, *Thr
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to retweet: " + bodyString), nil
+		return errors.New("failed to unlike: " + bodyString), nil
 	}
 
 	likeRes := CreateRecordResult{}
@@ -842,9 +866,110 @@ func UnlikePost(pds string, token string, id string, my_did string) (error, *Thr
 		return err, nil
 	}
 
-	thread.Thread.Post.Viewer.Like = &likeRes.URI // maybe?
+	emptyString := ""
+	thread.Thread.Post.Viewer.Like = &emptyString
 
 	return nil, thread
+}
+
+func FollowUser(pds string, token string, targetActor string, my_did string) (error, *User) {
+	url := pds + "/xrpc/com.atproto.repo.createRecord"
+
+	targetUser, err := GetUserInfoRaw(pds, token, targetActor)
+	if err != nil {
+		return errors.New("failed to fetch post"), nil
+	}
+
+	if targetUser.Viewer.Following != nil {
+		return errors.New("already following user"), nil
+	}
+
+	payload := CreateRecordPayload{
+		Collection: "app.bsky.graph.follow",
+		Repo:       my_did,
+		Record: PostInteractionRecord{
+			Type:      "app.bsky.graph.follow",
+			CreatedAt: time.Now().UTC().Format(time.RFC3339),
+			Subject:   targetUser.DID,
+		},
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return errors.New("failed to marshal payload"), nil
+	}
+
+	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to retweet: " + bodyString), nil
+	}
+
+	followRes := CreateRecordResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&followRes); err != nil {
+		return err, nil
+	}
+
+	targetUser.Viewer.Following = &strings.Split(followRes.URI, "/app.bsky.graph.follow/")[1]
+	targetUser.FollowersCount++
+
+	return nil, targetUser
+}
+
+func UnfollowUser(pds string, token string, targetActor string, my_did string) (error, *User) {
+	url := pds + "/xrpc/com.atproto.repo.deleteRecord"
+
+	targetUser, err := GetUserInfoRaw(pds, token, targetActor)
+	if err != nil {
+		return errors.New("failed to fetch post"), nil
+	}
+
+	if targetUser.Viewer.Following == nil {
+		return errors.New("not following user"), nil
+	}
+
+	payload := DeleteRecordPayload{
+		Collection: "app.bsky.graph.follow",
+		Repo:       my_did,
+		RKey:       strings.Split(*targetUser.Viewer.Following, "/app.bsky.graph.follow/")[1],
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return errors.New("failed to marshal payload"), nil
+	}
+
+	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to unfollow: " + bodyString), nil
+	}
+
+	unfollowRes := CreateRecordResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&unfollowRes); err != nil {
+		return err, nil
+	}
+
+	emptyString := ""
+	targetUser.Viewer.Following = &emptyString
+
+	return nil, targetUser
 }
 
 func GetLikes(pds string, token string, uri string, limit int) (*Likes, error) {
@@ -866,7 +991,7 @@ func GetLikes(pds string, token string, uri string, limit int) (*Likes, error) {
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch timeline")
+		return nil, errors.New("failed to fetch likes")
 	}
 
 	likes := Likes{}
@@ -896,7 +1021,7 @@ func GetRetweetAuthors(pds string, token string, uri string, limit int) (*Repost
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch timeline")
+		return nil, errors.New("failed to fetch retweet authors")
 	}
 
 	retweetAuthors := RepostedBy{}
