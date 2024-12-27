@@ -25,5 +25,6 @@ go.work.sum
 .env
 
 db
+config.yaml
 .vscode
 __debug_bin*

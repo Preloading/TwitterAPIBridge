@@ -9,8 +9,11 @@ FROM gcr.io/distroless/base-debian12 AS build-release-stage
 COPY --from=build-stage /bin/twitterbridge /bin/twitterbridge
 WORKDIR /config
 
-ENV TWITTER_BRIDGE_DB_PATH="/config/sqlite/sqlite.db" \
-    TWITTER_BRIDGE_SERVER_URL="http://127.0.0.1:3000" \
-    TWITTER_BRIDGE_SERVER_PORT="3000"
+ENV TWITTER_BRIDGE_DATABASE_TYPE="sqlite" \
+    TWITTER_BRIDGE_DATABASE_PATH="/config/database/sqlite.db" \
+    TWITTER_BRIDGE_CDN_URL="http://127.0.0.1:3000" \
+    TWITTER_BRIDGE_SERVER_PORT=3000 \
+    TWITTER_BRIDGE_TRACK_ANALYTICS=true \
+    TWITTER_BRIDGE_DEVELOPER_MODE=false
 
 CMD ["/bin/twitterbridge"]

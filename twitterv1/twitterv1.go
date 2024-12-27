@@ -1,11 +1,19 @@
 package twitterv1
 
 import (
+	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
+	"github.com/Preloading/MastodonTwitterAPI/config"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
-func InitServer() {
+var (
+	configData *config.Config
+)
+
+func InitServer(config *config.Config) {
+	configData = config
+	blueskyapi.InitConfig(configData)
 	app := fiber.New()
 
 	// Initialize default config
@@ -59,6 +67,7 @@ func InitServer() {
 
 	// Discover
 	app.Get("/1/trends/:woeid.json", trends_woeid)
+	app.Get("/i/search.json", Search)
 
 	// Setings
 	app.Get("/1/account/settings.xml", GetSettings)

@@ -72,7 +72,9 @@ func access_token(c *fiber.Ctx) error {
 // @return: userDID, pds, tokenUUID, accessJwt, error
 func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 	authHeader := c.Get("Authorization")
-	fmt.Println("Auth Header:", authHeader)
+	if configData.DeveloperMode {
+		fmt.Println("Auth Header:", authHeader)
+	}
 	// Define a regular expression to match the oauth_token
 	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
 	matches := re.FindStringSubmatch(authHeader)
@@ -113,7 +115,9 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 		return nil, &fallbackRoute, nil, nil, err
 	}
 
-	fmt.Println("Access Token", *accessJwt)
+	if configData.DeveloperMode {
+		fmt.Println("Access Token", *accessJwt)
+	}
 
 	// Check if the access token has expired
 	if time.Unix(int64(*access_expiry), 0).Before(time.Now()) {

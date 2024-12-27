@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
+	"github.com/Preloading/MastodonTwitterAPI/config"
 )
 
 type AuthResponse struct {
@@ -269,6 +270,14 @@ type TrendingTopic struct {
 	Link  string `json:"link"`
 }
 
+var (
+	configData *config.Config
+)
+
+func InitConfig(config *config.Config) {
+	configData = config
+}
+
 var userCache = bridge.NewCache(5 * time.Minute) // Cache TTL of 5 minutes
 
 func SendRequest(token *string, method string, url string, body io.Reader) (*http.Response, error) {
@@ -513,7 +522,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		ProfileSidebarBorderColor: "87bc44",
 		ProfileBackgroundTile:     false,
 		CreatedAt:                 bridge.TwitterTimeConverter(author.CreatedAt),
-		ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger",
+		ProfileImageURL:           configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger",
 		Location:                  "",
 		ProfileLinkColor:          "0000ff",
 		IsTranslator:              false,

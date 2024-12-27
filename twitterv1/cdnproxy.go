@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nfnt/resize"
@@ -133,6 +134,7 @@ func CDNDownscaler(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode image")
 	}
-
+	// cache for 30 minutes
+	c.Response().Header.Set("Cache-Control", "public, max-age="+strconv.Itoa(int(30*time.Minute.Seconds())))
 	return nil
 }

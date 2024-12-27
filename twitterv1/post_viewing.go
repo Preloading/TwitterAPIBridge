@@ -199,12 +199,10 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 	id := 1
 	for _, image := range tweet.Record.Embed.Images {
 		// Process each image
-		// fmt.Println("Image:", "http://10.0.0.77:3000/cdn/img/?url="+url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+item.Post.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"))
 		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
 			ID:       big.NewInt(int64(id)),
 			IDStr:    strconv.Itoa(id),
-			MediaURL: "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
-			// MediaURLHttps: "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:"+image.Image.Ref.Link+"@jpeg"),
+			MediaURL: configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
 		})
 		id++
 	}
@@ -382,17 +380,16 @@ func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
 		ProfileBackgroundTile:     false,
 		ProfileSidebarFillColor:   "efefef",
 		CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt),
-		ProfileImageURL:           "http://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + ":profile_bigger",
-		// ProfileImageURLHttps:           "https://10.0.0.77:3000/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + "&width=128&height=128",
-		Location:            "Twitter",
-		ProfileLinkColor:    "009999",
-		FollowRequestSent:   false,
-		URL:                 "",
-		ScreenName:          tweet.Author.Handle,
-		ContributorsEnabled: false,
-		UtcOffset:           nil,
-		IsTranslator:        false,
-		ID:                  bridge.BlueSkyToTwitterID(tweet.URI),
+		ProfileImageURL:           configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + ":profile_bigger",
+		Location:                  "Twitter",
+		ProfileLinkColor:          "009999",
+		FollowRequestSent:         false,
+		URL:                       "",
+		ScreenName:                tweet.Author.Handle,
+		ContributorsEnabled:       false,
+		UtcOffset:                 nil,
+		IsTranslator:              false,
+		ID:                        bridge.BlueSkyToTwitterID(tweet.URI),
 		// IDStr:                          bridge.BlueSkyToTwitterID(tweet.URI).String(),
 		ProfileUseBackgroundImage: false,
 		ProfileTextColor:          "333333",

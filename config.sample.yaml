@@ -1,0 +1,33 @@
+# The CDN_URL is the URL send to clients to access images from this server.
+# Set it to where the server can be accessed.
+CDN_URL: 'http://127.0.0.1:3000'
+# SERVER_PORT is the port the server will listen on.
+SERVER_PORT: 3000
+
+# This database stores:
+# Analytics (if enabled)
+# User DID, PDS, session UUID and tokens (tokens are encrypted with key contained in oauth header provided by clients)
+# Bluesky contexts
+
+# Database Type (sqlite, mysql, postgres)
+DATABASE_TYPE: 'sqlite'
+
+# Database Path/DSN (see https://gorm.io/docs/connecting_to_the_database.html)
+DATABASE_PATH: './db/twitterbridge.db'
+
+# TRACK_ANALYTICS toggles whether analytics should be tracked and stored in the database
+# This tracks (anonomized):
+# Twitter version used to connect
+# Useragent of the client
+# How many people have logged on
+# How many tweets have been sent to bluesky
+# How many tweets have been sent to clients
+# IP address (for country location data)
+# Language
+# more probably to come
+TRACK_ANALYTICS: true
+
+# DEVELOPER_MODE
+# This is used to enable some extra logging useful during development.
+# DO NOT ENABLE THIS IN A PUBLIC INSTANCE!!!
+DEVELOPER_MODE: false

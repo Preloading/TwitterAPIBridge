@@ -11,6 +11,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// Searching, oh boy.
+// This function contacts an internal API, which is:
+// 1. Not documented
+// 2. Too common of a function to find
+// 3. Has a "non internal" version that is documented, but isn't this request.
+
 // TODO: Implement this
 func Search(c *fiber.Ctx) error {
 	q := c.Query("q")

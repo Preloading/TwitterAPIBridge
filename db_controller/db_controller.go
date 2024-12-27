@@ -6,7 +6,10 @@ import (
 	"path/filepath"
 
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
+	"github.com/Preloading/MastodonTwitterAPI/config"
 	"github.com/google/uuid"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -60,17 +63,26 @@ type MessageContext struct {
 
 var db *gorm.DB
 
-func InitDB() {
+func InitDB(cfg config.Config) {
 	// Ensure the directory exists
-	dbPath := "./db/twitterbridge.db"
-	dbDir := filepath.Dir(dbPath)
+	dbDir := filepath.Dir(cfg.DatabasePath)
 	if err := os.MkdirAll(dbDir, os.ModePerm); err != nil {
 		panic("failed to create database directory")
 	}
 
 	// Initialize the database connection
 	var err error
-	db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	switch cfg.DatabaseType {
+	case "sqlite":
+		db, err = gorm.Open(sqlite.Open(cfg.DatabasePath), &gorm.Config{})
+	case "mysql":
+		db, err = gorm.Open(mysql.Open(cfg.DatabasePath), &gorm.Config{})
+	case "postgres":
+		db, err = gorm.Open(postgres.Open(cfg.DatabasePath), &gorm.Config{})
+	default:
+		panic("unsupported database type")
+	}
+
 	if err != nil {
 		panic("failed to connect database")
 	}
