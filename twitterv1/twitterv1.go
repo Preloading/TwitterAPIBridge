@@ -35,6 +35,7 @@ func InitServer(config *config.Config) {
 
 	// Auth
 	app.Post("/oauth/access_token", access_token)
+	app.Get("/1/account/verify_credentials.json", VerifyCredentials)
 
 	// Tweeting
 	app.Post("/1/statuses/update.json", status_update)
@@ -62,6 +63,8 @@ func InitServer(config *config.Config) {
 	app.Post("/1/friendships/destroy.xml", UnfollowUserForm)
 	app.Post("/1/friendships/destroy/:id.xml", UnfollowUserParams)
 
+	app.Get("/1/statuses/followers.xml", GetFollowers)
+
 	// Connect
 	app.Get("/1/users/search.json", UserSearch)
 
@@ -80,5 +83,13 @@ func InitServer(config *config.Config) {
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)
 
+	// misc
+	app.Get("/mobile_client_api/decider/:path", MobileClientApiDecider)
+
 	app.Listen(":3000")
+}
+
+// misc
+func MobileClientApiDecider(c *fiber.Ctx) error {
+	return c.SendString("")
 }

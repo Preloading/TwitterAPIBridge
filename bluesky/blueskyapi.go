@@ -158,6 +158,18 @@ type Timeline struct {
 	Cursor string `json:"cursor"`
 }
 
+type FollowersTimeline struct {
+	Subject   []User `json:"subject"`
+	Followers []User `json:"followers"`
+	Cursor    string `json:"cursor"`
+}
+
+type FollowsTimeline struct {
+	Subject   []User `json:"subject"`
+	Followers []User `json:"follows"`
+	Cursor    string `json:"cursor"`
+}
+
 type Thread struct {
 	Type    string    `json:"$type"`
 	Post    Post      `json:"post"`
@@ -647,6 +659,74 @@ func GetPost(pds string, token string, uri string, depth int, parentHeight int) 
 	}
 
 	return nil, &thread
+}
+
+// https://docs.bsky.app/docs/api/app-bsky-graph-get-followers
+func GetFollowers(pds string, token string, context string, actor string) (*FollowersTimeline, error) {
+	apiURL := pds + "/xrpc/app.bsky.graph.getFollowers?actor=" + url.QueryEscape(actor)
+	if context != "" {
+		apiURL = pds + "/xrpc/app.bsky.graph.getFollowers?actor=" + url.QueryEscape(actor) + "&cursor=" + context
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch followers")
+	}
+
+	feeds := FollowersTimeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return nil, err
+	}
+
+	return &feeds, nil
+}
+
+// https://docs.bsky.app/docs/api/app-bsky-graph-get-follows
+func GetFollows(pds string, token string, context string, actor string) (*FollowsTimeline, error) {
+	apiURL := pds + "/xrpc/app.bsky.graph.getFollows?actor=" + url.QueryEscape(actor)
+	if context != "" {
+		apiURL = pds + "/xrpc/app.bsky.graph.getFollows?actor=" + url.QueryEscape(actor) + "&cursor=" + context
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch followers")
+	}
+
+	feeds := FollowsTimeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return nil, err
+	}
+
+	return &feeds, nil
 }
 
 // This handles both normal & replys

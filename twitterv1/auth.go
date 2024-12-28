@@ -66,6 +66,25 @@ func access_token(c *fiber.Ctx) error {
 	return c.SendStatus(501)
 }
 
+// https://web.archive.org/web/20120508075505/https://dev.twitter.com/docs/api/1/get/users/show
+func VerifyCredentials(c *fiber.Ctx) error {
+	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		blankstring := ""
+		oauthToken = &blankstring
+	}
+
+	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *my_did)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+	}
+
+	return c.JSON(userinfo)
+}
+
 // GetAuthFromReq is a helper function to get the user DID and access token from the request.
 // Also does some maintenance tasks like refreshing the access token if it has expired.
 //

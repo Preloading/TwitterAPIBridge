@@ -384,3 +384,40 @@ func UnfollowUserParams(c *fiber.Ctx) error {
 
 	return UnfollowUser(c, actor)
 }
+
+// https://web.archive.org/web/20101115102530/http://apiwiki.twitter.com/w/page/22554748/Twitter-REST-API-Method%3a-statuses%C2%A0followers
+// At the moment we are not doing pagination, so this will only return the first ~50 followers.
+func GetFollowers(c *fiber.Ctx) error {
+	// // auth
+	// my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
+	// if err != nil {
+	// 	return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	// }
+
+	// // lets go get our user data
+
+	// actor := c.FormValue("user_id")
+	// if actor == "" {
+	// 	actor = c.FormValue("screen_name")
+	// 	if actor == "" {
+	// 		c.Status(fiber.StatusBadRequest).SendString("No user provided")
+	// 	}
+	// } else {
+	// 	id, ok := new(big.Int).SetString(actor, 10)
+	// 	if !ok {
+	// 		return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+	// 	}
+	// 	actor = bridge.TwitterIDToBlueSky(*id)
+	// }
+
+	// // fetch followers
+	// followers, err := blueskyapi.GetFollowers(*pds, *oauthToken, actor, *my_did)
+	// if err != nil {
+	// 	fmt.Println("Error:", err)
+	// 	return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch followers")
+	// }
+
+	// // convert users into twitter format
+
+	return c.SendStatus(fiber.StatusNotImplemented)
+}
