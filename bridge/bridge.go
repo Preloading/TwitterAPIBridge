@@ -270,6 +270,10 @@ type Trend struct {
 	TweetVolume int    `json:"tweet_volume"`
 }
 
+type TwitterUsers struct {
+	Users []TwitterUser `xml:"user"`
+}
+
 // Bluesky's API returns a letter ID for each user,
 // While twitter uses a numeric ID, meaning we
 // need to convert between the two

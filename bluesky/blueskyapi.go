@@ -159,13 +159,13 @@ type Timeline struct {
 }
 
 type FollowersTimeline struct {
-	Subject   []User `json:"subject"`
+	Subject   User   `json:"subject"`
 	Followers []User `json:"followers"`
 	Cursor    string `json:"cursor"`
 }
 
 type FollowsTimeline struct {
-	Subject   []User `json:"subject"`
+	Subject   User   `json:"subject"`
 	Followers []User `json:"follows"`
 	Cursor    string `json:"cursor"`
 }

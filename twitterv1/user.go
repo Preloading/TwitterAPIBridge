@@ -388,36 +388,63 @@ func UnfollowUserParams(c *fiber.Ctx) error {
 // https://web.archive.org/web/20101115102530/http://apiwiki.twitter.com/w/page/22554748/Twitter-REST-API-Method%3a-statuses%C2%A0followers
 // At the moment we are not doing pagination, so this will only return the first ~50 followers.
 func GetFollowers(c *fiber.Ctx) error {
-	// // auth
-	// my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
-	// if err != nil {
-	// 	return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
-	// }
+	// auth
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
 
-	// // lets go get our user data
+	// lets go get our user data
 
-	// actor := c.FormValue("user_id")
-	// if actor == "" {
-	// 	actor = c.FormValue("screen_name")
-	// 	if actor == "" {
-	// 		c.Status(fiber.StatusBadRequest).SendString("No user provided")
-	// 	}
-	// } else {
-	// 	id, ok := new(big.Int).SetString(actor, 10)
-	// 	if !ok {
-	// 		return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
-	// 	}
-	// 	actor = bridge.TwitterIDToBlueSky(*id)
-	// }
+	actor := c.FormValue("user_id")
+	if actor == "" {
+		actor = c.FormValue("screen_name")
+		if actor == "" {
+			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+		}
+	} else {
+		id, ok := new(big.Int).SetString(actor, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		actor = bridge.TwitterIDToBlueSky(*id)
+	}
 
-	// // fetch followers
-	// followers, err := blueskyapi.GetFollowers(*pds, *oauthToken, actor, *my_did)
-	// if err != nil {
-	// 	fmt.Println("Error:", err)
-	// 	return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch followers")
-	// }
+	// fetch followers
+	followers, err := blueskyapi.GetFollowers(*pds, *oauthToken, "", actor)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch followers")
+	}
 
-	// // convert users into twitter format
+	// convert users into twitter format
+	// This right now doesn't act on pagination, i'll figure that out later
+	var actorsToLookUp []string
+	for _, user := range followers.Followers {
+		actorsToLookUp = append(actorsToLookUp, user.DID)
+	}
 
-	return c.SendStatus(fiber.StatusNotImplemented)
+	twitterUsers, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, actorsToLookUp, false)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+	}
+
+	// Convert []*bridge.TwitterUser to []bridge.TwitterUser
+	var twitterUsersConverted []bridge.TwitterUser
+	for _, user := range twitterUsers {
+		twitterUsersConverted = append(twitterUsersConverted, *user)
+	}
+
+	// XML Encode
+	xml, err := bridge.XMLEncoder(
+		bridge.TwitterUsers{
+			Users: twitterUsersConverted,
+		}, "TwitterUsers", "users")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
+	}
+
+	return c.SendString(*xml)
 }
