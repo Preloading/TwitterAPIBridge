@@ -274,6 +274,12 @@ type TwitterUsers struct {
 	Users []TwitterUser `xml:"user"`
 }
 
+type TwitterRecommendation struct {
+	UserID *big.Int    `json:"user_id"`
+	User   TwitterUser `json:"user"`
+	Token  string      `json:"token"`
+}
+
 // Bluesky's API returns a letter ID for each user,
 // While twitter uses a numeric ID, meaning we
 // need to convert between the two

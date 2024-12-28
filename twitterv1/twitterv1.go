@@ -66,6 +66,8 @@ func InitServer(config *config.Config) {
 	app.Get("/1/statuses/followers.xml", GetFollowers)
 	app.Get("/1/statuses/friends.xml", GetFollows)
 
+	app.Get("/1/users/recommendations.json", GetSuggestedUsers)
+
 	// Connect
 	app.Get("/1/users/search.json", UserSearch)
 

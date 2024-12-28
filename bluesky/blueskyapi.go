@@ -250,6 +250,10 @@ type UserSearchResult struct {
 	Actors []User `json:"actors"`
 }
 
+type OtherActorSuggestions struct {
+	Actors []User `json:"suggestions"`
+}
+
 type RecordResponse struct {
 	URI   string      `json:"uri"`
 	CID   string      `json:"cid"`
@@ -1249,6 +1253,64 @@ func GetTrends(pds string, token string) (*TrendingTopics, error) {
 	}
 
 	return &trends, nil
+}
+
+func GetMySuggestedUsers(pds string, token string, limit int) ([]User, error) {
+	url := pds + "/xrpc/app.bsky.actor.getSuggestions?limit=" + fmt.Sprintf("%d", limit)
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch suggested users")
+	}
+
+	users := UserSearchResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, err
+	}
+	return users.Actors, nil
+}
+
+func GetOthersSuggestedUsers(pds string, token string, limit int, actor string) ([]User, error) {
+	url := pds + "/xrpc/app.bsky.graph.getSuggestedFollowsByActor?limit=" + fmt.Sprintf("%d", limit) + "&actor=" + actor
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch suggested users")
+	}
+
+	users := OtherActorSuggestions{}
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, err
+	}
+	return users.Actors, nil
 }
 
 // Gets the URI components

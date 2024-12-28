@@ -3,6 +3,7 @@ package twitterv1
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
@@ -510,4 +511,63 @@ func GetFollows(c *fiber.Ctx) error {
 	}
 
 	return c.SendString(*xml)
+}
+
+func GetSuggestedUsers(c *fiber.Ctx) error {
+	var err error
+	// limits
+	limit := 30
+	if c.Query("limit") == "" {
+		limit, err = strconv.Atoi(c.Query("limit"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid limit value")
+		}
+	}
+
+	// auth
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	var recommendedUsers []blueskyapi.User
+
+	// see if they provided a user id
+	userID := c.Query("user_id")
+	if userID != "" {
+		userIDInt, ok := new(big.Int).SetString(userID, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		userID = bridge.TwitterIDToBlueSky(*userIDInt)
+		recommendedUsers, err = blueskyapi.GetOthersSuggestedUsers(*pds, *oauthToken, limit, userID)
+	} else {
+		recommendedUsers, err = blueskyapi.GetMySuggestedUsers(*pds, *oauthToken, limit)
+	}
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch suggested users")
+	}
+
+	usersDID := []string{}
+	for _, user := range recommendedUsers {
+		usersDID = append(usersDID, user.DID)
+	}
+
+	usersInfo, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersDID, false)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+	}
+
+	recommended := []bridge.TwitterRecommendation{}
+	for _, user := range usersInfo {
+		recommended = append(recommended, bridge.TwitterRecommendation{
+			UserID: user.ID,
+			User:   *user,
+		})
+	}
+
+	return c.JSON(recommended)
 }
