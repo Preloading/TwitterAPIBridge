@@ -64,6 +64,7 @@ func InitServer(config *config.Config) {
 	app.Post("/1/friendships/destroy/:id.xml", UnfollowUserParams)
 
 	app.Get("/1/statuses/followers.xml", GetFollowers)
+	app.Get("/1/statuses/friends.xml", GetFollows)
 
 	// Connect
 	app.Get("/1/users/search.json", UserSearch)
