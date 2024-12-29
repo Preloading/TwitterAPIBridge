@@ -29,9 +29,12 @@ func InitServer(config *config.Config) {
 		return c.Next()
 	})
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Hello, World!")
-	})
+	// app.Get("/", func(c *fiber.Ctx) error {
+	// 	return c.SendString("Hello, World!")
+	// Serve static files from the "static" folder
+	app.Static("/", "./static")
+	app.Static("/favicon.ico", "./static/favicon.ico")
+	app.Static("/static", "./static")
 
 	// Auth
 	app.Post("/oauth/access_token", access_token)
