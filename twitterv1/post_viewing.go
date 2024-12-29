@@ -33,6 +33,18 @@ func user_timeline(c *fiber.Ctx) error {
 	return convert_timeline(c, actor, blueskyapi.GetUserTimeline)
 }
 
+func likes_timeline(c *fiber.Ctx) error {
+	// We shall pretend that the only thing it can be is a user id. TODO: maybe rectify this later
+	actor := c.Params("id")
+	actorBigInt, ok := new(big.Int).SetString(actor, 10)
+	if !ok {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+	}
+	actor = bridge.TwitterIDToBlueSky(*actorBigInt)
+
+	return convert_timeline(c, actor, blueskyapi.GetActorLikes)
+}
+
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
 func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline)) error {
 	// Get all of our keys, beeps, and bops
@@ -458,7 +470,7 @@ func TweetInfo(c *fiber.Ctx) error {
 		return err
 	}
 
-	likes, err := blueskyapi.GetLikes(*pds, *oauthToken, id, 100)
+	likes, err := blueskyapi.GetPostLikes(*pds, *oauthToken, id, 100)
 
 	if err != nil {
 		return err

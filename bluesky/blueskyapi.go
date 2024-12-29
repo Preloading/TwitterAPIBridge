@@ -1065,7 +1065,7 @@ func UnfollowUser(pds string, token string, targetActor string, my_did string) (
 	return nil, targetUser
 }
 
-func GetLikes(pds string, token string, uri string, limit int) (*Likes, error) {
+func GetPostLikes(pds string, token string, uri string, limit int) (*Likes, error) {
 	url := fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getLikes?limit=%d&uri=%s", limit, uri)
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
@@ -1093,6 +1093,43 @@ func GetLikes(pds string, token string, uri string, limit int) (*Likes, error) {
 	}
 
 	return &likes, nil
+}
+
+// https://docs.bsky.app/docs/api/app-bsky-feed-get-actor-likes
+// Bluesky for SOME REASON limits viewing the likes to your own user. WHy?
+// What is the point of having an "actor" field if you can only use 1 actor?
+// I'm still gonna implement it, we can hope it will be expanded in the future.
+func GetActorLikes(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
+	url := fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s", limit, actor)
+	if context != "" {
+		url = fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s&context=%s", limit, actor, context)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch likes"), nil
+	}
+
+	likes := Timeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&likes); err != nil {
+		return err, nil
+	}
+
+	return nil, &likes
 }
 
 func GetRetweetAuthors(pds string, token string, uri string, limit int) (*RepostedBy, error) {

@@ -1,6 +1,8 @@
 package twitterv1
 
 import (
+	"fmt"
+
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/config"
 	"github.com/gofiber/fiber/v2"
@@ -21,11 +23,11 @@ func InitServer(config *config.Config) {
 
 	// Custom middleware to log request details
 	app.Use(func(c *fiber.Ctx) error {
-		// fmt.Println("Request Method:", c.Method())
-		// fmt.Println("Request URL:", c.OriginalURL())
-		// fmt.Println("Post Body:", string(c.Body()))
-		// fmt.Println("Headers:", string(c.Request().Header.Header()))
-		// fmt.Println()
+		fmt.Println("Request Method:", c.Method())
+		fmt.Println("Request URL:", c.OriginalURL())
+		fmt.Println("Post Body:", string(c.Body()))
+		fmt.Println("Headers:", string(c.Request().Header.Header()))
+		fmt.Println()
 		return c.Next()
 	})
 
@@ -59,6 +61,7 @@ func InitServer(config *config.Config) {
 	app.Post("/1/users/lookup.json", UsersLookup)
 	app.Get("/1/friendships/lookup.xml", UserRelationships)
 	app.Get("/1/friendships/show.xml", GetUsersRelationship)
+	app.Get("/1/favorites/:id.json", likes_timeline)
 	app.Post("/1/friendships/create.xml", FollowUser)
 	app.Post("/1/friendships/destroy.xml", UnfollowUserForm)
 	app.Post("/1/friendships/destroy/:id.xml", UnfollowUserParams)
