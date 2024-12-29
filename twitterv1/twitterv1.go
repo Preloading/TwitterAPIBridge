@@ -34,10 +34,11 @@ func InitServer(config *config.Config) {
 	// Serve static files from the "static" folder
 	app.Static("/", "./static")
 	app.Static("/favicon.ico", "./static/favicon.ico")
+	app.Static("/robots.txt", "./static/robots.txt")
 	app.Static("/static", "./static")
 
 	// Auth
-	app.Post("/oauth/access_token", access_token)
+	app.Post("/oauth/access_t10oken", access_token)
 	app.Get("/1/account/verify_credentials.json", VerifyCredentials)
 
 	// Tweeting
