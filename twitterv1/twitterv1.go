@@ -38,7 +38,7 @@ func InitServer(config *config.Config) {
 	app.Static("/static", "./static")
 
 	// Auth
-	app.Post("/oauth/access_t10oken", access_token)
+	app.Post("/oauth/access_token", access_token)
 	app.Get("/1/account/verify_credentials.json", VerifyCredentials)
 
 	// Tweeting
