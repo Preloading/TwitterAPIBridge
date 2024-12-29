@@ -566,10 +566,10 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
-func GetTimeline(pds string, token string, context string, feed string) (error, *Timeline) {
-	url := pds + "/xrpc/app.bsky.feed.getTimeline"
+func GetTimeline(pds string, token string, context string, feed string, limit int) (error, *Timeline) {
+	url := pds + "/xrpc/app.bsky.feed.getTimeline?limit=" + fmt.Sprintf("%d", limit)
 	if context != "" {
-		url = pds + "/xrpc/app.bsky.feed.getTimeline?cursor=" + context
+		url = pds + "/xrpc/app.bsky.feed.getTimeline?cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
@@ -600,10 +600,10 @@ func GetTimeline(pds string, token string, context string, feed string) (error, 
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-author-feed
-func GetUserTimeline(pds string, token string, context string, actor string) (error, *Timeline) {
-	apiURL := pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor)
+func GetUserTimeline(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
+	apiURL := pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&limit=" + fmt.Sprintf("%d", limit)
 	if context != "" {
-		apiURL = pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context
+		apiURL = pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)

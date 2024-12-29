@@ -34,12 +34,25 @@ func user_timeline(c *fiber.Ctx) error {
 }
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
-func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string, string) (error, *blueskyapi.Timeline)) error {
+func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline)) error {
 	// Get all of our keys, beeps, and bops
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// Limits
+	limitStr := c.Query("count")
+	if limitStr == "" {
+		limitStr = "20"
+	}
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid count format")
+	}
+	if limit > 100 {
+		limit = 100
 	}
 
 	// Check for context
@@ -60,7 +73,7 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 		context = date.Format(time.RFC3339)
 	}
 
-	err, res := fetcher(*pds, *oauthToken, context, param)
+	err, res := fetcher(*pds, *oauthToken, context, param, limit)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
