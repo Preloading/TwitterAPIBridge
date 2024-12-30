@@ -1,8 +1,6 @@
 package twitterv1
 
 import (
-	"fmt"
-
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/config"
 	"github.com/gofiber/fiber/v2"
@@ -22,14 +20,16 @@ func InitServer(config *config.Config) {
 	app.Use(logger.New())
 
 	// Custom middleware to log request details
-	app.Use(func(c *fiber.Ctx) error {
-		// fmt.Println("Request Method:", c.Method())
-		fmt.Println("Request URL:", c.OriginalURL())
-		fmt.Println("Post Body:", string(c.Body()))
-		// fmt.Println("Headers:", string(c.Request().Header.Header()))
-		// fmt.Println()
-		return c.Next()
-	})
+	if config.DeveloperMode {
+		app.Use(func(c *fiber.Ctx) error {
+			// fmt.Println("Request Method:", c.Method())
+			// fmt.Println("Request URL:", c.OriginalURL())
+			// fmt.Println("Post Body:", string(c.Body()))
+			// fmt.Println("Headers:", string(c.Request().Header.Header()))
+			// fmt.Println()
+			return c.Next()
+		})
+	}
 
 	// app.Get("/", func(c *fiber.Ctx) error {
 	// 	return c.SendString("Hello, World!")

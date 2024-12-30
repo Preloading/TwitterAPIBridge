@@ -119,10 +119,6 @@ func UpdateProfile(c *fiber.Ctx) error {
 	// location := c.FormValue("location")
 	// url := c.FormValue("url")
 
-	// debugging
-	fmt.Println("Description:", description)
-	fmt.Println("Name:", name)
-
 	// some quality of life features
 	description = strings.ReplaceAll(description, "\\n", "\n")
 
