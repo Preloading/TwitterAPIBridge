@@ -85,6 +85,7 @@ func InitServer(config *config.Config) {
 
 	// Account / Settings
 	app.Post("/1/account/update_profile.xml", UpdateProfile)
+	app.Post("/1/account/update_profile_image.xml", UpdateProfilePicture)
 	app.Get("/1/account/settings.xml", GetSettings)
 	app.Get("/1/account/push_destinations/device.xml", PushDestinations)
 

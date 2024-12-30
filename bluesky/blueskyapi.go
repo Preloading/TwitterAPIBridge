@@ -278,7 +278,7 @@ type RecordValue struct { // TODO: Figure out how to make it get different types
 	CreatedAt   time.Time     `json:"createdAt,omitempty"`
 	Description string        `json:"description,omitempty"`
 	DisplayName string        `json:"displayName,omitempty"`
-	Avatar      interface{}   `json:"avatar,omitempty"` // TODO: implement avatar
+	Avatar      Blob          `json:"avatar,omitempty"`
 }
 
 type Relationships struct {
@@ -340,6 +340,25 @@ func SendRequest(token *string, method string, url string, body io.Reader) (*htt
 		req.Header.Set("Authorization", "Bearer "+*token)
 	}
 	req.Header.Set("Content-Type", "application/json") // 99% sure all bluesky requests are json.
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func SendRequestWithContentType(token *string, method string, url string, body io.Reader, content_type string) (*http.Response, error) {
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	if token != nil {
+		req.Header.Set("Authorization", "Bearer "+*token)
+	}
+	req.Header.Set("Content-Type", content_type) // 99% sure all bluesky requests are json.
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -1611,6 +1630,33 @@ func GetNotifications(pds string, token string, limit int, context string) (*Not
 	}
 
 	return &notifications, nil
+}
+
+func UploadBlob(pds string, token string, data []byte, content_type string) (*Blob, error) {
+	url := pds + "/xrpc/com.atproto.repo.uploadBlob"
+
+	resp, err := SendRequestWithContentType(&token, http.MethodPost, url, bytes.NewReader(data), content_type)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to upload blob")
+	}
+
+	blob := struct {
+		Blob Blob `json:"blob"`
+	}{}
+	if err := json.NewDecoder(resp.Body).Decode(&blob); err != nil {
+		return nil, err
+	}
+
+	return &blob.Blob, nil
 }
 
 // Gets the URI components

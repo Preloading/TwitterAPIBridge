@@ -2,12 +2,27 @@ package twitterv1
 
 import (
 	"fmt"
+	"io"
 	"strings"
+	"sync"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
 	"github.com/gofiber/fiber/v2"
 )
+
+// Mutex map to store mutexes for each user
+var userMutexes = make(map[string]*sync.Mutex)
+var mutexMapLock sync.Mutex
+
+func getUserMutex(userID string) *sync.Mutex {
+	mutexMapLock.Lock()
+	defer mutexMapLock.Unlock()
+	if _, exists := userMutexes[userID]; !exists {
+		userMutexes[userID] = &sync.Mutex{}
+	}
+	return userMutexes[userID]
+}
 
 func PushDestinations(c *fiber.Ctx) error {
 	// TODO: figure out what the hell this is supposed to do to make notifications not crash.
@@ -87,6 +102,17 @@ func GetSettings(c *fiber.Ctx) error {
 }
 
 func UpdateProfile(c *fiber.Ctx) error {
+	// auth
+	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// Lock the mutex for this user
+	userMutex := getUserMutex(*my_did)
+	userMutex.Lock()
+	defer userMutex.Unlock()
+
 	description := c.FormValue("description")
 	name := c.FormValue("name")
 	// These don't exist in bluesky.
@@ -99,12 +125,6 @@ func UpdateProfile(c *fiber.Ctx) error {
 
 	// some quality of life features
 	description = strings.ReplaceAll(description, "\\n", "\n")
-
-	// auth
-	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
-	}
 
 	oldProfile, err := blueskyapi.GetRecord(*pds, "app.bsky.actor.profile", *my_did, "self")
 	if err != nil {
@@ -128,6 +148,78 @@ func UpdateProfile(c *fiber.Ctx) error {
 
 	user.Description = description
 	user.Name = name
+
+	xml, err := bridge.XMLEncoder(user, "TwitterUser", "user")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
+	}
+
+	return c.SendString(*xml)
+}
+
+func UpdateProfilePicture(c *fiber.Ctx) error {
+	// auth
+	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// Lock the mutex for this user
+	userMutex := getUserMutex(*my_did)
+	userMutex.Lock()
+	defer userMutex.Unlock()
+
+	// get the old profile
+	oldProfile, err := blueskyapi.GetRecord(*pds, "app.bsky.actor.profile", *my_did, "self")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get profile")
+	}
+
+	// get our new image
+	image, err := c.FormFile("image")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusBadRequest).SendString("Please upload an image")
+	}
+
+	// read the image file content
+	file, err := image.Open()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to open image file")
+	}
+	defer file.Close()
+
+	imageData, err := io.ReadAll(file)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to read image file")
+	}
+
+	// upload our new profile picture
+	profilePictureBlob, err := blueskyapi.UploadBlob(*pds, *oauthToken, imageData, c.Get("Content-Type"))
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to upload profile picture")
+	}
+
+	// change our thing
+	oldProfile.Value.Avatar = *profilePictureBlob
+
+	if err := blueskyapi.UpdateRecord(*pds, *oauthToken, "app.bsky.actor.profile", *my_did, "self", oldProfile.CID, oldProfile.Value); err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update profile")
+	}
+
+	user, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *my_did, true)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+	}
+
+	// ...
 
 	xml, err := bridge.XMLEncoder(user, "TwitterUser", "user")
 	if err != nil {
