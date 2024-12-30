@@ -2,6 +2,7 @@ package twitterv1
 
 import (
 	"fmt"
+	"math/big"
 	"net/url"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 // 3. Has a "non internal" version that is documented, but isn't this request.
 
 func InternalSearch(c *fiber.Ctx) error {
+	// Thank you so much @Safefade for what this should repsond.
 	q := c.Query("q")
 	fmt.Println("Search query:", q)
 
@@ -26,7 +28,36 @@ func InternalSearch(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
-	bskySearch, err := blueskyapi.PostSearch(*pds, *oauthToken, q)
+	// Pagination
+	max_id := c.Query("max_id")
+	var until *time.Time
+	if max_id != "" {
+		maxIDBigInt := new(big.Int)
+		maxIDBigInt, ok := maxIDBigInt.SetString(max_id, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
+		}
+		_, until, _, err = bridge.TwitterMsgIdToBluesky(maxIDBigInt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
+		}
+	}
+
+	var since *time.Time
+	since_id := c.Query("since_id")
+	if since_id != "" {
+		sinceIDBigInt := new(big.Int)
+		sinceIDBigInt, ok := sinceIDBigInt.SetString(since_id, 10)
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid since_id")
+		}
+		_, until, _, err = bridge.TwitterMsgIdToBluesky(sinceIDBigInt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid since_id")
+		}
+	}
+
+	bskySearch, err := blueskyapi.PostSearch(*pds, *oauthToken, q, since, until)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -40,10 +71,49 @@ func InternalSearch(c *fiber.Ctx) error {
 	}
 	blueskyapi.GetUsersInfo(*pds, *oauthToken, dids, false)
 
+	replyUrls := []string{}
+
+	for _, search := range bskySearch {
+		if search.Record.Reply != nil {
+			replyUrls = append(replyUrls, search.Record.Reply.Parent.URI)
+		}
+	}
+
+	// Get all the replies
+	replyToPostData, err := blueskyapi.GetPosts(*pds, *oauthToken, replyUrls)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get reply to data")
+	}
+
+	// Create a map for quick lookup of reply dates and user IDs
+	replyDateMap := make(map[string]time.Time)
+	replyUserIdMap := make(map[string]string)
+	for _, post := range replyToPostData {
+		replyDateMap[post.URI] = post.IndexedAt
+		replyUserIdMap[post.URI] = post.Author.DID
+	}
+
 	// Translate to twitter
 	tweets := []bridge.Tweet{}
 	for _, search := range bskySearch {
-		tweets = append(tweets, TranslatePostToTweet(search, "", "", nil, nil, *oauthToken, *pds))
+		var replyDate *time.Time
+		var replyUserId *string
+		if search.Record.Reply != nil {
+			if date, exists := replyDateMap[search.Record.Reply.Parent.URI]; exists {
+				replyDate = &date
+			}
+			if userId, exists := replyUserIdMap[search.Record.Reply.Parent.URI]; exists {
+				replyUserId = &userId
+			}
+		}
+
+		if replyDate == nil {
+			tweets = append(tweets, TranslatePostToTweet(search, "", "", nil, nil, *oauthToken, *pds))
+		} else {
+			tweets = append(tweets, TranslatePostToTweet(search, search.Record.Reply.Parent.URI, *replyUserId, replyDate, nil, *oauthToken, *pds))
+		}
+
 	}
 
 	return c.JSON(bridge.InternalSearchResult{

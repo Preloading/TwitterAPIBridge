@@ -486,7 +486,6 @@ func GetUsersInfoRaw(pds string, token string, items []string, ignoreCache bool)
 			defer wg.Done()
 
 			url := pds + "/xrpc/app.bsky.actor.getProfiles" + "?actors=" + strings.Join(c, "&actors=")
-			fmt.Println(url)
 			resp, err := SendRequest(&token, http.MethodGet, url, nil)
 			if err != nil {
 				fmt.Println(err)
@@ -687,6 +686,57 @@ func GetPost(pds string, token string, uri string, depth int, parentHeight int) 
 	}
 
 	return nil, &thread
+}
+
+// https://docs.bsky.app/docs/api/app-bsky-feed-get-posts
+func GetPosts(pds string, token string, items []string) ([]*Post, error) {
+	var results []*Post
+
+	// Parallel fetching for chunks of up to 25 at a time
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	for i := 0; i < len(items); i += 25 {
+		end := i + 25
+		if end > len(items) {
+			end = len(items)
+		}
+		chunk := items[i:end]
+
+		wg.Add(1)
+		go func(c []string) {
+			defer wg.Done()
+
+			url := pds + "/xrpc/app.bsky.feed.getPosts" + "?uris=" + strings.Join(c, "&uris=")
+			resp, err := SendRequest(&token, http.MethodGet, url, nil)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				bodyBytes, _ := io.ReadAll(resp.Body)
+				fmt.Println("Response Status:", resp.StatusCode)
+				fmt.Println("Response Body:", string(bodyBytes))
+				return
+			}
+
+			var posts struct {
+				Posts []Post `json:"posts"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&posts); err != nil {
+				return
+			}
+
+			mu.Lock()
+			for _, post := range posts.Posts {
+				results = append(results, &post)
+			}
+			mu.Unlock()
+		}(chunk)
+	}
+
+	wg.Wait()
+	return results, nil
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-graph-get-followers
@@ -1215,8 +1265,14 @@ func UserSearch(pds string, token string, query string) ([]User, error) {
 	return users.Actors, nil
 }
 
-func PostSearch(pds string, token string, query string) ([]Post, error) {
-	url := pds + "/xrpc/app.bsky.feed.searchPosts?q=" + url.QueryEscape(query)
+func PostSearch(pds string, token string, query string, since *time.Time, until *time.Time) ([]Post, error) {
+	url := pds + "/xrpc/app.bsky.feed.searchPosts?sort=top&q=" + url.QueryEscape(query)
+	if since != nil {
+		url += "&since=" + since.Format(time.RFC3339)
+	}
+	if until != nil {
+		url += "&until=" + until.Format(time.RFC3339)
+	}
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
