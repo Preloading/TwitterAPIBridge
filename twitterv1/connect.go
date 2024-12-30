@@ -188,5 +188,6 @@ func GetMyActivity(c *fiber.Ctx) error {
 
 		position++ // Increment position
 	}
+
 	return c.JSON(twitterNotifications)
 }

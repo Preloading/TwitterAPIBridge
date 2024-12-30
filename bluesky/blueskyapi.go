@@ -246,6 +246,12 @@ type ItemByWithDate struct {
 	Actor     User      `json:"actor"`
 }
 
+type PostSearchResult struct {
+	Posts     []Post `json:"posts"`
+	HitsTotal int    `json:"hitsTotal"`
+	Cursor    string `json:"cursor"`
+}
+
 type UserSearchResult struct {
 	Actors []User `json:"actors"`
 }
@@ -1207,6 +1213,35 @@ func UserSearch(pds string, token string, query string) ([]User, error) {
 		return nil, err
 	}
 	return users.Actors, nil
+}
+
+func PostSearch(pds string, token string, query string) ([]Post, error) {
+	url := pds + "/xrpc/app.bsky.feed.searchPosts?q=" + url.QueryEscape(query)
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch search results")
+	}
+
+	posts := PostSearchResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&posts); err != nil {
+		return nil, err
+	}
+	return posts.Posts, nil
 }
 
 // thank you https://docs.bsky.app/blog/create-post#replies

@@ -17,11 +17,38 @@ import (
 // 2. Too common of a function to find
 // 3. Has a "non internal" version that is documented, but isn't this request.
 
-// TODO: Implement this
-func Search(c *fiber.Ctx) error {
+func InternalSearch(c *fiber.Ctx) error {
 	q := c.Query("q")
 	fmt.Println("Search query:", q)
-	return c.SendStatus(fiber.StatusNotImplemented)
+
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	bskySearch, err := blueskyapi.PostSearch(*pds, *oauthToken, q)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to search")
+	}
+
+	// Optimization: Get all users at once so we don't have to do it in chunks
+	var dids []string
+	for _, search := range bskySearch {
+		dids = append(dids, search.Author.DID)
+	}
+	blueskyapi.GetUsersInfo(*pds, *oauthToken, dids, false)
+
+	// Translate to twitter
+	tweets := []bridge.Tweet{}
+	for _, search := range bskySearch {
+		tweets = append(tweets, TranslatePostToTweet(search, "", "", nil, nil, *oauthToken, *pds))
+	}
+
+	return c.JSON(bridge.InternalSearchResult{
+		Statuses: tweets,
+	})
 }
 
 // https://web.archive.org/web/20120313235613/https://dev.twitter.com/docs/api/1/get/trends/%3Awoeid

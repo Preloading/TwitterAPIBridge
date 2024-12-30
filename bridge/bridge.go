@@ -290,6 +290,10 @@ type TwitterRecommendation struct {
 	Token  string      `json:"token"`
 }
 
+type InternalSearchResult struct {
+	Statuses []Tweet `json:"statuses"`
+}
+
 // Bluesky's API returns a letter ID for each user,
 // While twitter uses a numeric ID, meaning we
 // need to convert between the two
