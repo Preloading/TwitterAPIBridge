@@ -206,6 +206,7 @@ type CreatePostRecord struct {
 	Text      string        `json:"text"`
 	CreatedAt time.Time     `json:"createdAt"`
 	Reply     *ReplySubject `json:"reply,omitempty"`
+	Facets    []Facet       `json:"facets,omitempty"`
 }
 
 type Subject struct {
@@ -808,11 +809,48 @@ func GetFollows(pds string, token string, context string, actor string) (*Follow
 }
 
 // This handles both normal & replys
-func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string) (*ThreadRoot, error) {
+func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string, mentions []bridge.MentionParsing) (*ThreadRoot, error) {
 	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
 	var replySubject *ReplySubject
 	var err error
+	facets := []Facet{}
+
+	// find mention's DID
+	handles := []string{}
+	for _, mention := range mentions {
+		handles = append(handles, mention.Handle)
+	}
+	mentionedUsers, err := GetUsersInfo(pds, token, handles, false)
+
+	if err == nil {
+		for _, mention := range mentions {
+			var mentionDID string
+			for _, user := range mentionedUsers {
+				if user.ScreenName == mention.Handle {
+					mentionDID = bridge.TwitterIDToBlueSky(*user.ID) // efficency is poor
+					break
+				}
+			}
+
+			if mentionDID == "" {
+				continue
+			}
+
+			facets = append(facets, Facet{
+				Index: Index{
+					ByteStart: mention.Start,
+					ByteEnd:   mention.End,
+				},
+				Features: []Feature{
+					{
+						Type: "app.bsky.richtext.facet#mention",
+						Did:  mentionDID,
+					},
+				},
+			})
+		}
+	}
 
 	// Replying
 	if in_reply_to != nil && *in_reply_to != "" {
@@ -830,6 +868,7 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 			Text:      status,
 			CreatedAt: time.Now().UTC(),
 			Reply:     replySubject,
+			Facets:    facets,
 		},
 	}
 

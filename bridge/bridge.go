@@ -294,6 +294,12 @@ type InternalSearchResult struct {
 	Statuses []Tweet `json:"statuses"`
 }
 
+type MentionParsing struct {
+	Start  int
+	End    int
+	Handle string
+}
+
 // Bluesky's API returns a letter ID for each user,
 // While twitter uses a numeric ID, meaning we
 // need to convert between the two

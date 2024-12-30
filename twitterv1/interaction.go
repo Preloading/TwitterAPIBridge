@@ -3,6 +3,7 @@ package twitterv1
 import (
 	"fmt"
 	"math/big"
+	"regexp"
 	"time"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
@@ -19,6 +20,10 @@ func status_update(c *fiber.Ctx) error {
 	}
 
 	status := c.FormValue("status")
+
+	// Status parsing!
+	mentions := findHandleInstances(status)
+
 	//	trim_user := c.FormValue("trim_user") // Unused
 	encoded_in_reply_to_status_id_str := c.FormValue("in_reply_to_status_id")
 	encoded_in_reply_to_status_id_int := new(big.Int)
@@ -31,7 +36,7 @@ func status_update(c *fiber.Ctx) error {
 		}
 	}
 
-	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id)
+	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id, mentions)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -231,4 +236,18 @@ func DeleteTweet(c *fiber.Ctx) error {
 			}
 		}(),
 	)
+}
+
+func findHandleInstances(input string) []bridge.MentionParsing {
+	regex := regexp.MustCompile(`@([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?`)
+	matches := regex.FindAllStringIndex(input, -1)
+	results := []bridge.MentionParsing{}
+	for _, match := range matches {
+		results = append(results, bridge.MentionParsing{
+			Start:  match[0],
+			End:    match[1],
+			Handle: input[match[0]+1 : match[1]], // +1 to skip the '@' character
+		})
+	}
+	return results
 }
