@@ -31,3 +31,7 @@ services:
 ### This is not (and probably won't be for a while) a 100% accurate recreation of the twitter API
 
 most of this readme todo
+
+## Thanks
+@Preloading - I wrote the thing
+@Safefade - Gave me info on some of the requests

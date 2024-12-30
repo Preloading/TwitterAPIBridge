@@ -286,6 +286,24 @@ type TrendingTopic struct {
 	Link  string `json:"link"`
 }
 
+type Notification struct {
+	URI           string                `json:"uri"`
+	CID           string                `json:"cid"`
+	Author        User                  `json:"author"`
+	Reason        string                `json:"reason"`
+	ReasonSubject string                `json:"reasonSubject"`
+	Record        PostInteractionRecord `json:"record"` // i think this is the correct object?
+	IsRead        bool                  `json:"isRead"`
+	IndexedAt     time.Time             `json:"indexedAt"`
+}
+
+type Notifications struct {
+	Notifications []Notification `json:"notifications"`
+	Cursor        string         `json:"cursor"`
+	Priority      bool           `json:"priority"`
+	SeenAt        time.Time      `json:"seenAt"`
+}
+
 var (
 	configData *config.Config
 )
@@ -1348,6 +1366,39 @@ func GetOthersSuggestedUsers(pds string, token string, limit int, actor string) 
 		return nil, err
 	}
 	return users.Actors, nil
+}
+
+func GetNotifications(pds string, token string, limit int, context string) (*Notifications, error) {
+	url := pds + "/xrpc/app.bsky.notification.listNotifications?limit=" + fmt.Sprintf("%d", limit)
+	if context != "" {
+		url = pds + "/xrpc/app.bsky.notification.listNotifications?cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch notifications")
+	}
+
+	notifications := Notifications{}
+	if err := json.NewDecoder(resp.Body).Decode(&notifications); err != nil {
+		return nil, err
+	}
+
+	return &notifications, nil
 }
 
 // Gets the URI components

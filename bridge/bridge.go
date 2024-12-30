@@ -233,6 +233,16 @@ type UserRelationships struct {
 	Relationships []UsersRelationship `json:"relationship" xml:"relationship"`
 }
 
+// Currently known how it forms follows, but we are missing favourites etc
+type MyActivity struct {
+	Action        string        `json:"action" xml:"action"`
+	CreatedAt     string        `json:"created_at" xml:"created_at"`
+	ID            *big.Int      `json:"id" xml:"id"`
+	Sources       []TwitterUser `json:"sources" xml:"sources"`
+	Targets       []Tweet       `json:"targets,omitempty" xml:"targets,omitempty"`
+	TargetObjects []Tweet       `json:"target_objects,omitempty" xml:"target_objects,omitempty"`
+}
+
 // https://web.archive.org/web/20120516154953/https://dev.twitter.com/docs/api/1/get/friendships/show
 // used in the /friendships/show endpoint
 type UserFriendship struct {
