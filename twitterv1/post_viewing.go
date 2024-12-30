@@ -213,6 +213,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	}
 }
 
+// https://web.archive.org/web/20120506182126/https://dev.twitter.com/docs/platform-objects/tweets
 func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string, pds string) bridge.Tweet {
 	tweetEntities := bridge.Entities{
 		Hashtags:     nil,
@@ -250,6 +251,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				//ScreenName: "test",
 				ScreenName: tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
 				ID:         bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
+				IDStr:      bridge.BlueSkyToTwitterID(faucet.Features[0].Did).String(),
 				Indices: []int{
 					faucet.Index.ByteStart,
 					faucet.Index.ByteEnd,
@@ -260,6 +262,14 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				ExpandedURL: faucet.Features[0].Uri,
 				URL:         faucet.Features[0].Uri, // Shortcut url
 				DisplayURL:  tweet.Record.Text[faucet.Index.ByteStart:faucet.Index.ByteEnd],
+				Indices: []int{
+					faucet.Index.ByteStart,
+					faucet.Index.ByteEnd,
+				},
+			})
+		case "app.bsky.richtext.facet#tag":
+			tweetEntities.Hashtags = append(tweetEntities.Hashtags, bridge.Hashtag{
+				Text: faucet.Features[0].Tag, // Shortcut url
 				Indices: []int{
 					faucet.Index.ByteStart,
 					faucet.Index.ByteEnd,
