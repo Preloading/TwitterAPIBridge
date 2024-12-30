@@ -2,13 +2,15 @@ package twitterv1
 
 import (
 	"fmt"
+	"strings"
 
+	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
 	"github.com/gofiber/fiber/v2"
 )
 
-// Thanks to bag.xml for helping me get what this request returns
 func PushDestinations(c *fiber.Ctx) error {
+	// TODO: figure out what the hell this is supposed to do to make notifications not crash.
 	old_udid := c.Query("old_udid")
 	udid := c.Query("udid")
 	// environment := c.Query("environment")
@@ -82,4 +84,56 @@ func GetSettings(c *fiber.Ctx) error {
 	}
 	return c.SendString(*xml)
 
+}
+
+func UpdateProfile(c *fiber.Ctx) error {
+	description := c.FormValue("description")
+	name := c.FormValue("name")
+	// These don't exist in bluesky.
+	// location := c.FormValue("location")
+	// url := c.FormValue("url")
+
+	// debugging
+	fmt.Println("Description:", description)
+	fmt.Println("Name:", name)
+
+	// some quality of life features
+	description = strings.ReplaceAll(description, "\\n", "\n")
+
+	// auth
+	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	oldProfile, err := blueskyapi.GetRecord(*pds, "app.bsky.actor.profile", *my_did, "self")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get profile")
+	}
+
+	oldProfile.Value.DisplayName = name
+	oldProfile.Value.Description = description
+
+	if err := blueskyapi.UpdateRecord(*pds, *oauthToken, "app.bsky.actor.profile", *my_did, "self", oldProfile.CID, oldProfile.Value); err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update profile")
+	}
+
+	user, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *my_did, true)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+	}
+
+	user.Description = description
+	user.Name = name
+
+	xml, err := bridge.XMLEncoder(user, "TwitterUser", "user")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
+	}
+
+	return c.SendString(*xml)
 }

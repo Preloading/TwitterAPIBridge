@@ -189,6 +189,12 @@ type CreateRecordPayload struct {
 	Record     interface{} `json:"record"`
 }
 
+type UpdateRecordPayload struct {
+	CreateRecordPayload
+	RKey       string `json:"rkey"`
+	SwapRecord string `json:"swapRecord"`
+}
+
 type DeleteRecordPayload struct {
 	Collection string `json:"collection"`
 	Repo       string `json:"repo"`
@@ -267,9 +273,12 @@ type RecordResponse struct {
 	Value RecordValue `json:"value"`
 }
 
-type RecordValue struct {
-	Reply     *ReplySubject `json:"reply,omitempty"`
-	CreatedAt time.Time     `json:"createdAt,omitempty"`
+type RecordValue struct { // TODO: Figure out how to make it get different types of records
+	Reply       *ReplySubject `json:"reply,omitempty"`
+	CreatedAt   time.Time     `json:"createdAt,omitempty"`
+	Description string        `json:"description,omitempty"`
+	DisplayName string        `json:"displayName,omitempty"`
+	Avatar      interface{}   `json:"avatar,omitempty"` // TODO: implement avatar
 }
 
 type Relationships struct {
@@ -340,9 +349,11 @@ func SendRequest(token *string, method string, url string, body io.Reader) (*htt
 	return resp, nil
 }
 
-func GetUserInfo(pds string, token string, screen_name string) (*bridge.TwitterUser, error) {
-	if user, found := userCache.Get(screen_name); found {
-		return &user, nil
+func GetUserInfo(pds string, token string, screen_name string, nocache bool) (*bridge.TwitterUser, error) {
+	if !nocache {
+		if user, found := userCache.Get(screen_name); found {
+			return &user, nil
+		}
 	}
 
 	url := pds + "/xrpc/app.bsky.actor.getProfile" + "?actor=" + screen_name
@@ -1410,8 +1421,12 @@ func GetReplyRefs(pds string, token string, parentURI string) (*ReplySubject, er
 	}, nil
 }
 
-func GetRecord(pds string, uri string) (*RecordResponse, error) {
+func GetRecordWithUri(pds string, uri string) (*RecordResponse, error) {
 	collection, repo, rkey := GetURIComponents(uri)
+	return GetRecord(pds, collection, repo, rkey)
+}
+
+func GetRecord(pds string, collection string, repo string, rkey string) (*RecordResponse, error) {
 
 	url := pds + "/xrpc/com.atproto.repo.getRecord?collection=" + collection + "&repo=" + repo + "&rkey=" + rkey
 
@@ -1440,6 +1455,40 @@ func GetRecord(pds string, uri string) (*RecordResponse, error) {
 	}
 
 	return &record, nil
+}
+
+func UpdateRecord(pds string, token string, collection string, repo string, rkey string, swapRecord string, newRecord interface{}) error {
+	url := pds + "/xrpc/com.atproto.repo.putRecord"
+
+	payload := UpdateRecordPayload{
+		CreateRecordPayload: CreateRecordPayload{
+			Collection: collection,
+			Repo:       repo,
+			Record:     newRecord,
+		},
+		RKey:       rkey,
+		SwapRecord: swapRecord,
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return errors.New("failed to marshal payload")
+	}
+
+	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to update: " + bodyString)
+	}
+	return nil
 }
 
 // This feature is still in beta, and is likely to break in the future

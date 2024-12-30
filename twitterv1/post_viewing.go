@@ -294,7 +294,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	// Get the user info
 	var author *bridge.TwitterUser
-	author, err := blueskyapi.GetUserInfo(pds, token, tweet.Author.DID)
+	author, err := blueskyapi.GetUserInfo(pds, token, tweet.Author.DID, false)
 	if err != nil {
 		fmt.Println("Error:", err)
 		// fallback
@@ -382,7 +382,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		}(),
 		CurrentUserRetweet: func() *bridge.CurrentUserRetweet {
 			if tweet.Viewer.Repost != nil {
-				RepostRecord, err := blueskyapi.GetRecord(pds, *tweet.Viewer.Repost)
+				RepostRecord, err := blueskyapi.GetRecordWithUri(pds, *tweet.Viewer.Repost)
 				if err != nil {
 					fmt.Println("Error:", err)
 					return nil

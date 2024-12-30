@@ -75,7 +75,7 @@ func VerifyCredentials(c *fiber.Ctx) error {
 		oauthToken = &blankstring
 	}
 
-	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *my_did)
+	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *my_did, false)
 
 	if err != nil {
 		fmt.Println("Error:", err)

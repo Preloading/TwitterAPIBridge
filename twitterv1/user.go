@@ -36,7 +36,7 @@ func user_info(c *fiber.Ctx) error {
 		oauthToken = &blankstring
 	}
 
-	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, screen_name)
+	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, screen_name, false)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -231,12 +231,12 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 
 	// It looks like there's a bug where I can't pass handles into GetRelationships, but we need to get the handle anyways, so this shouldn't impact that much
 
-	targetUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, targetActor)
+	targetUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, targetActor, false)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch target user")
 	}
 	// Possible optimization: if the source user is us, we can skip the api call, and just use viewer info
-	sourceUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, sourceActor)
+	sourceUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, sourceActor, false)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch source user")
 	}

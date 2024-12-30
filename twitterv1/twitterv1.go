@@ -1,6 +1,8 @@
 package twitterv1
 
 import (
+	"fmt"
+
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/config"
 	"github.com/gofiber/fiber/v2"
@@ -22,8 +24,8 @@ func InitServer(config *config.Config) {
 	// Custom middleware to log request details
 	app.Use(func(c *fiber.Ctx) error {
 		// fmt.Println("Request Method:", c.Method())
-		// fmt.Println("Request URL:", c.OriginalURL())
-		// fmt.Println("Post Body:", string(c.Body()))
+		fmt.Println("Request URL:", c.OriginalURL())
+		fmt.Println("Post Body:", string(c.Body()))
 		// fmt.Println("Headers:", string(c.Request().Header.Header()))
 		// fmt.Println()
 		return c.Next()
@@ -81,7 +83,8 @@ func InitServer(config *config.Config) {
 	app.Get("/1/trends/:woeid.json", trends_woeid)
 	app.Get("/i/search.json", InternalSearch)
 
-	// Setings
+	// Account / Settings
+	app.Post("/1/account/update_profile.xml", UpdateProfile)
 	app.Get("/1/account/settings.xml", GetSettings)
 	app.Get("/1/account/push_destinations/device.xml", PushDestinations)
 
