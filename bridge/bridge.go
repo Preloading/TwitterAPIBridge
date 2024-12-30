@@ -294,10 +294,10 @@ type InternalSearchResult struct {
 	Statuses []Tweet `json:"statuses"`
 }
 
-type MentionParsing struct {
-	Start  int
-	End    int
-	Handle string
+type FacetParsing struct {
+	Start int
+	End   int
+	Item  string
 }
 
 // Bluesky's API returns a letter ID for each user,

@@ -23,6 +23,7 @@ func status_update(c *fiber.Ctx) error {
 
 	// Status parsing!
 	mentions := findHandleInstances(status)
+	links := findUrlInstances(status)
 
 	//	trim_user := c.FormValue("trim_user") // Unused
 	encoded_in_reply_to_status_id_str := c.FormValue("in_reply_to_status_id")
@@ -36,7 +37,7 @@ func status_update(c *fiber.Ctx) error {
 		}
 	}
 
-	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id, mentions)
+	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id, mentions, links)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -238,15 +239,29 @@ func DeleteTweet(c *fiber.Ctx) error {
 	)
 }
 
-func findHandleInstances(input string) []bridge.MentionParsing {
+func findHandleInstances(input string) []bridge.FacetParsing {
 	regex := regexp.MustCompile(`@([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?`)
 	matches := regex.FindAllStringIndex(input, -1)
-	results := []bridge.MentionParsing{}
+	results := []bridge.FacetParsing{}
 	for _, match := range matches {
-		results = append(results, bridge.MentionParsing{
-			Start:  match[0],
-			End:    match[1],
-			Handle: input[match[0]+1 : match[1]], // +1 to skip the '@' character
+		results = append(results, bridge.FacetParsing{
+			Start: match[0],
+			End:   match[1],
+			Item:  input[match[0]+1 : match[1]], // +1 to skip the '@' character
+		})
+	}
+	return results
+}
+
+func findUrlInstances(input string) []bridge.FacetParsing {
+	regex := regexp.MustCompile(`[$|\W](https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*[-a-zA-Z0-9@%_\+~#//=])?)`)
+	matches := regex.FindAllStringIndex(input, -1)
+	results := []bridge.FacetParsing{}
+	for _, match := range matches {
+		results = append(results, bridge.FacetParsing{
+			Start: match[0] + 1,
+			End:   match[1],
+			Item:  input[match[0]+1 : match[1]],
 		})
 	}
 	return results

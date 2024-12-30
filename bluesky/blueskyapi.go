@@ -809,7 +809,7 @@ func GetFollows(pds string, token string, context string, actor string) (*Follow
 }
 
 // This handles both normal & replys
-func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string, mentions []bridge.MentionParsing) (*ThreadRoot, error) {
+func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string, mentions []bridge.FacetParsing, urls []bridge.FacetParsing) (*ThreadRoot, error) {
 	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
 	var replySubject *ReplySubject
@@ -819,15 +819,16 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 	// find mention's DID
 	handles := []string{}
 	for _, mention := range mentions {
-		handles = append(handles, mention.Handle)
+		handles = append(handles, mention.Item)
 	}
 	mentionedUsers, err := GetUsersInfo(pds, token, handles, false)
 
+	// add mentions to the facets
 	if err == nil {
 		for _, mention := range mentions {
 			var mentionDID string
 			for _, user := range mentionedUsers {
-				if user.ScreenName == mention.Handle {
+				if user.ScreenName == mention.Item {
 					mentionDID = bridge.TwitterIDToBlueSky(*user.ID) // efficency is poor
 					break
 				}
@@ -850,6 +851,22 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 				},
 			})
 		}
+	}
+
+	// add URLs to the facets
+	for _, url := range urls {
+		facets = append(facets, Facet{
+			Index: Index{
+				ByteStart: url.Start,
+				ByteEnd:   url.End,
+			},
+			Features: []Feature{
+				{
+					Type: "app.bsky.richtext.facet#link",
+					Uri:  url.Item,
+				},
+			},
+		})
 	}
 
 	// Replying
