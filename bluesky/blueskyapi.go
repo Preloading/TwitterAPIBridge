@@ -809,7 +809,7 @@ func GetFollows(pds string, token string, context string, actor string) (*Follow
 }
 
 // This handles both normal & replys
-func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string, mentions []bridge.FacetParsing, urls []bridge.FacetParsing) (*ThreadRoot, error) {
+func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string, mentions []bridge.FacetParsing, urls []bridge.FacetParsing, tags []bridge.FacetParsing) (*ThreadRoot, error) {
 	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
 	var replySubject *ReplySubject
@@ -864,6 +864,22 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 				{
 					Type: "app.bsky.richtext.facet#link",
 					Uri:  url.Item,
+				},
+			},
+		})
+	}
+
+	// add tags (#something) to the facets
+	for _, tag := range tags {
+		facets = append(facets, Facet{
+			Index: Index{
+				ByteStart: tag.Start,
+				ByteEnd:   tag.End,
+			},
+			Features: []Feature{
+				{
+					Type: "app.bsky.richtext.facet#tag",
+					Tag:  tag.Item,
 				},
 			},
 		})
