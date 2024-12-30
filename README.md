@@ -34,4 +34,4 @@ most of this readme todo
 
 ## Thanks
 @Preloading - I wrote the thing
-@Safefade - Gave me info on some of the requests
+@Savefade - Gave me info on some of the requests

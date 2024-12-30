@@ -19,7 +19,7 @@ import (
 // 3. Has a "non internal" version that is documented, but isn't this request.
 
 func InternalSearch(c *fiber.Ctx) error {
-	// Thank you so much @Safefade for what this should repsond.
+	// Thank you so much @Savefade for what this should repsond.
 	q := c.Query("q")
 	fmt.Println("Search query:", q)
 

@@ -44,7 +44,7 @@ func UserSearch(c *fiber.Ctx) error {
 
 // /i/activity/about_me.json?contributor_details=1&include_entities=true&include_my_retweet=true&send_error_codes=true
 func GetMyActivity(c *fiber.Ctx) error {
-	// Thank you so much @Safefade for what this returns for follows.
+	// Thank you so much @Savefade for what this returns for follows.
 	// This function could probably optimized to use less GetUsers calls, but whatever.
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
