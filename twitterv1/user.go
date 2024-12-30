@@ -517,7 +517,7 @@ func GetSuggestedUsers(c *fiber.Ctx) error {
 	var err error
 	// limits
 	limit := 30
-	if c.Query("limit") == "" {
+	if c.Query("limit") != "" {
 		limit, err = strconv.Atoi(c.Query("limit"))
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid limit value")
