@@ -600,6 +600,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		URL:                       "",
 		UtcOffset:                 nil,
 		ID:                        bridge.BlueSkyToTwitterID(author.DID),
+		IDStr:                     bridge.BlueSkyToTwitterID(author.DID).String(),
 		ProfileUseBackgroundImage: false,
 		ListedCount:               0,
 		ProfileTextColor:          "000000",

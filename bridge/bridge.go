@@ -85,29 +85,29 @@ type TwitterUser struct {
 	CreatedAt                 string `json:"created_at" xml:"created_at"`
 	ProfileImageURL           string `json:"profile_image_url" xml:"profile_image_url"`
 	// ProfileImageURLHttps      string  `json:"profile_image_url_https" xml:"profile_image_url_https"`
-	Location            string   `json:"location" xml:"location"`
-	ProfileLinkColor    string   `json:"profile_link_color" xml:"profile_link_color"`
-	FollowRequestSent   bool     `json:"follow_request_sent" xml:"follow_request_sent"`
-	URL                 string   `json:"url" xml:"url"`
-	FavouritesCount     int      `json:"favourites_count" xml:"favourites_count"`
-	ContributorsEnabled bool     `json:"contributors_enabled" xml:"contributors_enabled"`
-	UtcOffset           *int     `json:"utc_offset" xml:"utc_offset"`
-	ID                  *big.Int `json:"id" xml:"id"`
-	// IDStr                          string  `json:"id_str" xml:"id_str"`
-	ProfileUseBackgroundImage bool    `json:"profile_use_background_image" xml:"profile_use_background_image"`
-	ProfileTextColor          string  `json:"profile_text_color" xml:"profile_text_color"`
-	Protected                 bool    `json:"protected" xml:"protected"`
-	FollowersCount            int     `json:"followers_count" xml:"followers_count"`
-	Lang                      string  `json:"lang" xml:"lang"`
-	Notifications             *bool   `json:"notifications" xml:"notifications"`
-	TimeZone                  *string `json:"time_zone" xml:"time_zone"`
-	Verified                  bool    `json:"verified" xml:"verified"`
-	ProfileBackgroundColor    string  `json:"profile_background_color" xml:"profile_background_color"`
-	GeoEnabled                bool    `json:"geo_enabled" xml:"geo_enabled"`
-	Description               string  `json:"description" xml:"description"`
-	FriendsCount              int     `json:"friends_count" xml:"friends_count"`
-	StatusesCount             int     `json:"statuses_count" xml:"statuses_count"`
-	ProfileBackgroundImageURL string  `json:"profile_background_image_url" xml:"profile_background_image_url"`
+	Location                  string   `json:"location" xml:"location"`
+	ProfileLinkColor          string   `json:"profile_link_color" xml:"profile_link_color"`
+	FollowRequestSent         bool     `json:"follow_request_sent" xml:"follow_request_sent"`
+	URL                       string   `json:"url" xml:"url"`
+	FavouritesCount           int      `json:"favourites_count" xml:"favourites_count"`
+	ContributorsEnabled       bool     `json:"contributors_enabled" xml:"contributors_enabled"`
+	UtcOffset                 *int     `json:"utc_offset" xml:"utc_offset"`
+	ID                        *big.Int `json:"id" xml:"id"`
+	IDStr                     string   `json:"id_str" xml:"id_str"`
+	ProfileUseBackgroundImage bool     `json:"profile_use_background_image" xml:"profile_use_background_image"`
+	ProfileTextColor          string   `json:"profile_text_color" xml:"profile_text_color"`
+	Protected                 bool     `json:"protected" xml:"protected"`
+	FollowersCount            int      `json:"followers_count" xml:"followers_count"`
+	Lang                      string   `json:"lang" xml:"lang"`
+	Notifications             *bool    `json:"notifications" xml:"notifications"`
+	TimeZone                  *string  `json:"time_zone" xml:"time_zone"`
+	Verified                  bool     `json:"verified" xml:"verified"`
+	ProfileBackgroundColor    string   `json:"profile_background_color" xml:"profile_background_color"`
+	GeoEnabled                bool     `json:"geo_enabled" xml:"geo_enabled"`
+	Description               string   `json:"description" xml:"description"`
+	FriendsCount              int      `json:"friends_count" xml:"friends_count"`
+	StatusesCount             int      `json:"statuses_count" xml:"statuses_count"`
+	ProfileBackgroundImageURL string   `json:"profile_background_image_url" xml:"profile_background_image_url"`
 	// ProfileBackgroundImageURLHttps string  `json:"profile_background_image_url_https" xml:"profile_background_image_url_https"`
 	Following           *bool  `json:"following" xml:"following"`
 	ScreenName          string `json:"screen_name" xml:"screen_name"`

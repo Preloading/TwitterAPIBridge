@@ -425,7 +425,7 @@ func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
 		UtcOffset:                 nil,
 		IsTranslator:              false,
 		ID:                        bridge.BlueSkyToTwitterID(tweet.URI),
-		// IDStr:                          bridge.BlueSkyToTwitterID(tweet.URI).String(),
+		IDStr:                     bridge.BlueSkyToTwitterID(tweet.URI).String(),
 		ProfileUseBackgroundImage: false,
 		ProfileTextColor:          "333333",
 		Protected:                 false,
