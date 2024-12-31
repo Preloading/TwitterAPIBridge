@@ -582,6 +582,7 @@ func GetRelationships(pds string, token string, source string, others []string) 
 }
 
 func AuthorTTB(author User) *bridge.TwitterUser {
+	id := bridge.BlueSkyToTwitterID(author.DID)
 	return &bridge.TwitterUser{
 		ProfileSidebarFillColor: "e0ff92",
 		Name: func() string {
@@ -600,8 +601,8 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		ContributorsEnabled:       false,
 		URL:                       "",
 		UtcOffset:                 nil,
-		ID:                        bridge.BlueSkyToTwitterID(author.DID),
-		IDStr:                     strconv.FormatUint(bridge.BlueSkyToTwitterID(author.DID), 10),
+		ID:                        id,
+		IDStr:                     strconv.FormatUint(id, 10),
 		ProfileUseBackgroundImage: false,
 		ListedCount:               0,
 		ProfileTextColor:          "000000",
