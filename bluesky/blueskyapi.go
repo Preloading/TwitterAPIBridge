@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -600,7 +601,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		URL:                       "",
 		UtcOffset:                 nil,
 		ID:                        bridge.BlueSkyToTwitterID(author.DID),
-		IDStr:                     fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(author.DID)),
+		IDStr:                     strconv.FormatUint(bridge.BlueSkyToTwitterID(author.DID), 10),
 		ProfileUseBackgroundImage: false,
 		ListedCount:               0,
 		ProfileTextColor:          "000000",
