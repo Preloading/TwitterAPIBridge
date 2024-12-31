@@ -9,6 +9,7 @@ import (
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
+	"github.com/Preloading/MastodonTwitterAPI/cryption"
 	"github.com/Preloading/MastodonTwitterAPI/db_controller"
 	"github.com/gofiber/fiber/v2"
 )
@@ -31,18 +32,18 @@ func access_token(c *fiber.Ctx) error {
 		}
 
 		// Our bluesky authentication was sucessful! Now we should store the auth info, encryted, in the DB
-		encryptionkey, err := bridge.GenerateKey()
+		encryptionkey, err := cryption.GenerateKey()
 		if err != nil {
 			fmt.Println("Error:", err)
 			return c.SendStatus(500)
 		}
 
-		access_token_expiry, err := bridge.GetJWTTokenExpirationUnix(res.AccessJwt)
+		access_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.AccessJwt)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return c.SendStatus(500)
 		}
-		refresh_token_expiry, err := bridge.GetJWTTokenExpirationUnix(res.RefreshJwt)
+		refresh_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.RefreshJwt)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return c.SendStatus(500)
@@ -58,9 +59,9 @@ func access_token(c *fiber.Ctx) error {
 		encryptionkey = strings.ReplaceAll(encryptionkey, "/", "_")
 		encryptionkey = strings.ReplaceAll(encryptionkey, "=", "") // remove padding
 
-		oauth_token := fmt.Sprintf("%s.%s.%s", bridge.Base64URLEncode(res.DID), bridge.Base64URLEncode(*uuid), encryptionkey)
+		oauth_token := fmt.Sprintf("%s.%s.%s", cryption.Base64URLEncode(res.DID), cryption.Base64URLEncode(*uuid), encryptionkey)
 
-		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=twitterapi&x_auth_expires=%f", oauth_token, oauth_token, bridge.BlueSkyToTwitterID(res.DID).String(), *access_token_expiry))
+		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=twitterapi&x_auth_expires=%f", oauth_token, oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(res.DID)), *access_token_expiry))
 	}
 	// We have an unknown request. huh. Probably registration, i'll find a way to send an error msg for that later, as registration is out of scope.
 	return c.SendStatus(501)
@@ -109,14 +110,14 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 	// Replace URL-friendly characters with original base64 characters
 
 	// Get user DID
-	userDID, err := bridge.Base64URLDecode(oauthTokenSegments[0])
+	userDID, err := cryption.Base64URLDecode(oauthTokenSegments[0])
 
 	if err != nil {
 		return nil, &fallbackRoute, nil, nil, err
 	}
 
 	// Get our token UUID. This is used to look up the token in the database.
-	tokenUUID, err := bridge.Base64URLDecode(oauthTokenSegments[1])
+	tokenUUID, err := cryption.Base64URLDecode(oauthTokenSegments[1])
 
 	if err != nil {
 		return nil, &fallbackRoute, nil, nil, err
@@ -157,11 +158,11 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 
 		accessJwt = &new_auth.AccessJwt
 
-		access_token_expiry, err := bridge.GetJWTTokenExpirationUnix(new_auth.AccessJwt)
+		access_token_expiry, err := cryption.GetJWTTokenExpirationUnix(new_auth.AccessJwt)
 		if err != nil {
 			return nil, &fallbackRoute, nil, nil, errors.New("failed to get access token expiry")
 		}
-		refresh_token_expiry, err := bridge.GetJWTTokenExpirationUnix(new_auth.RefreshJwt)
+		refresh_token_expiry, err := cryption.GetJWTTokenExpirationUnix(new_auth.RefreshJwt)
 		if err != nil {
 			return nil, &fallbackRoute, nil, nil, errors.New("failed to get refresh token expiry")
 		}

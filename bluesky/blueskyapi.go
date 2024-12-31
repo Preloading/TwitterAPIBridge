@@ -600,7 +600,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		URL:                       "",
 		UtcOffset:                 nil,
 		ID:                        bridge.BlueSkyToTwitterID(author.DID),
-		IDStr:                     bridge.BlueSkyToTwitterID(author.DID).String(),
+		IDStr:                     fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(author.DID)),
 		ProfileUseBackgroundImage: false,
 		ListedCount:               0,
 		ProfileTextColor:          "000000",
@@ -860,7 +860,12 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 			var mentionDID string
 			for _, user := range mentionedUsers {
 				if user.ScreenName == mention.Item {
-					mentionDID = bridge.TwitterIDToBlueSky(*user.ID) // efficency is poor
+					mentionDIDPtr, err := bridge.TwitterIDToBlueSky(user.ID) // efficency is poor
+					if err != nil {
+						mentionDID = ""
+						continue
+					}
+					mentionDID = *mentionDIDPtr
 					break
 				}
 			}

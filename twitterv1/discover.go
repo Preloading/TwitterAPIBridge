@@ -2,8 +2,8 @@ package twitterv1
 
 import (
 	"fmt"
-	"math/big"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,12 +32,11 @@ func InternalSearch(c *fiber.Ctx) error {
 	max_id := c.Query("max_id")
 	var until *time.Time
 	if max_id != "" {
-		maxIDBigInt := new(big.Int)
-		maxIDBigInt, ok := maxIDBigInt.SetString(max_id, 10)
-		if !ok {
+		maxIDInt, err := strconv.ParseUint(max_id, 10, 64)
+		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
 		}
-		_, until, _, err = bridge.TwitterMsgIdToBluesky(maxIDBigInt)
+		_, until, _, err = bridge.TwitterMsgIdToBluesky(maxIDInt)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
 		}
@@ -46,12 +45,11 @@ func InternalSearch(c *fiber.Ctx) error {
 	var since *time.Time
 	since_id := c.Query("since_id")
 	if since_id != "" {
-		sinceIDBigInt := new(big.Int)
-		sinceIDBigInt, ok := sinceIDBigInt.SetString(since_id, 10)
-		if !ok {
+		sinceIDInt, err := strconv.ParseUint(since_id, 10, 64)
+		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid since_id")
 		}
-		_, until, _, err = bridge.TwitterMsgIdToBluesky(sinceIDBigInt)
+		_, until, _, err = bridge.TwitterMsgIdToBluesky(sinceIDInt)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid since_id")
 		}

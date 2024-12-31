@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/Preloading/MastodonTwitterAPI/bridge"
 	"github.com/Preloading/MastodonTwitterAPI/config"
+	authcrypt "github.com/Preloading/MastodonTwitterAPI/cryption"
 	"github.com/google/uuid"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -54,6 +55,13 @@ type Token struct {
 	RefreshExpiry         float64 `gorm:"type:float;not null"`
 }
 
+type TwitterIDs struct {
+	BlueskyID   string     `gorm:"type:string;primaryKey;not null"`
+	TwitterID   uint64     `gorm:"type:string;not null"`
+	ReposterDid *string    `gorm:"type:string"`
+	DateCreated *time.Time `gorm:"type:timestamp"`
+}
+
 type MessageContext struct {
 	UserDid         string `gorm:"type:string;primaryKey;not null"`
 	TokenUUID       string `gorm:"type:string;primaryKey;not null"`
@@ -90,6 +98,7 @@ func InitDB(cfg config.Config) {
 	// Auto-migrate the schema
 	db.AutoMigrate(&Token{})
 	db.AutoMigrate(&MessageContext{})
+	db.AutoMigrate(&TwitterIDs{})
 }
 
 // StoreToken stores an encrypted access token and refresh token in the database.
@@ -124,12 +133,12 @@ func StoreToken(did string, pds string, accessToken string, refreshToken string,
 }
 
 func UpdateToken(uuid string, did string, pds string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64) (*string, error) {
-	encryptedAccess, err := bridge.Encrypt(accessToken, encryptionKey)
+	encryptedAccess, err := authcrypt.Encrypt(accessToken, encryptionKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt access token: %v", err)
 	}
 
-	encryptedRefresh, err := bridge.Encrypt(refreshToken, encryptionKey)
+	encryptedRefresh, err := authcrypt.Encrypt(refreshToken, encryptionKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt refresh token: %v", err)
 	}
@@ -168,15 +177,48 @@ func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *str
 		return nil, nil, nil, nil, nil, err
 	}
 
-	accessToken, err := bridge.Decrypt(token.EncryptedAccessToken, encryptionKey)
+	accessToken, err := authcrypt.Decrypt(token.EncryptedAccessToken, encryptionKey)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
 
-	refreshToken, err := bridge.Decrypt(token.EncryptedRefreshToken, encryptionKey)
+	refreshToken, err := authcrypt.Decrypt(token.EncryptedRefreshToken, encryptionKey)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
 
 	return &accessToken, &refreshToken, &token.AccessExpiry, &token.RefreshExpiry, &token.UserPDS, nil
+}
+
+// Stores ID data in the database.
+// @params: twitterID, blueskyID, dateCreated, reposterDid
+// @results: error
+func StoreTwitterIdInDatabase(twitterID uint64, blueskyId string, dateCreated *time.Time, reposterDid *string) error {
+	storedData := TwitterIDs{
+		TwitterID:   twitterID,
+		BlueskyID:   blueskyId,
+		DateCreated: dateCreated,
+		ReposterDid: reposterDid,
+	}
+
+	result := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "twitter_id"},
+		},
+		UpdateAll: true,
+	}).Create(&storedData)
+
+	return result.Error
+}
+
+// Gets a twitter id from the database
+// @params: twitterID
+// @results: blueskyID, dateCreated, reposterDid, error
+func GetTwitterIDFromDatabase(twitterID uint64) (*string, *time.Time, *string, error) {
+	var blueskyID TwitterIDs
+	if err := db.Where("twitter_id = ?", twitterID).First(&blueskyID).Error; err != nil {
+		return nil, nil, nil, err
+	}
+
+	return &blueskyID.BlueskyID, blueskyID.DateCreated, blueskyID.ReposterDid, nil
 }

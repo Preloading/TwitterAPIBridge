@@ -2,8 +2,8 @@ package twitterv1
 
 import (
 	"fmt"
-	"math/big"
 	"regexp"
+	"strconv"
 	"time"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
@@ -28,10 +28,9 @@ func status_update(c *fiber.Ctx) error {
 
 	//	trim_user := c.FormValue("trim_user") // Unused
 	encoded_in_reply_to_status_id_str := c.FormValue("in_reply_to_status_id")
-	encoded_in_reply_to_status_id_int := new(big.Int)
-	encoded_in_reply_to_status_id_int, ok := encoded_in_reply_to_status_id_int.SetString(encoded_in_reply_to_status_id_str, 10)
+	encoded_in_reply_to_status_id_int, err := strconv.ParseUint(encoded_in_reply_to_status_id_str, 10, 64)
 	var in_reply_to_status_id *string
-	if ok {
+	if err == nil {
 		in_reply_to_status_id, _, _, err = bridge.TwitterMsgIdToBluesky(encoded_in_reply_to_status_id_int)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
@@ -62,8 +61,8 @@ func retweet(c *fiber.Ctx) error {
 	}
 
 	// Get our IDs
-	idBigInt, ok := new(big.Int).SetString(postId, 10)
-	if !ok {
+	idBigInt, err := strconv.ParseUint(postId, 10, 64)
+	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	postIdPtr, _, _, err := bridge.TwitterMsgIdToBluesky(idBigInt)
@@ -88,8 +87,8 @@ func retweet(c *fiber.Ctx) error {
 	retweet.Retweeted = true
 	now := time.Now() // pain, also fix this to use the proper timestamp according to the server.
 	retweetId := bridge.BskyMsgToTwitterID(originalPost.Thread.Post.URI, &now, user_did)
-	retweet.ID = &retweetId
-	retweet.IDStr = retweet.ID.String()
+	retweet.ID = retweetId
+	retweet.IDStr = strconv.FormatUint(retweet.ID, 10)
 	originalPost.Thread.Post.Viewer.Repost = blueskyRepostURI
 
 	return c.JSON(bridge.Retweet{
@@ -114,8 +113,8 @@ func favourite(c *fiber.Ctx) error {
 	}
 
 	// Fetch ID
-	idBigInt, ok := new(big.Int).SetString(postId, 10)
-	if !ok {
+	idBigInt, err := strconv.ParseUint(postId, 10, 64)
+	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	postIdPtr, _, _, err := bridge.TwitterMsgIdToBluesky(idBigInt)
@@ -153,8 +152,8 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	}
 
 	// Fetch ID
-	idBigInt, ok := new(big.Int).SetString(postId, 10)
-	if !ok {
+	idBigInt, err := strconv.ParseUint(postId, 10, 64)
+	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	postIdPtr, _, _, err := bridge.TwitterMsgIdToBluesky(idBigInt)
@@ -190,8 +189,8 @@ func DeleteTweet(c *fiber.Ctx) error {
 	}
 
 	// Fetch ID
-	idBigInt, ok := new(big.Int).SetString(postId, 10)
-	if !ok {
+	idBigInt, err := strconv.ParseUint(postId, 10, 64)
+	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
 	}
 	postIdPtr, _, repostUser, err := bridge.TwitterMsgIdToBluesky(idBigInt)
