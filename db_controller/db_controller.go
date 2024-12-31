@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"strconv"
+
 	"github.com/Preloading/MastodonTwitterAPI/config"
 	authcrypt "github.com/Preloading/MastodonTwitterAPI/cryption"
 	"github.com/google/uuid"
@@ -56,8 +58,8 @@ type Token struct {
 }
 
 type TwitterIDs struct {
-	BlueskyID   string     `gorm:"type:string;primaryKey;not null"`
-	TwitterID   uint64     `gorm:"type:string;not null"`
+	BlueskyID   string     `gorm:"type:string;not null"`
+	TwitterID   string     `gorm:"type:string;primaryKey;not null"` // Ensure this has a unique constraint
 	ReposterDid *string    `gorm:"type:string"`
 	DateCreated *time.Time `gorm:"type:timestamp"`
 }
@@ -195,7 +197,7 @@ func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *str
 // @results: error
 func StoreTwitterIdInDatabase(twitterID uint64, blueskyId string, dateCreated *time.Time, reposterDid *string) error {
 	storedData := TwitterIDs{
-		TwitterID:   twitterID,
+		TwitterID:   strconv.FormatUint(twitterID, 10), // Convert uint64 to string
 		BlueskyID:   blueskyId,
 		DateCreated: dateCreated,
 		ReposterDid: reposterDid,
@@ -216,7 +218,7 @@ func StoreTwitterIdInDatabase(twitterID uint64, blueskyId string, dateCreated *t
 // @results: blueskyID, dateCreated, reposterDid, error
 func GetTwitterIDFromDatabase(twitterID uint64) (*string, *time.Time, *string, error) {
 	var blueskyID TwitterIDs
-	if err := db.Where("twitter_id = ?", twitterID).First(&blueskyID).Error; err != nil {
+	if err := db.Where("twitter_id = ?", strconv.FormatUint(twitterID, 10)).First(&blueskyID).Error; err != nil {
 		return nil, nil, nil, err
 	}
 
