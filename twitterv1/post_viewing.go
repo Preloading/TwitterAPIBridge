@@ -82,16 +82,19 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 	if max_id != "" {
 		// Get the timeline context from the DB
 		maxIDInt, err := strconv.ParseUint(max_id, 10, 64)
+		fmt.Println("Max ID:", maxIDInt)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
 		}
-		_, date, _, err := bridge.TwitterMsgIdToBluesky(maxIDInt)
+		uri, date, _, err := bridge.TwitterMsgIdToBluesky(maxIDInt)
+		fmt.Println("Max ID:", uri)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
 		}
 		context = date.Format(time.RFC3339)
 	}
 
+	fmt.Println("Context:", context)
 	err, res := fetcher(*pds, *oauthToken, context, param, limit)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -342,6 +345,10 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		Place:             nil,
 		PossiblySensitive: false,
 		InReplyToUserID: func() *uint64 {
+			if replyMsgBskyURI == "" {
+				return nil
+			}
+
 			id := bridge.BlueSkyToTwitterID(replyUserBskyId)
 			if id == 0 {
 				return nil
@@ -349,6 +356,9 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			return &id
 		}(),
 		InReplyToUserIDStr: func() *string {
+			if replyMsgBskyURI == "" {
+				return nil
+			}
 			id := bridge.BlueSkyToTwitterID(replyUserBskyId)
 			if id == 0 {
 				return nil
@@ -374,19 +384,20 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			idStr := strconv.FormatUint(id, 10)
 			return &idStr
 		}(),
-		Retweeted:    tweet.Viewer.Repost != nil,
+		Retweeted:    tweet.Viewer.Repost != nil && !isRetweet,
 		RetweetCount: tweet.RepostCount,
 		RetweetedStatus: func() *bridge.Tweet {
 			if isRetweet {
 				retweet_bsky := tweet
 				retweet_bsky.Author = bsky_retweet_og_author
+				//retweet_bsky.Viewer.Repost = nil
 				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil, token, pds)
 				return &translatedTweet
 			}
 			return nil
 		}(),
 		CurrentUserRetweet: func() *bridge.CurrentUserRetweet {
-			if tweet.Viewer.Repost != nil {
+			if tweet.Viewer.Repost != nil && !isRetweet {
 				RepostRecord, err := blueskyapi.GetRecordWithUri(pds, *tweet.Viewer.Repost)
 				if err != nil {
 					fmt.Println("Error:", err)

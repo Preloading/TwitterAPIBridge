@@ -210,7 +210,14 @@ func StoreTwitterIdInDatabase(twitterID uint64, blueskyId string, dateCreated *t
 		UpdateAll: true,
 	}).Create(&storedData)
 
-	return result.Error
+	if result.Error != nil {
+		// If there's an error, try updating the existing record
+		fmt.Println("Error:", result.Error)
+		panic(result.Error)
+		//return db.Model(&TwitterIDs{}).Where("twitter_id = ?", strconv.FormatUint(twitterID, 10)).Updates(storedData).Error
+	}
+
+	return nil
 }
 
 // Gets a twitter id from the database

@@ -315,7 +315,7 @@ const base38Chars = "0123456789abcdefghijklmnopqrstuvwxyz:/."
 // BlueSkyToTwitterID converts a letter ID to a compact numeric representation using Base37
 func BlueSkyToTwitterID(letterID string) uint64 {
 	twitterId := encodeToUint64(letterID)
-	if err := (db_controller.StoreTwitterIdInDatabase(twitterId, letterID, nil, nil)); err != nil {
+	if err := db_controller.StoreTwitterIdInDatabase(twitterId, letterID, nil, nil); err != nil {
 		fmt.Println("Error storing Twitter ID in database:", err)
 		panic(err)
 	}
@@ -337,13 +337,13 @@ func BskyMsgToTwitterID(uri string, creationTime *time.Time, retweetUserId *stri
 	var encodedId uint64
 	if retweetUserId != nil {
 		encodedId = encodeToUint64(uri + *retweetUserId + creationTime.Format("20060102150405")) // We add the date to avoid having the same ID for reposts
-		if err := (db_controller.StoreTwitterIdInDatabase(encodedId, uri, creationTime, nil)); err != nil {
+		if err := db_controller.StoreTwitterIdInDatabase(encodedId, uri, creationTime, retweetUserId); err != nil {
 			fmt.Println("Error storing Twitter ID in database:", err)
 			panic(err) // TODO: handle this gracefully?
 		}
 	} else {
 		encodedId = encodeToUint64(uri)
-		if err := (db_controller.StoreTwitterIdInDatabase(encodedId, uri, creationTime, nil)); err != nil {
+		if err := db_controller.StoreTwitterIdInDatabase(encodedId, uri, creationTime, nil); err != nil {
 			fmt.Println("Error storing Twitter ID in database:", err)
 			panic(err)
 		}
