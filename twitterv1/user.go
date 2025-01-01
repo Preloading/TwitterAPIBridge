@@ -16,11 +16,11 @@ func user_info(c *fiber.Ctx) error {
 
 	if screen_name == "" {
 		userIDStr := c.Query("user_id")
-		userID, err := strconv.ParseUint(userIDStr, 10, 64)
+		userID, err := strconv.ParseInt(userIDStr, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 		}
-		screen_namePtr, err := bridge.TwitterIDToBlueSky(userID) // yup
+		screen_namePtr, err := bridge.TwitterIDToBlueSky(&userID) // yup
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
 		}
@@ -69,11 +69,11 @@ func UsersLookup(c *fiber.Ctx) error {
 	} else if user_id != "" {
 		userIDs := strings.Split(user_id, ",")
 		for _, idStr := range userIDs {
-			userID, err := strconv.ParseUint(idStr, 10, 64)
+			userID, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 			}
-			handle, err := bridge.TwitterIDToBlueSky(userID)
+			handle, err := bridge.TwitterIDToBlueSky(&userID)
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
 			}
@@ -135,11 +135,11 @@ func UserRelationships(c *fiber.Ctx) error {
 	}
 	if isID {
 		for i, actor := range actorsArray {
-			actorID, err := strconv.ParseUint(actor, 10, 64)
+			actorID, err := strconv.ParseInt(actor, 10, 64)
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 			}
-			handlePtr, err := bridge.TwitterIDToBlueSky(actorID)
+			handlePtr, err := bridge.TwitterIDToBlueSky(&actorID)
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
 			}
@@ -181,8 +181,8 @@ func UserRelationships(c *fiber.Ctx) error {
 				return user.DisplayName
 			}(),
 			ScreenName:  user.Handle,
-			ID:          encodedUserId,
-			IDStr:       strconv.FormatUint(encodedUserId, 10),
+			ID:          *encodedUserId,
+			IDStr:       strconv.FormatInt(*encodedUserId, 10),
 			Connections: connections,
 		})
 	}
@@ -216,11 +216,11 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).SendString("No source_id provided")
 		}
 	} else {
-		sourceIDInt, err := strconv.ParseUint(sourceActor, 10, 64)
+		sourceIDInt, err := strconv.ParseInt(sourceActor, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid source_id provided")
 		}
-		sourceActorPtr, err := bridge.TwitterIDToBlueSky(sourceIDInt)
+		sourceActorPtr, err := bridge.TwitterIDToBlueSky(&sourceIDInt)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert source_id to screen_name")
 		}
@@ -237,11 +237,11 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).SendString("No source_id provided")
 		}
 	} else {
-		targetIDInt, err := strconv.ParseUint(targetActor, 10, 64)
+		targetIDInt, err := strconv.ParseInt(targetActor, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid source_id provided")
 		}
-		targetActorPtr, err := bridge.TwitterIDToBlueSky(targetIDInt)
+		targetActorPtr, err := bridge.TwitterIDToBlueSky(&targetIDInt)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert source_id to screen_name")
 		}
@@ -270,11 +270,11 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch source user")
 	}
 
-	targetDID, err := bridge.TwitterIDToBlueSky(targetUser.ID) // not the most efficient way to do this, but it works
+	targetDID, err := bridge.TwitterIDToBlueSky(&targetUser.ID) // not the most efficient way to do this, but it works
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to convert target user ID to BlueSky ID")
 	}
-	sourceDID, err := bridge.TwitterIDToBlueSky(sourceUser.ID)
+	sourceDID, err := bridge.TwitterIDToBlueSky(&sourceUser.ID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to convert source user ID to BlueSky ID")
 	}
@@ -289,14 +289,14 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 	friendship := bridge.SourceTargetFriendship{
 		Target: bridge.UserFriendship{
 			ID:         targetUser.ID,
-			IDStr:      strconv.FormatUint(targetUser.ID, 10),
+			IDStr:      strconv.FormatInt(targetUser.ID, 10),
 			ScreenName: targetUser.ScreenName,
 			Following:  relationship.Relationships[0].FollowedBy != "",
 			FollowedBy: relationship.Relationships[0].Following != "",
 		},
 		Source: bridge.UserFriendship{
 			ID:         sourceUser.ID,
-			IDStr:      strconv.FormatUint(sourceUser.ID, 10),
+			IDStr:      strconv.FormatInt(sourceUser.ID, 10),
 			ScreenName: sourceUser.ScreenName,
 			Following:  relationship.Relationships[0].Following != "",
 			FollowedBy: relationship.Relationships[0].FollowedBy != "",
@@ -328,11 +328,11 @@ func FollowUser(c *fiber.Ctx) error {
 			c.Status(fiber.StatusBadRequest).SendString("No user provided")
 		}
 	} else {
-		id, err := strconv.ParseUint(actor, 10, 64)
+		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 		}
-		actorPtr, err := bridge.TwitterIDToBlueSky(id)
+		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
 		}
@@ -407,11 +407,11 @@ func UnfollowUserForm(c *fiber.Ctx) error {
 			c.Status(fiber.StatusBadRequest).SendString("No user provided")
 		}
 	} else {
-		id, err := strconv.ParseUint(actor, 10, 64)
+		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 		}
-		actorPtr, err := bridge.TwitterIDToBlueSky(id)
+		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
 		}
@@ -426,11 +426,11 @@ func UnfollowUserForm(c *fiber.Ctx) error {
 func UnfollowUserParams(c *fiber.Ctx) error {
 	// This should allow lookup with a handle, but tbh, i'm too lazy to implement that right now as i do not see it being used.
 	actor := c.Params("id")
-	actorID, err := strconv.ParseUint(actor, 10, 64)
+	actorID, err := strconv.ParseInt(actor, 10, 64)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 	}
-	actorPtr, err := bridge.TwitterIDToBlueSky(actorID)
+	actorPtr, err := bridge.TwitterIDToBlueSky(&actorID)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
 	}
@@ -460,11 +460,11 @@ func GetFollowers(c *fiber.Ctx) error {
 			c.Status(fiber.StatusBadRequest).SendString("No user provided")
 		}
 	} else {
-		id, err := strconv.ParseUint(actor, 10, 64)
+		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 		}
-		actorPtr, err := bridge.TwitterIDToBlueSky(id)
+		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
 		}
@@ -530,11 +530,11 @@ func GetFollows(c *fiber.Ctx) error {
 			c.Status(fiber.StatusBadRequest).SendString("No user provided")
 		}
 	} else {
-		id, err := strconv.ParseUint(actor, 10, 64)
+		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 		}
-		actorPtr, err := bridge.TwitterIDToBlueSky(id)
+		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
 		}
@@ -605,11 +605,11 @@ func GetSuggestedUsers(c *fiber.Ctx) error {
 	// see if they provided a user id
 	userID := c.Query("user_id")
 	if userID != "" {
-		userIDInt, err := strconv.ParseUint(userID, 10, 64)
+		userIDInt, err := strconv.ParseInt(userID, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
 		}
-		userIDPtr, err := bridge.TwitterIDToBlueSky(userIDInt)
+		userIDPtr, err := bridge.TwitterIDToBlueSky(&userIDInt)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
 		}

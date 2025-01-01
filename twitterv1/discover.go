@@ -32,11 +32,11 @@ func InternalSearch(c *fiber.Ctx) error {
 	max_id := c.Query("max_id")
 	var until *time.Time
 	if max_id != "" {
-		maxIDInt, err := strconv.ParseUint(max_id, 10, 64)
+		maxIDInt, err := strconv.ParseInt(max_id, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
 		}
-		_, until, _, err = bridge.TwitterMsgIdToBluesky(maxIDInt)
+		_, until, _, err = bridge.TwitterMsgIdToBluesky(&maxIDInt)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
 		}
@@ -45,11 +45,11 @@ func InternalSearch(c *fiber.Ctx) error {
 	var since *time.Time
 	since_id := c.Query("since_id")
 	if since_id != "" {
-		sinceIDInt, err := strconv.ParseUint(since_id, 10, 64)
+		sinceIDInt, err := strconv.ParseInt(since_id, 10, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid since_id")
 		}
-		_, until, _, err = bridge.TwitterMsgIdToBluesky(sinceIDInt)
+		_, until, _, err = bridge.TwitterMsgIdToBluesky(&sinceIDInt)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid since_id")
 		}

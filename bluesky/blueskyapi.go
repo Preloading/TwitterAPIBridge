@@ -601,8 +601,8 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		ContributorsEnabled:       false,
 		URL:                       "",
 		UtcOffset:                 nil,
-		ID:                        id,
-		IDStr:                     strconv.FormatUint(id, 10),
+		ID:                        *id,
+		IDStr:                     strconv.FormatInt(*id, 10),
 		ProfileUseBackgroundImage: false,
 		ListedCount:               0,
 		ProfileTextColor:          "000000",
@@ -859,20 +859,15 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 	// add mentions to the facets
 	if err == nil {
 		for _, mention := range mentions {
-			var mentionDID string
+			var mentionDID *string
 			for _, user := range mentionedUsers {
 				if user.ScreenName == mention.Item {
-					mentionDIDPtr, err := bridge.TwitterIDToBlueSky(user.ID) // efficency is poor
-					if err != nil {
-						mentionDID = ""
-						continue
-					}
-					mentionDID = *mentionDIDPtr
+					mentionDID, _ = bridge.TwitterIDToBlueSky(&user.ID) // efficency is poor
 					break
 				}
 			}
 
-			if mentionDID == "" {
+			if mentionDID == nil {
 				continue
 			}
 
@@ -884,7 +879,7 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 				Features: []Feature{
 					{
 						Type: "app.bsky.richtext.facet#mention",
-						Did:  mentionDID,
+						Did:  *mentionDID,
 					},
 				},
 			})

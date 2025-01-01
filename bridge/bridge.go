@@ -45,7 +45,7 @@ type Tweet struct {
 	Text         string      `json:"text"`
 	Annotations  interface{} `json:"annotations"`
 	Contributors interface{} `json:"contributors"`
-	ID           uint64      `json:"id"`
+	ID           int64       `json:"id"`
 	IDStr        string      `json:"id_str"`
 	Geo          interface{} `json:"geo"`
 	Place        interface{} `json:"place"`
@@ -53,9 +53,9 @@ type Tweet struct {
 	Source       string      `json:"source"`
 
 	// Reply stuff
-	InReplyToUserID      *uint64 `json:"in_reply_to_user_id"`
+	InReplyToUserID      *int64  `json:"in_reply_to_user_id"`
 	InReplyToUserIDStr   *string `json:"in_reply_to_user_id_str"`
-	InReplyToStatusID    *uint64 `json:"in_reply_to_status_id"`
+	InReplyToStatusID    *int64  `json:"in_reply_to_status_id"`
 	InReplyToStatusIDStr *string `json:"in_reply_to_status_id_str"`
 	InReplyToScreenName  *string `json:"in_reply_to_screen_name"`
 
@@ -72,7 +72,7 @@ type Tweet struct {
 	CurrentUserRetweet *CurrentUserRetweet `json:"current_user_retweet,omitempty"`
 }
 type CurrentUserRetweet struct {
-	ID    uint64 `json:"id"`
+	ID    int64  `json:"id"`
 	IDStr string `json:"id_str"`
 }
 
@@ -91,7 +91,7 @@ type TwitterUser struct {
 	FavouritesCount           int     `json:"favourites_count" xml:"favourites_count"`
 	ContributorsEnabled       bool    `json:"contributors_enabled" xml:"contributors_enabled"`
 	UtcOffset                 *int    `json:"utc_offset" xml:"utc_offset"`
-	ID                        uint64  `json:"id" xml:"id"`
+	ID                        int64   `json:"id" xml:"id"`
 	IDStr                     string  `json:"id_str" xml:"id_str"`
 	ProfileUseBackgroundImage bool    `json:"profile_use_background_image" xml:"profile_use_background_image"`
 	ProfileTextColor          string  `json:"profile_text_color" xml:"profile_text_color"`
@@ -119,12 +119,12 @@ type TwitterUser struct {
 }
 
 type TwitterActivitiySummary struct {
-	Favourites      []uint64 `json:"favoriters"` // Pretty sure this is the User ID of the favouriters
-	FavouritesCount int      `json:"favoriters_count"`
-	Repliers        []uint64 `json:"repliers"`
-	RepliersCount   int      `json:"repliers_count"`
-	Retweets        []uint64 `json:"retweeters"`
-	RetweetsCount   int      `json:"retweeters_count"`
+	Favourites      []int64 `json:"favoriters"` // Pretty sure this is the User ID of the favouriters
+	FavouritesCount int     `json:"favoriters_count"`
+	Repliers        []int64 `json:"repliers"`
+	RepliersCount   int     `json:"repliers_count"`
+	Retweets        []int64 `json:"retweeters"`
+	RetweetsCount   int     `json:"retweeters_count"`
 }
 
 type MediaSize struct {
@@ -134,7 +134,7 @@ type MediaSize struct {
 }
 
 type Media struct {
-	ID            uint64               `json:"id"`
+	ID            int64                `json:"id"`
 	IDStr         string               `json:"id_str"`
 	MediaURL      string               `json:"media_url"`
 	MediaURLHttps string               `json:"media_url_https"`
@@ -167,7 +167,7 @@ type Hashtag struct {
 
 type UserMention struct {
 	Name       string `json:"name"`
-	ID         uint64 `json:"id"`
+	ID         *int64 `json:"id"`
 	IDStr      string `json:"id_str"`
 	Indices    []int  `json:"indices"`
 	ScreenName string `json:"screen_name"`
@@ -213,7 +213,7 @@ type Config struct {
 type UsersRelationship struct {
 	Name        string      `json:"name" xml:"name"`
 	IDStr       string      `json:"id_str" xml:"id_str"`
-	ID          uint64      `json:"id" xml:"id"`
+	ID          int64       `json:"id" xml:"id"`
 	Connections Connections `json:"connections" xml:"connections"`
 	ScreenName  string      `json:"screen_name" xml:"screen_name"`
 }
@@ -236,7 +236,7 @@ type UserRelationships struct {
 type MyActivity struct {
 	Action        string        `json:"action" xml:"action"`
 	CreatedAt     string        `json:"created_at" xml:"created_at"`
-	ID            uint64        `json:"id" xml:"id"`
+	ID            int64         `json:"id" xml:"id"`
 	Sources       []TwitterUser `json:"sources" xml:"sources"`
 	Targets       []Tweet       `json:"targets,omitempty" xml:"targets,omitempty"`
 	TargetObjects []Tweet       `json:"target_objects,omitempty" xml:"target_objects,omitempty"`
@@ -245,7 +245,7 @@ type MyActivity struct {
 // https://web.archive.org/web/20120516154953/https://dev.twitter.com/docs/api/1/get/friendships/show
 // used in the /friendships/show endpoint
 type UserFriendship struct {
-	ID                   uint64 `json:"id" xml:"id"`
+	ID                   int64  `json:"id" xml:"id"`
 	IDStr                string `json:"id_str" xml:"id_str"`
 	ScreenName           string `json:"screen_name" xml:"screen_name"`
 	Following            bool   `json:"following" xml:"following"`
@@ -284,7 +284,7 @@ type TwitterUsers struct {
 }
 
 type TwitterRecommendation struct {
-	UserID uint64      `json:"user_id"`
+	UserID int64       `json:"user_id"`
 	User   TwitterUser `json:"user"`
 	Token  string      `json:"token"`
 }
@@ -299,22 +299,23 @@ type FacetParsing struct {
 	Item  string
 }
 
-func encodeToUint64(input string) uint64 {
-	hasher := fnv.New64a()      // Create a new FNV-1a 64-bit hash
-	hasher.Write([]byte(input)) // Write the input string as bytes
-	return hasher.Sum64()       // Return the 64-bit hash
+func encodeToUint63(input string) *int64 {
+	hasher := fnv.New64a()                  // Create a new FNV-1a 64-bit hash
+	hasher.Write([]byte(input))             // Write the input string as bytes
+	hash := hasher.Sum64()                  // Get the 64-bit hash
+	result := int64(hash & ((1 << 63) - 1)) // Mask the MSB to ensure 63 bits and convert to int64
+	return &result
 }
 
 // Bluesky's API returns a letter ID for each user,
 // While twitter uses a numeric ID, meaning we
 // need to convert between the two
 
-// Base36 characters (digits and lowercase letters)
-const base38Chars = "0123456789abcdefghijklmnopqrstuvwxyz:/."
-
-// BlueSkyToTwitterID converts a letter ID to a compact numeric representation using Base37
-func BlueSkyToTwitterID(letterID string) uint64 {
-	twitterId := encodeToUint64(letterID)
+func BlueSkyToTwitterID(letterID string) *int64 {
+	if letterID == "" {
+		return nil
+	}
+	twitterId := encodeToUint63(letterID)
 	if err := db_controller.StoreTwitterIdInDatabase(twitterId, letterID, nil, nil); err != nil {
 		fmt.Println("Error storing Twitter ID in database:", err)
 		panic(err)
@@ -323,7 +324,7 @@ func BlueSkyToTwitterID(letterID string) uint64 {
 }
 
 // TwitterIDToBlueSky converts a numeric ID to a letter ID representation using Base37
-func TwitterIDToBlueSky(numericID uint64) (*string, error) {
+func TwitterIDToBlueSky(numericID *int64) (*string, error) {
 	// Get the letter ID from the database
 	letterID, _, _, err := db_controller.GetTwitterIDFromDatabase(numericID)
 	if err != nil {
@@ -333,16 +334,20 @@ func TwitterIDToBlueSky(numericID uint64) (*string, error) {
 	return letterID, nil
 }
 
-func BskyMsgToTwitterID(uri string, creationTime *time.Time, retweetUserId *string) uint64 {
-	var encodedId uint64
+func BskyMsgToTwitterID(uri string, creationTime *time.Time, retweetUserId *string) *int64 {
+	if uri == "" {
+		return nil
+	}
+
+	var encodedId *int64
 	if retweetUserId != nil {
-		encodedId = encodeToUint64(uri + *retweetUserId + creationTime.Format("20060102150405")) // We add the date to avoid having the same ID for reposts
+		encodedId = encodeToUint63(uri + *retweetUserId + creationTime.Format("20060102150405")) // We add the date to avoid having the same ID for reposts
 		if err := db_controller.StoreTwitterIdInDatabase(encodedId, uri, creationTime, retweetUserId); err != nil {
 			fmt.Println("Error storing Twitter ID in database:", err)
 			panic(err) // TODO: handle this gracefully?
 		}
 	} else {
-		encodedId = encodeToUint64(uri)
+		encodedId = encodeToUint63(uri)
 		if err := db_controller.StoreTwitterIdInDatabase(encodedId, uri, creationTime, nil); err != nil {
 			fmt.Println("Error storing Twitter ID in database:", err)
 			panic(err)
@@ -352,7 +357,7 @@ func BskyMsgToTwitterID(uri string, creationTime *time.Time, retweetUserId *stri
 }
 
 // This is here soley because we have to use psudo ids for retweets.
-func TwitterMsgIdToBluesky(id uint64) (*string, *time.Time, *string, error) {
+func TwitterMsgIdToBluesky(id *int64) (*string, *time.Time, *string, error) {
 	// Get the letter ID from the database
 	uri, createdAt, retweetUserId, err := db_controller.GetTwitterIDFromDatabase(id)
 	if err != nil {

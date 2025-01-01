@@ -195,9 +195,13 @@ func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *str
 // Stores ID data in the database.
 // @params: twitterID, blueskyID, dateCreated, reposterDid
 // @results: error
-func StoreTwitterIdInDatabase(twitterID uint64, blueskyId string, dateCreated *time.Time, reposterDid *string) error {
+func StoreTwitterIdInDatabase(twitterID *int64, blueskyId string, dateCreated *time.Time, reposterDid *string) error {
+	if twitterID == nil {
+		return fmt.Errorf("twitterID is nil")
+	}
+
 	storedData := TwitterIDs{
-		TwitterID:   strconv.FormatUint(twitterID, 10), // Convert uint64 to string
+		TwitterID:   strconv.FormatInt(*twitterID, 10), // Convert *int64 to string
 		BlueskyID:   blueskyId,
 		DateCreated: dateCreated,
 		ReposterDid: reposterDid,
@@ -223,9 +227,13 @@ func StoreTwitterIdInDatabase(twitterID uint64, blueskyId string, dateCreated *t
 // Gets a twitter id from the database
 // @params: twitterID
 // @results: blueskyID, dateCreated, reposterDid, error
-func GetTwitterIDFromDatabase(twitterID uint64) (*string, *time.Time, *string, error) {
+func GetTwitterIDFromDatabase(twitterID *int64) (*string, *time.Time, *string, error) {
+	if twitterID == nil {
+		return nil, nil, nil, fmt.Errorf("twitterID is nil")
+	}
+
 	var blueskyID TwitterIDs
-	if err := db.Where("twitter_id = ?", strconv.FormatUint(twitterID, 10)).First(&blueskyID).Error; err != nil {
+	if err := db.Where("twitter_id = ?", strconv.FormatInt(*twitterID, 10)).First(&blueskyID).Error; err != nil {
 		return nil, nil, nil, err
 	}
 
