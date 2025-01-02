@@ -393,6 +393,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			}
 			return nil
 		}(),
+		//TODO: If the user has retweeted, and this tweet itself is a retweet, we can't have current_user_retweet at the same time as retweeted_status
 		CurrentUserRetweet: func() *bridge.CurrentUserRetweet {
 			if tweet.Viewer.Repost != nil && !isRetweet {
 				RepostRecord, err := blueskyapi.GetRecordWithUri(pds, *tweet.Viewer.Repost)
