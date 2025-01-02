@@ -1,4 +1,4 @@
-package bridge
+package cryption
 
 import (
 	"crypto/aes"

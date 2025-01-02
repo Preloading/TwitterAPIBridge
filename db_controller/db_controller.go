@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/Preloading/MastodonTwitterAPI/bridge"
+	"strconv"
+
 	"github.com/Preloading/MastodonTwitterAPI/config"
+	authcrypt "github.com/Preloading/MastodonTwitterAPI/cryption"
 	"github.com/google/uuid"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -54,6 +57,13 @@ type Token struct {
 	RefreshExpiry         float64 `gorm:"type:float;not null"`
 }
 
+type TwitterIDs struct {
+	BlueskyID   string     `gorm:"type:string;not null"`
+	TwitterID   string     `gorm:"type:string;primaryKey;not null"` // Ensure this has a unique constraint
+	ReposterDid *string    `gorm:"type:string"`
+	DateCreated *time.Time `gorm:"type:timestamp"`
+}
+
 type MessageContext struct {
 	UserDid         string `gorm:"type:string;primaryKey;not null"`
 	TokenUUID       string `gorm:"type:string;primaryKey;not null"`
@@ -90,6 +100,7 @@ func InitDB(cfg config.Config) {
 	// Auto-migrate the schema
 	db.AutoMigrate(&Token{})
 	db.AutoMigrate(&MessageContext{})
+	db.AutoMigrate(&TwitterIDs{})
 }
 
 // StoreToken stores an encrypted access token and refresh token in the database.
@@ -124,12 +135,12 @@ func StoreToken(did string, pds string, accessToken string, refreshToken string,
 }
 
 func UpdateToken(uuid string, did string, pds string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64) (*string, error) {
-	encryptedAccess, err := bridge.Encrypt(accessToken, encryptionKey)
+	encryptedAccess, err := authcrypt.Encrypt(accessToken, encryptionKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt access token: %v", err)
 	}
 
-	encryptedRefresh, err := bridge.Encrypt(refreshToken, encryptionKey)
+	encryptedRefresh, err := authcrypt.Encrypt(refreshToken, encryptionKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt refresh token: %v", err)
 	}
@@ -168,15 +179,63 @@ func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *str
 		return nil, nil, nil, nil, nil, err
 	}
 
-	accessToken, err := bridge.Decrypt(token.EncryptedAccessToken, encryptionKey)
+	accessToken, err := authcrypt.Decrypt(token.EncryptedAccessToken, encryptionKey)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
 
-	refreshToken, err := bridge.Decrypt(token.EncryptedRefreshToken, encryptionKey)
+	refreshToken, err := authcrypt.Decrypt(token.EncryptedRefreshToken, encryptionKey)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
 
 	return &accessToken, &refreshToken, &token.AccessExpiry, &token.RefreshExpiry, &token.UserPDS, nil
+}
+
+// Stores ID data in the database.
+// @params: twitterID, blueskyID, dateCreated, reposterDid
+// @results: error
+func StoreTwitterIdInDatabase(twitterID *int64, blueskyId string, dateCreated *time.Time, reposterDid *string) error {
+	if twitterID == nil {
+		return fmt.Errorf("twitterID is nil")
+	}
+
+	storedData := TwitterIDs{
+		TwitterID:   strconv.FormatInt(*twitterID, 10), // Convert *int64 to string
+		BlueskyID:   blueskyId,
+		DateCreated: dateCreated,
+		ReposterDid: reposterDid,
+	}
+
+	result := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "twitter_id"},
+		},
+		UpdateAll: true,
+	}).Create(&storedData)
+
+	if result.Error != nil {
+		// If there's an error, try updating the existing record
+		fmt.Println("Error:", result.Error)
+		panic(result.Error)
+		//return db.Model(&TwitterIDs{}).Where("twitter_id = ?", strconv.FormatUint(twitterID, 10)).Updates(storedData).Error
+	}
+
+	return nil
+}
+
+// Gets a twitter id from the database
+// @params: twitterID
+// @results: blueskyID, dateCreated, reposterDid, error
+func GetTwitterIDFromDatabase(twitterID *int64) (*string, *time.Time, *string, error) {
+	if twitterID == nil {
+		return nil, nil, nil, fmt.Errorf("twitterID is nil")
+	}
+
+	var blueskyID TwitterIDs
+	if err := db.Where("twitter_id = ?", strconv.FormatInt(*twitterID, 10)).First(&blueskyID).Error; err != nil {
+		return nil, nil, nil, err
+	}
+
+	return &blueskyID.BlueskyID, blueskyID.DateCreated, blueskyID.ReposterDid, nil
 }

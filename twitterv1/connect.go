@@ -89,7 +89,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 			twitterNotifications = append(twitterNotifications, bridge.MyActivity{
 				Action:    "follow",
 				CreatedAt: bridge.TwitterTimeConverter(notification.IndexedAt),
-				ID:        bridge.BlueSkyToTwitterID(notification.URI),
+				ID:        *bridge.BlueSkyToTwitterID(notification.URI),
 				Sources:   sources,
 			})
 		case "like":
@@ -133,7 +133,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 			twitterNotifications = append(twitterNotifications, bridge.MyActivity{
 				Action:    "favorite",
 				CreatedAt: bridge.TwitterTimeConverter(notification.IndexedAt),
-				ID:        bridge.BlueSkyToTwitterID(notificationId),
+				ID:        *bridge.BlueSkyToTwitterID(notificationId),
 				Sources:   sources,
 				Targets:   []bridge.Tweet{likedTweet},
 			})
@@ -178,7 +178,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 			twitterNotifications = append(twitterNotifications, bridge.MyActivity{
 				Action:        "retweet",
 				CreatedAt:     bridge.TwitterTimeConverter(notification.IndexedAt),
-				ID:            bridge.BlueSkyToTwitterID(notificationId),
+				ID:            *bridge.BlueSkyToTwitterID(notificationId),
 				Sources:       sources,
 				TargetObjects: []bridge.Tweet{retweetedTweet},
 			})
