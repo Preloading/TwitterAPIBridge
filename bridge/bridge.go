@@ -77,13 +77,13 @@ type CurrentUserRetweet struct {
 }
 
 type TwitterUser struct {
-	Name                      string `json:"name" xml:"name"`
-	ProfileSidebarBorderColor string `json:"profile_sidebar_border_color" xml:"profile_sidebar_border_color"`
-	ProfileBackgroundTile     bool   `json:"profile_background_tile" xml:"profile_background_tile"`
-	ProfileSidebarFillColor   string `json:"profile_sidebar_fill_color" xml:"profile_sidebar_fill_color"`
-	CreatedAt                 string `json:"created_at" xml:"created_at"`
-	ProfileImageURL           string `json:"profile_image_url" xml:"profile_image_url"`
-	// ProfileImageURLHttps      string  `json:"profile_image_url_https" xml:"profile_image_url_https"`
+	Name                      string  `json:"name" xml:"name"`
+	ProfileSidebarBorderColor string  `json:"profile_sidebar_border_color" xml:"profile_sidebar_border_color"`
+	ProfileBackgroundTile     bool    `json:"profile_background_tile" xml:"profile_background_tile"`
+	ProfileSidebarFillColor   string  `json:"profile_sidebar_fill_color" xml:"profile_sidebar_fill_color"`
+	CreatedAt                 string  `json:"created_at" xml:"created_at"`
+	ProfileImageURL           string  `json:"profile_image_url" xml:"profile_image_url"`
+	ProfileImageURLHttps      string  `json:"profile_image_url_https" xml:"profile_image_url_https"`
 	Location                  string  `json:"location" xml:"location"`
 	ProfileLinkColor          string  `json:"profile_link_color" xml:"profile_link_color"`
 	FollowRequestSent         bool    `json:"follow_request_sent" xml:"follow_request_sent"`

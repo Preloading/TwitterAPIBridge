@@ -581,6 +581,7 @@ func GetRelationships(pds string, token string, source string, others []string) 
 	return &feeds, nil
 }
 
+// https://web.archive.org/web/20121029153120/https://dev.twitter.com/docs/platform-objects/users
 func AuthorTTB(author User) *bridge.TwitterUser {
 	id := bridge.BlueSkyToTwitterID(author.DID)
 	return &bridge.TwitterUser{
@@ -595,6 +596,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		ProfileBackgroundTile:     false,
 		CreatedAt:                 bridge.TwitterTimeConverter(author.CreatedAt),
 		ProfileImageURL:           configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger",
+		ProfileImageURLHttps:      configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger",
 		Location:                  "",
 		ProfileLinkColor:          "0000ff",
 		IsTranslator:              false,
