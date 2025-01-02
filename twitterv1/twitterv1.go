@@ -1,6 +1,9 @@
 package twitterv1
 
 import (
+	"bytes"
+	"encoding/json"
+	"encoding/xml"
 	"fmt"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
@@ -16,7 +19,10 @@ var (
 func InitServer(config *config.Config) {
 	configData = config
 	blueskyapi.InitConfig(configData)
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		JSONEncoder: json.Marshal,
+		JSONDecoder: json.Unmarshal,
+	})
 
 	// Initialize default config
 	app.Use(logger.New())
@@ -108,4 +114,35 @@ func InitServer(config *config.Config) {
 // misc
 func MobileClientApiDecider(c *fiber.Ctx) error {
 	return c.SendString("")
+}
+
+func EncodeAndSend(c *fiber.Ctx, data interface{}, encodeType string) error {
+	switch encodeType {
+	case "xml":
+		// Encode the data to XML
+		var buf bytes.Buffer
+		enc := xml.NewEncoder(&buf)
+		enc.Indent("", "  ")
+		if err := enc.Encode(data); err != nil {
+			fmt.Println("Error encoding XML:", err)
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode into XML!")
+		}
+
+		// Add custom XML header
+		xmlContent := buf.Bytes()
+		customHeader := []byte(`<?xml version="1.0" encoding="UTF-8"?>`)
+		xmlContent = append(customHeader, xmlContent...)
+
+		return c.SendString(string(xmlContent))
+	case "json":
+		encoded, err := json.Marshal(data)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode into json!")
+		}
+		return c.SendString(string(encoded))
+	default:
+		return c.Status(fiber.StatusInternalServerError).SendString("Invalid file type!")
+	}
+
 }
