@@ -347,7 +347,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		Place:             nil,
 		PossiblySensitive: false,
 		InReplyToUserID: func() *int64 {
-			if replyMsgBskyURI == "" && replyUserBskyId == "" {
+			if replyMsgBskyURI == "" || replyUserBskyId == "" {
 				return nil
 			}
 
@@ -355,7 +355,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			return id
 		}(),
 		InReplyToUserIDStr: func() *string {
-			if replyMsgBskyURI == "" && replyUserBskyId == "" {
+			if replyMsgBskyURI == "" || replyUserBskyId == "" {
 				return nil
 			}
 			id := bridge.BlueSkyToTwitterID(replyUserBskyId)
@@ -366,14 +366,14 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		User:                *author,
 		Source:              "Bluesky",
 		InReplyToStatusID: func() *int64 {
-			if replyMsgBskyURI == "" && replyUserBskyId == "" {
+			if replyMsgBskyURI == "" || replyUserBskyId == "" {
 				return nil
 			}
 			id := bridge.BskyMsgToTwitterID(replyMsgBskyURI, replyTimeStamp, nil)
 			return id
 		}(),
 		InReplyToStatusIDStr: func() *string {
-			if replyMsgBskyURI == "" && replyUserBskyId == "" {
+			if replyMsgBskyURI == "" || replyUserBskyId == "" {
 				return nil
 			}
 			id := bridge.BskyMsgToTwitterID(replyMsgBskyURI, replyTimeStamp, nil)
