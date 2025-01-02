@@ -236,9 +236,11 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 	for _, image := range tweet.Record.Embed.Images {
 		// Process each image
 		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
-			ID:       int64(id),
-			IDStr:    strconv.Itoa(id),
-			MediaURL: configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
+			Type:          "photo",
+			ID:            int64(id),
+			IDStr:         strconv.Itoa(id),
+			MediaURL:      configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
+			MediaURLHttps: configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
 		})
 		id++
 	}
