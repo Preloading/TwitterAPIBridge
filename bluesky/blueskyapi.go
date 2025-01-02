@@ -584,7 +584,8 @@ func GetRelationships(pds string, token string, source string, others []string) 
 // https://web.archive.org/web/20121029153120/https://dev.twitter.com/docs/platform-objects/users
 func AuthorTTB(author User) *bridge.TwitterUser {
 	id := bridge.BlueSkyToTwitterID(author.DID)
-	return &bridge.TwitterUser{
+	pfp_url := configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger"
+	user := &bridge.TwitterUser{
 		ProfileSidebarFillColor: "e0ff92",
 		Name: func() string {
 			if author.DisplayName == "" {
@@ -595,8 +596,9 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		ProfileSidebarBorderColor: "87bc44",
 		ProfileBackgroundTile:     false,
 		CreatedAt:                 bridge.TwitterTimeConverter(author.CreatedAt),
-		ProfileImageURL:           configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger",
-		ProfileImageURLHttps:      configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger",
+		ProfileImageURLHttps:      pfp_url,
+		ProfileImageURL:           pfp_url,
+
 		Location:                  "",
 		ProfileLinkColor:          "0000ff",
 		IsTranslator:              false,
@@ -622,6 +624,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		//FavouritesCount:        author.,
 		ScreenName: author.Handle,
 	}
+	return user
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-feed

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/gofiber/fiber/v2"
 	"github.com/nfnt/resize"
 )
@@ -137,4 +138,39 @@ func CDNDownscaler(c *fiber.Ctx) error {
 	// cache for 30 minutes
 	c.Response().Header.Set("Cache-Control", "public, max-age="+strconv.Itoa(int(30*time.Minute.Seconds())))
 	return nil
+}
+
+func UserProfileImage(c *fiber.Ctx) error {
+	// auth
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		blankstring := ""
+		oauthToken = &blankstring
+	}
+
+	screen_name := c.Query("screen_name")
+	if screen_name == "" {
+		return c.Status(fiber.StatusBadRequest).SendString("screen_name is required")
+	}
+	// size := c.Query("size")
+	// if size == "" {
+	// 	size = "normal"
+	// }
+	// cdn_size := ":profile_bigger"
+
+	// switch size {
+	// case "normal":
+	// 	cdn_size = ":profile_normal"
+	// case "original":
+	// 	cdn_size = ":large"
+	// }
+
+	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, screen_name, false)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+	}
+
+	//c.Redirect("https://cdn.bsky.app/img/" + screen_name + ":profile_bigger")
+	return c.Redirect(userinfo.ProfileImageURL)
 }
