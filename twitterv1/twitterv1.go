@@ -68,20 +68,20 @@ func InitServer(config *config.Config) {
 	app.Get("/1/related_results/show/:id.json", RelatedResults)
 
 	// Users
-	app.Get("/1/users/show.xml", user_info)
-	app.Get("/1/users/lookup.json", UsersLookup)
-	app.Post("/1/users/lookup.json", UsersLookup)
-	app.Get("/1/friendships/lookup.xml", UserRelationships)
-	app.Get("/1/friendships/show.xml", GetUsersRelationship)
-	app.Get("/1/favorites/:id.json", likes_timeline)
-	app.Post("/1/friendships/create.xml", FollowUser)
-	app.Post("/1/friendships/destroy.xml", UnfollowUserForm)
-	app.Post("/1/friendships/destroy/:id.xml", UnfollowUserParams)
+	app.Get("/1/users/show.:filetype", user_info)
+	app.Get("/1/users/lookup.:filetype", UsersLookup)
+	app.Post("/1/users/lookup.:filetype", UsersLookup)
+	app.Get("/1/friendships/lookup.:filetype", UserRelationships)
+	app.Get("/1/friendships/show.:filetype", GetUsersRelationship)
+	app.Get("/1/favorites/:id.:filetype", likes_timeline)
+	app.Post("/1/friendships/create.:filetype", FollowUser)
+	app.Post("/1/friendships/destroy.:filetype", UnfollowUserForm)
+	app.Post("/1/friendships/destroy/:id.:filetype", UnfollowUserParams)
 
-	app.Get("/1/statuses/followers.xml", GetFollowers)
-	app.Get("/1/statuses/friends.xml", GetFollows)
+	app.Get("/1/statuses/followers.:filetype", GetFollowers)
+	app.Get("/1/statuses/friends.:filetype", GetFollows)
 
-	app.Get("/1/users/recommendations.json", GetSuggestedUsers)
+	app.Get("/1/users/recommendations.:filetype", GetSuggestedUsers)
 	app.Get("/1/users/profile_image", UserProfileImage)
 
 	// Connect
@@ -116,7 +116,8 @@ func MobileClientApiDecider(c *fiber.Ctx) error {
 	return c.SendString("")
 }
 
-func EncodeAndSend(c *fiber.Ctx, data interface{}, encodeType string) error {
+func EncodeAndSend(c *fiber.Ctx, data interface{}) error {
+	encodeType := c.Params("filetype")
 	switch encodeType {
 	case "xml":
 		// Encode the data to XML

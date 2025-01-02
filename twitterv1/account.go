@@ -92,12 +92,7 @@ func GetSettings(c *fiber.Ctx) error {
 		},
 		GeoEnabled: true,
 	}
-	xml, err := bridge.XMLEncoder(settings, "Config", "settings")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode settings")
-	}
-	return c.SendString(*xml)
+	return EncodeAndSend(c, settings)
 
 }
 
@@ -145,13 +140,7 @@ func UpdateProfile(c *fiber.Ctx) error {
 	user.Description = description
 	user.Name = name
 
-	xml, err := bridge.XMLEncoder(user, "TwitterUser", "user")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
-	}
-
-	return c.SendString(*xml)
+	return EncodeAndSend(c, user)
 }
 
 func UpdateProfilePicture(c *fiber.Ctx) error {
@@ -215,13 +204,5 @@ func UpdateProfilePicture(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
 	}
 
-	// ...
-
-	xml, err := bridge.XMLEncoder(user, "TwitterUser", "user")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
-	}
-
-	return c.SendString(*xml)
+	return EncodeAndSend(c, user)
 }

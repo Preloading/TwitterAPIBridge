@@ -49,13 +49,7 @@ func user_info(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
 	}
 
-	xml, err := bridge.XMLEncoder(userinfo, "TwitterUser", "user")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
-	}
-
-	return c.SendString(*xml)
+	return EncodeAndSend(c, userinfo)
 }
 
 // https://web.archive.org/web/20120508165240/https://dev.twitter.com/docs/api/1/get/users/lookup
@@ -104,7 +98,7 @@ func UsersLookup(c *fiber.Ctx) error {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
 	}
-	return c.JSON(users)
+	return EncodeAndSend(c, users)
 }
 
 // Gets the relationship between the authenticated user and the users specified
@@ -187,22 +181,11 @@ func UserRelationships(c *fiber.Ctx) error {
 		})
 	}
 
-	// i hate xml
-
 	root := bridge.UserRelationships{
 		Relationships: relationships,
 	}
 
-	xml, err := bridge.XMLEncoder(root, "UserRelationships", "relationships")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user relationships")
-	}
-
-	newXml := strings.ReplaceAll(*xml, "<UserRelationship>", "<relationship>")
-	newXml = strings.ReplaceAll(newXml, "</UserRelationship>", "</relationship>")
-
-	return c.SendString(newXml)
+	return EncodeAndSend(c, root)
 }
 
 // Gets the relationship between two users
@@ -304,12 +287,7 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 		},
 	}
 
-	xml, err := bridge.XMLEncoder(friendship, "SourceTargetFriendship", "relationship")
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("failed to encode XML")
-	}
-
-	return c.SendString(*xml)
+	return EncodeAndSend(c, friendship)
 }
 
 // https://web.archive.org/web/20120407201029/https://dev.twitter.com/docs/api/1/post/friendships/create
@@ -356,14 +334,7 @@ func FollowUser(c *fiber.Ctx) error {
 	// convert user into twitter format
 	twitterUser := blueskyapi.AuthorTTB(*user)
 
-	// XML Encode
-	xml, err := bridge.XMLEncoder(twitterUser, "TwitterUser", "user")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
-	}
-
-	return c.SendString(*xml)
+	return EncodeAndSend(c, twitterUser)
 }
 
 // https://web.archive.org/web/20120407201029/https://dev.twitter.com/docs/api/1/post/friendships/create
@@ -388,14 +359,7 @@ func UnfollowUser(c *fiber.Ctx, actor string) error {
 	// convert user into twitter format
 	twitterUser := blueskyapi.AuthorTTB(*user)
 
-	// XML Encode
-	xml, err := bridge.XMLEncoder(twitterUser, "TwitterUser", "user")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
-	}
-
-	return c.SendString(*xml)
+	return EncodeAndSend(c, twitterUser)
 }
 
 func UnfollowUserForm(c *fiber.Ctx) error {
@@ -500,17 +464,9 @@ func GetFollowers(c *fiber.Ctx) error {
 		twitterUsersConverted = append(twitterUsersConverted, *user)
 	}
 
-	// XML Encode
-	xml, err := bridge.XMLEncoder(
-		bridge.TwitterUsers{
-			Users: twitterUsersConverted,
-		}, "TwitterUsers", "users")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
-	}
-
-	return c.SendString(*xml)
+	return EncodeAndSend(c, bridge.TwitterUsers{
+		Users: twitterUsersConverted,
+	})
 }
 
 // https://web.archive.org/web/20120407214017/https://dev.twitter.com/docs/api/1/get/statuses/friends
@@ -570,17 +526,9 @@ func GetFollows(c *fiber.Ctx) error {
 		twitterUsersConverted = append(twitterUsersConverted, *user)
 	}
 
-	// XML Encode
-	xml, err := bridge.XMLEncoder(
-		bridge.TwitterUsers{
-			Users: twitterUsersConverted,
-		}, "TwitterUsers", "users")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user info")
-	}
-
-	return c.SendString(*xml)
+	return EncodeAndSend(c, bridge.TwitterUsers{
+		Users: twitterUsersConverted,
+	})
 }
 
 func GetSuggestedUsers(c *fiber.Ctx) error {
@@ -650,5 +598,5 @@ func GetSuggestedUsers(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(recommended)
+	return EncodeAndSend(c, recommended)
 }

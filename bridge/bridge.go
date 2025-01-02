@@ -77,36 +77,37 @@ type CurrentUserRetweet struct {
 }
 
 type TwitterUser struct {
-	Name                      string  `json:"name" xml:"name"`
-	ProfileSidebarBorderColor string  `json:"profile_sidebar_border_color" xml:"profile_sidebar_border_color"`
-	ProfileBackgroundTile     bool    `json:"profile_background_tile" xml:"profile_background_tile"`
-	ProfileSidebarFillColor   string  `json:"profile_sidebar_fill_color" xml:"profile_sidebar_fill_color"`
-	CreatedAt                 string  `json:"created_at" xml:"created_at"`
-	ProfileImageURL           string  `json:"profile_image_url" xml:"profile_image_url"`
-	ProfileImageURLHttps      string  `json:"profile_image_url_https" xml:"profile_image_url_https"`
-	Location                  string  `json:"location" xml:"location"`
-	ProfileLinkColor          string  `json:"profile_link_color" xml:"profile_link_color"`
-	FollowRequestSent         bool    `json:"follow_request_sent" xml:"follow_request_sent"`
-	URL                       string  `json:"url" xml:"url"`
-	FavouritesCount           int     `json:"favourites_count" xml:"favourites_count"`
-	ContributorsEnabled       bool    `json:"contributors_enabled" xml:"contributors_enabled"`
-	UtcOffset                 *int    `json:"utc_offset" xml:"utc_offset"`
-	ID                        int64   `json:"id" xml:"id"`
-	IDStr                     string  `json:"id_str" xml:"id_str"`
-	ProfileUseBackgroundImage bool    `json:"profile_use_background_image" xml:"profile_use_background_image"`
-	ProfileTextColor          string  `json:"profile_text_color" xml:"profile_text_color"`
-	Protected                 bool    `json:"protected" xml:"protected"`
-	FollowersCount            int     `json:"followers_count" xml:"followers_count"`
-	Lang                      string  `json:"lang" xml:"lang"`
-	Notifications             *bool   `json:"notifications" xml:"notifications"`
-	TimeZone                  *string `json:"time_zone" xml:"time_zone"`
-	Verified                  bool    `json:"verified" xml:"verified"`
-	ProfileBackgroundColor    string  `json:"profile_background_color" xml:"profile_background_color"`
-	GeoEnabled                bool    `json:"geo_enabled" xml:"geo_enabled"`
-	Description               string  `json:"description" xml:"description"`
-	FriendsCount              int     `json:"friends_count" xml:"friends_count"`
-	StatusesCount             int     `json:"statuses_count" xml:"statuses_count"`
-	ProfileBackgroundImageURL string  `json:"profile_background_image_url" xml:"profile_background_image_url"`
+	XMLName                   xml.Name `xml:"user" json:"-"`
+	Name                      string   `json:"name" xml:"name"`
+	ProfileSidebarBorderColor string   `json:"profile_sidebar_border_color" xml:"profile_sidebar_border_color"`
+	ProfileBackgroundTile     bool     `json:"profile_background_tile" xml:"profile_background_tile"`
+	ProfileSidebarFillColor   string   `json:"profile_sidebar_fill_color" xml:"profile_sidebar_fill_color"`
+	CreatedAt                 string   `json:"created_at" xml:"created_at"`
+	ProfileImageURL           string   `json:"profile_image_url" xml:"profile_image_url"`
+	ProfileImageURLHttps      string   `json:"profile_image_url_https" xml:"profile_image_url_https"`
+	Location                  string   `json:"location" xml:"location"`
+	ProfileLinkColor          string   `json:"profile_link_color" xml:"profile_link_color"`
+	FollowRequestSent         bool     `json:"follow_request_sent" xml:"follow_request_sent"`
+	URL                       string   `json:"url" xml:"url"`
+	FavouritesCount           int      `json:"favourites_count" xml:"favourites_count"`
+	ContributorsEnabled       bool     `json:"contributors_enabled" xml:"contributors_enabled"`
+	UtcOffset                 *int     `json:"utc_offset" xml:"utc_offset"`
+	ID                        int64    `json:"id" xml:"id"`
+	IDStr                     string   `json:"id_str" xml:"id_str"`
+	ProfileUseBackgroundImage bool     `json:"profile_use_background_image" xml:"profile_use_background_image"`
+	ProfileTextColor          string   `json:"profile_text_color" xml:"profile_text_color"`
+	Protected                 bool     `json:"protected" xml:"protected"`
+	FollowersCount            int      `json:"followers_count" xml:"followers_count"`
+	Lang                      string   `json:"lang" xml:"lang"`
+	Notifications             *bool    `json:"notifications" xml:"notifications"`
+	TimeZone                  *string  `json:"time_zone" xml:"time_zone"`
+	Verified                  bool     `json:"verified" xml:"verified"`
+	ProfileBackgroundColor    string   `json:"profile_background_color" xml:"profile_background_color"`
+	GeoEnabled                bool     `json:"geo_enabled" xml:"geo_enabled"`
+	Description               string   `json:"description" xml:"description"`
+	FriendsCount              int      `json:"friends_count" xml:"friends_count"`
+	StatusesCount             int      `json:"statuses_count" xml:"statuses_count"`
+	ProfileBackgroundImageURL string   `json:"profile_background_image_url" xml:"profile_background_image_url"`
 	// ProfileBackgroundImageURLHttps string  `json:"profile_background_image_url_https" xml:"profile_background_image_url_https"`
 	Following           *bool  `json:"following" xml:"following"`
 	ScreenName          string `json:"screen_name" xml:"screen_name"`
@@ -200,6 +201,7 @@ type TimeZone struct {
 }
 
 type Config struct {
+	XMLName             xml.Name        `xml:"settings" json:"-"`
 	SleepTime           SleepTime       `json:"sleep_time" xml:"sleep_time"`
 	TrendLocation       []TrendLocation `json:"trend_location" xml:"trend_location"`
 	Language            string          `json:"language" xml:"language"`
@@ -211,6 +213,7 @@ type Config struct {
 
 // Used in the /friends/lookup endpoint
 type UsersRelationship struct {
+	XMLName     xml.Name    `xml:"connections" json:"-"`
 	Name        string      `json:"name" xml:"name"`
 	IDStr       string      `json:"id_str" xml:"id_str"`
 	ID          int64       `json:"id" xml:"id"`
@@ -219,16 +222,17 @@ type UsersRelationship struct {
 }
 
 type Connection struct {
-	XMLName xml.Name `xml:"connection"`
+	XMLName xml.Name `xml:"connection" json:"-"`
 	Value   string   `xml:",chardata"`
 }
 
 type Connections struct {
-	XMLName    xml.Name     `xml:"connections"`
+	XMLName    xml.Name     `xml:"connections" json:"-"`
 	Connection []Connection `xml:"connection"`
 }
 
 type UserRelationships struct {
+	XMLName       xml.Name            `xml:"relationships" json:"-"`
 	Relationships []UsersRelationship `json:"relationship" xml:"relationship"`
 }
 
@@ -259,7 +263,7 @@ type UserFriendship struct {
 }
 
 type SourceTargetFriendship struct {
-	XMLName xml.Name       `xml:"relationship"`
+	XMLName xml.Name       `xml:"relationship" json:"-"`
 	Source  UserFriendship `json:"source" xml:"source"`
 	Target  UserFriendship `json:"target" xml:"target"`
 }
@@ -280,7 +284,8 @@ type Trend struct {
 }
 
 type TwitterUsers struct {
-	Users []TwitterUser `xml:"user"`
+	XMLName xml.Name      `xml:"users" json:"-"`
+	Users   []TwitterUser `xml:"user"`
 }
 
 type TwitterRecommendation struct {
