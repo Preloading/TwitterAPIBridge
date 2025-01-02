@@ -31,7 +31,7 @@ func UserSearch(c *fiber.Ctx) error {
 		dids = append(dids, user.DID)
 	}
 	if len(dids) == 0 {
-		return c.JSON([]bridge.TwitterUser{})
+		return EncodeAndSend(c, []bridge.TwitterUser{})
 	}
 	users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, dids, false)
 	if err != nil {
@@ -39,7 +39,7 @@ func UserSearch(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")
 	}
 
-	return c.JSON(users)
+	return EncodeAndSend(c, users)
 }
 
 // /i/activity/about_me.json?contributor_details=1&include_entities=true&include_my_retweet=true&send_error_codes=true
@@ -189,5 +189,5 @@ func GetMyActivity(c *fiber.Ctx) error {
 		position++ // Increment position
 	}
 
-	return c.JSON(twitterNotifications)
+	return EncodeAndSend(c, twitterNotifications)
 }

@@ -83,7 +83,7 @@ func VerifyCredentials(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
 	}
 
-	return c.JSON(userinfo)
+	return EncodeAndSend(c, userinfo)
 }
 
 // GetAuthFromReq is a helper function to get the user DID and access token from the request.

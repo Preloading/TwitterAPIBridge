@@ -119,7 +119,7 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds))
 	}
 
-	return c.JSON(tweets)
+	return EncodeAndSend(c, tweets)
 
 }
 
@@ -183,7 +183,7 @@ func RelatedResults(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON([]bridge.RelatedResultsQuery{twitterReplies})
+	return EncodeAndSend(c, []bridge.RelatedResultsQuery{twitterReplies})
 }
 
 // https://web.archive.org/web/20120708204036/https://dev.twitter.com/docs/api/1/get/statuses/show/%3Aid
@@ -217,9 +217,9 @@ func GetStatusFromId(c *fiber.Ctx) error {
 
 	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
 	if thread.Thread.Parent == nil {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
 	}
 }
 
@@ -521,7 +521,7 @@ func TweetInfo(c *fiber.Ctx) error {
 		retweeters = append(retweeters, *bridge.BlueSkyToTwitterID(reposter.DID))
 	}
 
-	return c.JSON(bridge.TwitterActivitiySummary{
+	return EncodeAndSend(c, bridge.TwitterActivitiySummary{
 		FavouritesCount: thread.Thread.Post.LikeCount,
 		RetweetsCount:   thread.Thread.Post.RepostCount,
 		RepliersCount:   thread.Thread.Post.ReplyCount,

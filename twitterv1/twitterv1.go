@@ -49,23 +49,23 @@ func InitServer(config *config.Config) {
 
 	// Auth
 	app.Post("/oauth/access_token", access_token)
-	app.Get("/1/account/verify_credentials.json", VerifyCredentials)
+	app.Get("/1/account/verify_credentials.:filetype", VerifyCredentials)
 
 	// Tweeting
-	app.Post("/1/statuses/update.json", status_update)
+	app.Post("/1/statuses/update.:filetype", status_update)
 
 	// Interactions
-	app.Post("/1/statuses/retweet/:id.json", retweet)
-	app.Post("/1/favorites/create/:id.json", favourite)
-	app.Post("/1/favorites/destroy/:id.json", Unfavourite)
-	app.Post("/1/statuses/destroy/:id.json", DeleteTweet)
+	app.Post("/1/statuses/retweet/:id.:filetype", retweet)
+	app.Post("/1/favorites/create/:id.:filetype", favourite)
+	app.Post("/1/favorites/destroy/:id.:filetype", Unfavourite)
+	app.Post("/1/statuses/destroy/:id.:filetype", DeleteTweet)
 
 	// Posts
-	app.Get("/1/statuses/home_timeline.json", home_timeline)
-	app.Get("/1/statuses/user_timeline.json", user_timeline)
-	app.Get("/1/statuses/show/:id.json", GetStatusFromId)
-	app.Get("/i/statuses/:id/activity/summary.json", TweetInfo)
-	app.Get("/1/related_results/show/:id.json", RelatedResults)
+	app.Get("/1/statuses/home_timeline.:filetype", home_timeline)
+	app.Get("/1/statuses/user_timeline.:filetype", user_timeline)
+	app.Get("/1/statuses/show/:id.:filetype", GetStatusFromId)
+	app.Get("/i/statuses/:id/activity/summary.:filetype", TweetInfo)
+	app.Get("/1/related_results/show/:id.:filetype", RelatedResults)
 
 	// Users
 	app.Get("/1/users/show.:filetype", user_info)
@@ -85,12 +85,12 @@ func InitServer(config *config.Config) {
 	app.Get("/1/users/profile_image", UserProfileImage)
 
 	// Connect
-	app.Get("/1/users/search.json", UserSearch)
-	app.Get("/i/activity/about_me.json", GetMyActivity)
+	app.Get("/1/users/search.:filetype", UserSearch)
+	app.Get("/i/activity/about_me.:filetype", GetMyActivity)
 
 	// Discover
-	app.Get("/1/trends/:woeid.json", trends_woeid)
-	app.Get("/i/search.json", InternalSearch)
+	app.Get("/1/trends/:woeid.:filetype", trends_woeid)
+	app.Get("/i/search.:filetype", InternalSearch)
 
 	// Account / Settings
 	app.Post("/1/account/update_profile.xml", UpdateProfile)
@@ -99,8 +99,8 @@ func InitServer(config *config.Config) {
 	app.Get("/1/account/push_destinations/device.xml", PushDestinations)
 
 	// Legal cuz why not?
-	app.Get("/1/legal/tos.json", TOS)
-	app.Get("/1/legal/privacy.json", PrivacyPolicy)
+	app.Get("/1/legal/tos.:filetype", TOS)
+	app.Get("/1/legal/privacy.:filetype", PrivacyPolicy)
 
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)

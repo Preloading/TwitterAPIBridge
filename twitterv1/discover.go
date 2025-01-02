@@ -114,7 +114,7 @@ func InternalSearch(c *fiber.Ctx) error {
 
 	}
 
-	return c.JSON(bridge.InternalSearchResult{
+	return EncodeAndSend(c, bridge.InternalSearchResult{
 		Statuses: tweets,
 	})
 }
@@ -153,7 +153,7 @@ func trends_woeid(c *fiber.Ctx) error {
 
 	}
 
-	return c.JSON(bridge.Trends{
+	return EncodeAndSend(c, bridge.Trends{
 		Created: time.Now(),
 		Trends:  trends,
 		AsOf:    time.Now(), // no clue the differ

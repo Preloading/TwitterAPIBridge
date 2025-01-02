@@ -45,9 +45,9 @@ func status_update(c *fiber.Ctx) error {
 	}
 
 	if thread.Thread.Parent == nil {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return c.JSON(TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
 	}
 }
 
@@ -91,7 +91,7 @@ func retweet(c *fiber.Ctx) error {
 	retweet.IDStr = strconv.FormatInt(retweet.ID, 10)
 	originalPost.Thread.Post.Viewer.Repost = blueskyRepostURI
 
-	return c.JSON(bridge.Retweet{
+	return EncodeAndSend(c, bridge.Retweet{
 		Tweet: retweet,
 		RetweetedStatus: func() bridge.Tweet { // TODO: make this respond with proper retweet data
 			if originalPost.Thread.Parent == nil {
@@ -139,7 +139,7 @@ func favourite(c *fiber.Ctx) error {
 		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.Post.URI, post.Thread.Parent.Post.Author.DID, &post.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
 	}
 
-	return c.JSON(newTweet)
+	return EncodeAndSend(c, newTweet)
 }
 
 // https://web.archive.org/web/20120412041153/https://dev.twitter.com/docs/api/1/post/favorites/destroy/%3Aid
@@ -176,7 +176,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.Post.URI, post.Thread.Parent.Post.Author.DID, &post.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
 	}
 
-	return c.JSON(newTweet)
+	return EncodeAndSend(c, newTweet)
 }
 
 // This handles deleting a tweet, retweet, or reply
@@ -228,7 +228,7 @@ func DeleteTweet(c *fiber.Ctx) error {
 	postToDelete.Thread.Post.URI = postId
 	postToDelete.Thread.Post.Author.DID = *user_did
 
-	return c.JSON(
+	return EncodeAndSend(c,
 		func() bridge.Tweet { // TODO: make this respond with proper retweet data
 			if postToDelete.Thread.Parent == nil {
 				return TranslatePostToTweet(postToDelete.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
