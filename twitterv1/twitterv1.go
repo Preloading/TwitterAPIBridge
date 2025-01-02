@@ -93,10 +93,10 @@ func InitServer(config *config.Config) {
 	app.Get("/i/search.:filetype", InternalSearch)
 
 	// Account / Settings
-	app.Post("/1/account/update_profile.xml", UpdateProfile)
-	app.Post("/1/account/update_profile_image.xml", UpdateProfilePicture)
-	app.Get("/1/account/settings.xml", GetSettings)
-	app.Get("/1/account/push_destinations/device.xml", PushDestinations)
+	app.Post("/1/account/update_profile.:filetype", UpdateProfile)
+	app.Post("/1/account/update_profile_image.:filetype", UpdateProfilePicture)
+	app.Get("/1/account/settings.:filetype", GetSettings)
+	app.Get("/1/account/push_destinations/device.:filetype", PushDestinations)
 
 	// Legal cuz why not?
 	app.Get("/1/legal/tos.:filetype", TOS)
