@@ -5,12 +5,6 @@ import (
 	"time"
 )
 
-type User struct {
-	ID   string
-	Name string
-	// Add other fields as needed
-}
-
 type Cache struct {
 	data  map[string]TwitterUser
 	mutex sync.RWMutex
