@@ -139,8 +139,10 @@ func RelatedResults(c *fiber.Ctx) error {
 	uri := *uriPtr
 
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		blankstring := ""
+		oauthToken = &blankstring
 	}
 
 	err, thread := blueskyapi.GetPost(*pds, *oauthToken, uri, 1, 0)
