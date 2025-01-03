@@ -108,7 +108,7 @@ func InitServer(config *config.Config) {
 	// misc
 	app.Get("/mobile_client_api/decider/:path", MobileClientApiDecider)
 
-	app.Listen(":3000")
+	app.Listen(fmt.Sprintf(":%d", config.ServerPort))
 }
 
 // misc
