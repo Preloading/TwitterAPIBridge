@@ -538,9 +538,9 @@ func TweetInfo(c *fiber.Ctx) error {
 	}
 
 	return EncodeAndSend(c, bridge.TwitterActivitiySummary{
-		FavouritesCount: thread.Thread.Post.LikeCount,
-		RetweetsCount:   thread.Thread.Post.RepostCount,
-		RepliersCount:   thread.Thread.Post.ReplyCount,
+		FavouritesCount: strconv.Itoa(thread.Thread.Post.LikeCount),
+		RetweetsCount:   strconv.Itoa(thread.Thread.Post.RepostCount),
+		RepliersCount:   strconv.Itoa(thread.Thread.Post.ReplyCount),
 		Favourites:      favourites,
 		Retweets:        retweeters,
 		Repliers:        repliers,

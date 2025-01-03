@@ -121,11 +121,11 @@ type TwitterUser struct {
 
 type TwitterActivitiySummary struct {
 	Favourites      []int64 `json:"favoriters"` // Pretty sure this is the User ID of the favouriters
-	FavouritesCount int     `json:"favoriters_count"`
+	FavouritesCount string  `json:"favoriters_count"`
 	Repliers        []int64 `json:"repliers"`
-	RepliersCount   int     `json:"repliers_count"`
+	RepliersCount   string  `json:"repliers_count"`
 	Retweets        []int64 `json:"retweeters"`
-	RetweetsCount   int     `json:"retweeters_count"`
+	RetweetsCount   string  `json:"retweeters_count"`
 }
 
 type MediaSize struct {
