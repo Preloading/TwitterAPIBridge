@@ -362,9 +362,9 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			idStr := strconv.FormatInt(*id, 10)
 			return &idStr
 		}(),
-		InReplyToScreenName: &tweet.Author.DisplayName,
-		User:                *author,
-		Source:              "Bluesky",
+		// InReplyToScreenName: &tweet.Author.DisplayName,
+		User:   *author,
+		Source: "Bluesky",
 		InReplyToStatusID: func() *int64 {
 			if replyMsgBskyURI == "" || replyUserBskyId == "" {
 				return nil
