@@ -1,6 +1,12 @@
 # The CDN_URL is the URL send to clients to access images from this server.
-# Set it to where the server can be accessed.
+# Set it to where the server can be accessed from your device.
+# You can test this by going to the CDN_URL in your device web browser and
+# seeing if it loads
+# DO NOT ADD A TRAILING SLASH
+# GOOD http://127.0.0.1:3000
+# BAD: http://127.0.0.1:3000/
 CDN_URL: 'http://127.0.0.1:3000'
+
 # SERVER_PORT is the port the server will listen on.
 SERVER_PORT: 3000
 
