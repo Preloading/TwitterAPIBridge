@@ -71,9 +71,23 @@ type MessageContext struct {
 	TimelineContext string `gorm:"type:string;not null"`
 }
 
-var db *gorm.DB
+// Analytics seems cool, and me liek numbrers.
 
-func InitDB(cfg config.Config) {
+type AnalyticData struct {
+	DataType             string    `gorm:"type:string;not null"`
+	IPAddress            string    `gorm:"type:string;"`
+	Language             string    `gorm:"type:string;"`
+	UserAgent            string    `gorm:"type:string;"`
+	TwitterClient        string    `gorm:"type:string"`
+	TwitterClientVersion string    `gorm:"type:string"`
+	Timestamp            time.Time `gorm:"type:timestamp"`
+}
+
+var db *gorm.DB
+var cfg config.Config
+
+func InitDB(_cfg config.Config) {
+	cfg = _cfg
 	// Ensure the directory exists
 	dbDir := filepath.Dir(cfg.DatabasePath)
 	if err := os.MkdirAll(dbDir, os.ModePerm); err != nil {
@@ -101,6 +115,7 @@ func InitDB(cfg config.Config) {
 	db.AutoMigrate(&Token{})
 	db.AutoMigrate(&MessageContext{})
 	db.AutoMigrate(&TwitterIDs{})
+	db.AutoMigrate(&AnalyticData{})
 }
 
 // StoreToken stores an encrypted access token and refresh token in the database.
@@ -238,4 +253,20 @@ func GetTwitterIDFromDatabase(twitterID *int64) (*string, *time.Time, *string, e
 	}
 
 	return &blueskyID.BlueskyID, blueskyID.DateCreated, blueskyID.ReposterDid, nil
+}
+
+// Stores analytic data (if enabled)
+// -- TYPES --
+// 1. "login"
+// 2. "tweets viewed"
+// 3. "tweets posted"
+func StoreAnalyticData(data AnalyticData) {
+	if !cfg.TrackAnalytics {
+		return
+	}
+
+	result := db.Create(&data)
+	if result.Error != nil {
+		fmt.Println("Failed to store analytic data:", result.Error)
+	}
 }

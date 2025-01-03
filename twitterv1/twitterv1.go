@@ -33,7 +33,7 @@ func InitServer(config *config.Config) {
 			// fmt.Println("Request Method:", c.Method())
 			fmt.Println("Request URL:", c.OriginalURL())
 			// fmt.Println("Post Body:", string(c.Body()))
-			// fmt.Println("Headers:", string(c.Request().Header.Header()))
+			fmt.Println("Headers:", string(c.Request().Header.Header()))
 			// fmt.Println()
 			return c.Next()
 		})

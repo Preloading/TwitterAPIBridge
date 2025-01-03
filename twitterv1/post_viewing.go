@@ -9,6 +9,7 @@ import (
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
+	"github.com/Preloading/MastodonTwitterAPI/db_controller"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -227,6 +228,19 @@ func GetStatusFromId(c *fiber.Ctx) error {
 
 // https://web.archive.org/web/20120506182126/https://dev.twitter.com/docs/platform-objects/tweets
 func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string, pds string) bridge.Tweet {
+	if len(tweet.Record.Langs) > 0 {
+		db_controller.StoreAnalyticData(db_controller.AnalyticData{
+			DataType:  "postviewing",
+			Timestamp: time.Now(),
+			Language:  tweet.Record.Langs[0],
+		})
+	} else {
+		db_controller.StoreAnalyticData(db_controller.AnalyticData{
+			DataType:  "postviewing",
+			Timestamp: time.Now(),
+		})
+	}
+
 	tweetEntities := bridge.Entities{
 		Hashtags:     nil,
 		Urls:         nil,
@@ -524,9 +538,9 @@ func TweetInfo(c *fiber.Ctx) error {
 	}
 
 	return EncodeAndSend(c, bridge.TwitterActivitiySummary{
-		FavouritesCount: thread.Thread.Post.LikeCount,
-		RetweetsCount:   thread.Thread.Post.RepostCount,
-		RepliersCount:   thread.Thread.Post.ReplyCount,
+		FavouritesCount: strconv.Itoa(thread.Thread.Post.LikeCount),
+		RetweetsCount:   strconv.Itoa(thread.Thread.Post.RepostCount),
+		RepliersCount:   strconv.Itoa(thread.Thread.Post.ReplyCount),
 		Favourites:      favourites,
 		Retweets:        retweeters,
 		Repliers:        repliers,

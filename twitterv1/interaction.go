@@ -8,6 +8,7 @@ import (
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
+	"github.com/Preloading/MastodonTwitterAPI/db_controller"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -43,6 +44,16 @@ func status_update(c *fiber.Ctx) error {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
 	}
+
+	db_controller.StoreAnalyticData(db_controller.AnalyticData{
+		DataType:             "status_update",
+		IPAddress:            c.IP(),
+		UserAgent:            c.Get("User-Agent"),
+		Language:             c.Get("Accept-Language"),
+		TwitterClient:        c.Get("X-Twitter-Client"),
+		TwitterClientVersion: c.Get("X-Twitter-Client-Version"),
+		Timestamp:            time.Now(),
+	})
 
 	if thread.Thread.Parent == nil {
 		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
@@ -90,6 +101,16 @@ func retweet(c *fiber.Ctx) error {
 	retweet.ID = *retweetId
 	retweet.IDStr = strconv.FormatInt(retweet.ID, 10)
 	originalPost.Thread.Post.Viewer.Repost = blueskyRepostURI
+
+	db_controller.StoreAnalyticData(db_controller.AnalyticData{
+		DataType:             "retweeted",
+		IPAddress:            c.IP(),
+		UserAgent:            c.Get("User-Agent"),
+		Language:             c.Get("Accept-Language"),
+		TwitterClient:        c.Get("X-Twitter-Client"),
+		TwitterClientVersion: c.Get("X-Twitter-Client-Version"),
+		Timestamp:            time.Now(),
+	})
 
 	return EncodeAndSend(c, bridge.Retweet{
 		Tweet: retweet,
@@ -139,6 +160,16 @@ func favourite(c *fiber.Ctx) error {
 		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.Post.URI, post.Thread.Parent.Post.Author.DID, &post.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
 	}
 
+	db_controller.StoreAnalyticData(db_controller.AnalyticData{
+		DataType:             "favorited",
+		IPAddress:            c.IP(),
+		UserAgent:            c.Get("User-Agent"),
+		Language:             c.Get("Accept-Language"),
+		TwitterClient:        c.Get("X-Twitter-Client"),
+		TwitterClientVersion: c.Get("X-Twitter-Client-Version"),
+		Timestamp:            time.Now(),
+	})
+
 	return EncodeAndSend(c, newTweet)
 }
 
@@ -175,6 +206,16 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	} else {
 		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.Post.URI, post.Thread.Parent.Post.Author.DID, &post.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
 	}
+
+	db_controller.StoreAnalyticData(db_controller.AnalyticData{
+		DataType:             "unfavorite",
+		IPAddress:            c.IP(),
+		UserAgent:            c.Get("User-Agent"),
+		Language:             c.Get("Accept-Language"),
+		TwitterClient:        c.Get("X-Twitter-Client"),
+		TwitterClientVersion: c.Get("X-Twitter-Client-Version"),
+		Timestamp:            time.Now(),
+	})
 
 	return EncodeAndSend(c, newTweet)
 }
@@ -224,6 +265,16 @@ func DeleteTweet(c *fiber.Ctx) error {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to delete post")
 	}
+
+	db_controller.StoreAnalyticData(db_controller.AnalyticData{
+		DataType:             "deleted_post",
+		IPAddress:            c.IP(),
+		UserAgent:            c.Get("User-Agent"),
+		Language:             c.Get("Accept-Language"),
+		TwitterClient:        c.Get("X-Twitter-Client"),
+		TwitterClientVersion: c.Get("X-Twitter-Client-Version"),
+		Timestamp:            time.Now(),
+	})
 
 	postToDelete.Thread.Post.URI = postId
 	postToDelete.Thread.Post.Author.DID = *user_did
