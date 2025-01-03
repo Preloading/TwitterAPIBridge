@@ -213,7 +213,7 @@ type Config struct {
 
 // Used in the /friends/lookup endpoint
 type UsersRelationship struct {
-	XMLName     xml.Name    `xml:"connections" json:"-"`
+	XMLName     xml.Name    `xml:"relationship" json:"-"`
 	Name        string      `json:"name" xml:"name"`
 	IDStr       string      `json:"id_str" xml:"id_str"`
 	ID          int64       `json:"id" xml:"id"`
