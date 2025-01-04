@@ -78,6 +78,10 @@ This server is no where close to 100% accurate. Most of the the time this accura
 ## Thanks to
 [@Preloading](https://github.com/Preloading), I wrote the thing
 
-[@Savefade](https://github.com/Savefade), Gave me info on some of the requests
+[@Savefade](https://github.com/Savefade), Gave me info on some of the requests, see  [SimpleTwitterServer](github.com/savefade/SimpleTwitterServer), his v1 and v1.1 Twitter API private server
 
 [@retrofoxxo](https://github.com/retrofoxxo), Helped with getting android working with this server
+
+[The Internet Archive](https://archive.org), for hosting the API documentations that have since been removed. Also credit the data providers of the Wayback Machine such as Amazon's other Alexa, which indexed web pages, and [Archiveteam](https://archiveteam.org).
+
+[X/Twitter](https://x.com) and [Bluesky](https://bsky.app) for obvious reasons.
