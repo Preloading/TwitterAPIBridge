@@ -18,11 +18,13 @@ Twitter API v2 is unlikely to be fixed in the future.
 
 ### Twitter for iOS (offical)
 
-⭐⚠️: 3.3.6, Uses a **lot** of XML, Posts with images are broken (have (null) at the start), many other faults
+⭐⚠️: 3.3.6, Uses a **lot** of XML, Posts with images are broken (have (null) at the start), many other faults and missing endpoints
 
 ⭐✅: 4.1.3, Near perfect. Tweeting media requires a patch, Retweets made by you fail to appear properly on timeline, pagination broken on some user elements. Notification settings crashes the app.
 
-❌: 5.0.0+, Uses Twitter API v1.1
+⚠️: 5.0.0-5.1.2, Images fail to load properly
+
+❌: 5.2+ Uses Twitter API v1.1
 
 ### Twitter iOS Integration
 
