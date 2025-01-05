@@ -33,6 +33,9 @@ DATABASE_PATH: './db/twitterbridge.db'
 # more probably to come
 TRACK_ANALYTICS: true
 
+# Enable this if behind a reverse proxy
+USE_X_FORWARDED_FOR: false
+
 # DEVELOPER_MODE
 # This is used to enable some extra logging useful during development.
 # DO NOT ENABLE THIS IN A PUBLIC INSTANCE!!!

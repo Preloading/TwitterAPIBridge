@@ -20,9 +20,13 @@ func InitServer(config *config.Config) {
 	configData = config
 	blueskyapi.InitConfig(configData)
 	app := fiber.New(fiber.Config{
-		JSONEncoder: json.Marshal,
-		JSONDecoder: json.Unmarshal,
 		//DisablePreParseMultipartForm: true,
+		ProxyHeader: func() string {
+			if configData.UseXForwardedFor {
+				return "USE_X_FORWARDED_FOR"
+			}
+			return ""
+		}(),
 	})
 
 	// Initialize default config

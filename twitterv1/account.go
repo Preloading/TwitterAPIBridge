@@ -32,7 +32,7 @@ func PushDestinations(c *fiber.Ctx) error {
 
 	// 	app_version=4.1.3&
 	// device_model=iPhone&
-	// device_name=Logan%E2%80%99s%20iPhone&
+	// device_name=
 	// enabled_for=23&
 	// environment=3&
 	// language=en&
@@ -40,20 +40,20 @@ func PushDestinations(c *fiber.Ctx) error {
 	// send_error_codes=true&
 	// system_name=iPhone%20OS&
 	// system_version=4.2.1&
-	// token=u1um37SQzAoE3yF%2F0DVZLQFPk4Ssie%2FGTkS1rMIZk4c%3D&
+	// token=
 	// udid=291C3725-6221-4B96-A897-3436AE9D48DF
 
 	return c.SendString(fmt.Sprintf(`
 	<?xml version="1.0" encoding="UTF-8"?>
 	<device>
 		<device_model>iPhone</device_model>
-		<device_name>Logan’s iPhone</device_name>
+		<device_name>iPhone</device_name>
 		<enabled_for>23</enabled_for>
 		<language>en</language>
 		<send_error_codes>true</send_error_codes>
 		<system_name>iPhone OS</system_name>
 		<system_version>4.2.1</system_version>
-		<token>u1um37SQzAoE3yF/0DVZLQFPk4Ssie/GTkS1rMIZk4c=</token>
+		<token>i dunno, guess who has no idea what this returns./token>
 		<udid>%s</udid>
 		<old_udid>%s</old_udid>
 		<environment>3</environment>

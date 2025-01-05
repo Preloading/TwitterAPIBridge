@@ -23,6 +23,8 @@ type Config struct {
     DatabaseType string `mapstructure:"DATABASE_TYPE"`
     // Database path
     DatabasePath string `mapstructure:"DATABASE_PATH"`
+
+    UseXForwardedFor bool `mapstructure:"USE_X_FORWARDED_FOR"`
 }
 
 // Loads our config files.
@@ -43,6 +45,7 @@ func LoadConfig() (*Config, error) {
     viper.SetDefault("DATABASE_PATH", "./db/twitterbridge.db")
     viper.SetDefault("TRACK_ANALYTICS", true)
     viper.SetDefault("CDN_URL", "http://localhost:3000")
+    viper.SetDefault("USE_X_FORWARDED_FOR", false)
 
     // Read config file
     if err := viper.ReadInConfig(); err != nil {
