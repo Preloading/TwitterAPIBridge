@@ -275,22 +275,27 @@ type MyActivity struct {
 // used in the /friendships/show endpoint
 type UserFriendship struct {
 	ID                   int64  `json:"id" xml:"id"`
-	IDStr                string `json:"id_str"`
-	ScreenName           string `json:"screen_name"`
-	Following            bool   `json:"following"`
-	FollowedBy           bool   `json:"followed_by"`
-	NotificationsEnabled *bool  `json:"notifications_enabled"` // unknown
+	IDStr                string `json:"id_str" xml:"-"`
+	ScreenName           string `json:"screen_name" xml:"screen_name"`
+	Following            bool   `json:"following" xml:"following"`
+	FollowedBy           bool   `json:"followed_by" xml:"followed_by"`
+	NotificationsEnabled *bool  `json:"notifications_enabled" xml:"notifications_enabled"` // unknown
 	CanDM                *bool  `json:"can_dm,omitempty" xml:"can_dm,omitempty"`
-	Blocking             *bool  `json:"blocking"`      // unknown
-	WantRetweets         *bool  `json:"want_retweets"` // unknown
-	MarkedSpam           *bool  `json:"marked_spam"`   // unknown
-	AllReplies           *bool  `json:"all_replies"`   // unknown
+	Blocking             *bool  `json:"blocking" xml:"blocking"`           // unknown
+	WantRetweets         *bool  `json:"want_retweets" xml:"want_retweets"` // unknown
+	MarkedSpam           *bool  `json:"marked_spam" xml:"marked_spam"`     // unknown
+	AllReplies           *bool  `json:"all_replies" xml:"all_replies"`     // unknown
 }
 
 type SourceTargetFriendship struct {
 	XMLName xml.Name       `xml:"relationship" json:"-"`
 	Source  UserFriendship `json:"source" xml:"source"`
 	Target  UserFriendship `json:"target" xml:"target"`
+}
+
+type SourceTargetFriendshipRoot struct {
+	XMLName  xml.Name               `xml:"relationships" json:"-"` // ?
+	Relation SourceTargetFriendship `json:"relationship" xml:"relationship"`
 }
 
 type Trends struct {

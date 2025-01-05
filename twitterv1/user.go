@@ -287,7 +287,11 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 		},
 	}
 
-	return EncodeAndSend(c, friendship)
+	root := bridge.SourceTargetFriendshipRoot{
+		Relation: friendship,
+	}
+
+	return EncodeAndSend(c, root)
 }
 
 // https://web.archive.org/web/20120407201029/https://dev.twitter.com/docs/api/1/post/friendships/create
