@@ -23,7 +23,7 @@ func InitServer(config *config.Config) {
 		//DisablePreParseMultipartForm: true,
 		ProxyHeader: func() string {
 			if configData.UseXForwardedFor {
-				return "USE_X_FORWARDED_FOR"
+				return fiber.HeaderXForwardedFor
 			}
 			return ""
 		}(),
