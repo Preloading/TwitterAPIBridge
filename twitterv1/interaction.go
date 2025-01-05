@@ -2,6 +2,7 @@ package twitterv1
 
 import (
 	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"time"
@@ -38,7 +39,85 @@ func status_update(c *fiber.Ctx) error {
 		}
 	}
 
-	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id, mentions, links, tags)
+	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id, mentions, links, tags, nil)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
+	}
+
+	db_controller.StoreAnalyticData(db_controller.AnalyticData{
+		DataType:             "status_update",
+		IPAddress:            c.IP(),
+		UserAgent:            c.Get("User-Agent"),
+		Language:             c.Get("Accept-Language"),
+		TwitterClient:        c.Get("X-Twitter-Client"),
+		TwitterClientVersion: c.Get("X-Twitter-Client-Version"),
+		Timestamp:            time.Now(),
+	})
+
+	if thread.Thread.Parent == nil {
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
+	} else {
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
+	}
+}
+
+// https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/post/statuses/update
+func status_update_with_media(c *fiber.Ctx) error {
+	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	status := c.FormValue("status")
+
+	// The docs say it's an array, but I can only upload one image.... so idk
+	image, err := c.FormFile("media")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusBadRequest).SendString("Please upload an image")
+	}
+
+	// read the image file content
+	file, err := image.Open()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to open image file")
+	}
+	defer file.Close()
+
+	imageData, err := io.ReadAll(file)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to read image file")
+	}
+
+	// upload our new profile picture
+	imageBlob, err := blueskyapi.UploadBlob(*pds, *oauthToken, imageData, c.Get("Content-Type"))
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to upload image")
+	}
+
+	// Status parsing!
+	mentions := findHandleInstances(status)
+	links := findUrlInstances(status)
+	tags := findTagInstances(status)
+
+	//	trim_user := c.FormValue("trim_user") // Unused
+	encoded_in_reply_to_status_id_str := c.FormValue("in_reply_to_status_id")
+	encoded_in_reply_to_status_id_int, err := strconv.ParseInt(encoded_in_reply_to_status_id_str, 10, 64)
+	var in_reply_to_status_id *string
+	if err == nil {
+		in_reply_to_status_id, _, _, err = bridge.TwitterMsgIdToBluesky(&encoded_in_reply_to_status_id_int)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
+		}
+	}
+
+	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id, mentions, links, tags, imageBlob)
 
 	if err != nil {
 		fmt.Println("Error:", err)

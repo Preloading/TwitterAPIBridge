@@ -120,6 +120,11 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 
 	// Replace URL-friendly characters with original base64 characters
 
+	// Check that we have at least 3 segments
+	if len(oauthTokenSegments) == 3 {
+		return nil, &fallbackRoute, nil, nil, errors.New("invalid oauth token")
+	}
+
 	// Get user DID
 	userDID, err := cryption.Base64URLDecode(oauthTokenSegments[0])
 

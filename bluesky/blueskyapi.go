@@ -214,6 +214,7 @@ type CreatePostRecord struct {
 	CreatedAt time.Time     `json:"createdAt"`
 	Reply     *ReplySubject `json:"reply,omitempty"`
 	Facets    []Facet       `json:"facets,omitempty"`
+	Embed     *Embed        `json:"embed,omitempty"`
 }
 
 type Subject struct {
@@ -847,12 +848,13 @@ func GetFollows(pds string, token string, context string, actor string) (*Follow
 }
 
 // This handles both normal & replys
-func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string, mentions []bridge.FacetParsing, urls []bridge.FacetParsing, tags []bridge.FacetParsing) (*ThreadRoot, error) {
+func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string, mentions []bridge.FacetParsing, urls []bridge.FacetParsing, tags []bridge.FacetParsing, imageBlob *Blob) (*ThreadRoot, error) {
 	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
 	var replySubject *ReplySubject
 	var err error
 	facets := []Facet{}
+	embeds := Embed{}
 
 	// find mention's DID
 	handles := []string{}
@@ -931,6 +933,20 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 		}
 	}
 
+	// Images
+	if imageBlob != nil {
+		embeds = Embed{
+			Type: "app.bsky.embed#image",
+			Images: []Image{
+				{
+					Alt: "", // Twitter doesn't have alt text (poor accessibility)
+					// AspectRatio: AspectRatio{Height: 1, Width: 1}, // lets see if it works without the aspect ratio ;)
+					Image: *imageBlob,
+				},
+			},
+		}
+	}
+
 	payload := CreateRecordPayload{
 		Collection: "app.bsky.feed.post",
 		Repo:       my_did,
@@ -940,6 +956,7 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 			CreatedAt: time.Now().UTC(),
 			Reply:     replySubject,
 			Facets:    facets,
+			Embed:     &embeds,
 		},
 	}
 

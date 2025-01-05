@@ -22,6 +22,7 @@ func InitServer(config *config.Config) {
 	app := fiber.New(fiber.Config{
 		JSONEncoder: json.Marshal,
 		JSONDecoder: json.Unmarshal,
+		//DisablePreParseMultipartForm: true,
 	})
 
 	// Initialize default config
@@ -31,9 +32,9 @@ func InitServer(config *config.Config) {
 	if config.DeveloperMode {
 		app.Use(func(c *fiber.Ctx) error {
 			// fmt.Println("Request Method:", c.Method())
-			fmt.Println("Request URL:", c.OriginalURL())
+			// fmt.Println("Request URL:", c.OriginalURL())
 			// fmt.Println("Post Body:", string(c.Body()))
-			fmt.Println("Headers:", string(c.Request().Header.Header()))
+			// fmt.Println("Headers:", string(c.Request().Header.Header()))
 			// fmt.Println()
 			return c.Next()
 		})
@@ -53,6 +54,7 @@ func InitServer(config *config.Config) {
 
 	// Tweeting
 	app.Post("/1/statuses/update.:filetype", status_update)
+	app.Post("/1/statuses/update_with_media.:filetype", status_update_with_media)
 
 	// Interactions
 	app.Post("/1/statuses/retweet/:id.:filetype", retweet)
