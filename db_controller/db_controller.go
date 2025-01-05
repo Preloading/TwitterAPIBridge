@@ -89,9 +89,11 @@ var cfg config.Config
 func InitDB(_cfg config.Config) {
 	cfg = _cfg
 	// Ensure the directory exists
-	dbDir := filepath.Dir(cfg.DatabasePath)
-	if err := os.MkdirAll(dbDir, os.ModePerm); err != nil {
-		panic("failed to create database directory")
+	if cfg.DatabaseType == "sqlite" {
+		dbDir := filepath.Dir(cfg.DatabasePath)
+		if err := os.MkdirAll(dbDir, os.ModePerm); err != nil {
+			panic("failed to create database directory")
+		}
 	}
 
 	// Initialize the database connection
