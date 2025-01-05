@@ -28,3 +28,6 @@ db
 config.yaml
 .vscode
 __debug_bin*
+
+# I promise i'll fix the name later
+MastodonTwitterAPI*
