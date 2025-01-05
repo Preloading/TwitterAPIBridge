@@ -127,8 +127,10 @@ func trends_woeid(c *fiber.Ctx) error {
 
 	//auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		blankstring := ""
+		oauthToken = &blankstring
 	}
 
 	// Get trends

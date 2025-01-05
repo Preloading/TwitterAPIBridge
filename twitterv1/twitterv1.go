@@ -32,7 +32,7 @@ func InitServer(config *config.Config) {
 	if config.DeveloperMode {
 		app.Use(func(c *fiber.Ctx) error {
 			// fmt.Println("Request Method:", c.Method())
-			// fmt.Println("Request URL:", c.OriginalURL())
+			fmt.Println("Request URL:", c.OriginalURL())
 			// fmt.Println("Post Body:", string(c.Body()))
 			// fmt.Println("Headers:", string(c.Request().Header.Header()))
 			// fmt.Println()
@@ -92,6 +92,7 @@ func InitServer(config *config.Config) {
 
 	// Discover
 	app.Get("/1/trends/:woeid.:filetype", trends_woeid)
+	app.Get("/1/trends/current.:filetype", trends_woeid)
 	app.Get("/i/search.:filetype", InternalSearch)
 
 	// Account / Settings

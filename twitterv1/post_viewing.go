@@ -1,6 +1,7 @@
 package twitterv1
 
 import (
+	"encoding/xml"
 	"fmt"
 	"net/url"
 	"slices"
@@ -12,6 +13,11 @@ import (
 	"github.com/Preloading/MastodonTwitterAPI/db_controller"
 	"github.com/gofiber/fiber/v2"
 )
+
+type TweetsRoot struct {
+	XMLName  xml.Name `xml:"statuses"`
+	Statuses []bridge.Tweet
+}
 
 func home_timeline(c *fiber.Ctx) error {
 	return convert_timeline(c, "", blueskyapi.GetTimeline)
@@ -118,6 +124,13 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 
 	for _, item := range res.Feed {
 		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds))
+	}
+
+	if c.Params("filetype") == "xml" { // i wonder why twitter ditched xml
+		tweetsRoot := TweetsRoot{
+			Statuses: tweets,
+		}
+		return EncodeAndSend(c, tweetsRoot)
 	}
 
 	return EncodeAndSend(c, tweets)
@@ -257,6 +270,8 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			IDStr:         strconv.Itoa(id),
 			MediaURL:      configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
 			MediaURLHttps: configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
+			DisplayURL:    "Image", // i tried
+			ExpandedURL:   configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
 		})
 		id++
 	}
@@ -284,15 +299,26 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 					faucet.Index.ByteStart,
 					faucet.Index.ByteEnd,
 				},
+				Start: faucet.Index.ByteStart,
+				End:   faucet.Index.ByteEnd,
 			})
 		case "app.bsky.richtext.facet#link":
 			tweetEntities.Urls = append(tweetEntities.Urls, bridge.URL{
 				ExpandedURL: faucet.Features[0].Uri,
-				URL:         faucet.Features[0].Uri, // Shortcut url
+				URL:         faucet.Features[0].Uri,
 				DisplayURL:  tweet.Record.Text[faucet.Index.ByteStart:faucet.Index.ByteEnd],
+				Start:       faucet.Index.ByteStart,
+				End:         faucet.Index.ByteEnd,
 				Indices: []int{
 					faucet.Index.ByteStart,
 					faucet.Index.ByteEnd,
+				},
+				XMLName: xml.Name{Local: "url"},
+				XMLFormat: bridge.URLXMLFormat{
+					Start:       faucet.Index.ByteStart,
+					End:         faucet.Index.ByteEnd,
+					URL:         faucet.Features[0].Uri,
+					ExpandedURL: "",
 				},
 			})
 		case "app.bsky.richtext.facet#tag":
@@ -302,6 +328,8 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 					faucet.Index.ByteStart,
 					faucet.Index.ByteEnd,
 				},
+				Start: faucet.Index.ByteStart,
+				End:   faucet.Index.ByteEnd,
 			})
 		}
 
@@ -398,14 +426,16 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		}(),
 		Retweeted:    tweet.Viewer.Repost != nil && !isRetweet,
 		RetweetCount: tweet.RepostCount,
-		RetweetedStatus: func() *bridge.Tweet {
+		RetweetedStatus: func() *bridge.RetweetedTweet {
 			if isRetweet {
 				retweet_bsky := tweet
 				retweet_bsky.Author = bsky_retweet_og_author
 				//retweet_bsky.Viewer.Repost = nil
 				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil, token, pds)
 				translatedTweet.CurrentUserRetweet = nil
-				return &translatedTweet
+				return &bridge.RetweetedTweet{
+					Tweet: translatedTweet, // Oh how i love XML
+				}
 			}
 			return nil
 		}(),
