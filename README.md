@@ -11,17 +11,18 @@ To see what devices and versions are compatible, look at [the compatibility list
 
 # Public Instances
 
-I do not recommend hosting a public instance of this software yet, as work is still being done, major breaking changes with updates that reqiure relogging are still happening, and credentials may be visible to the hoster.
-
-Once completed, I will make a public instance of my own.
+My public instance is currently undergoing small sample testing to avoid critical bugs. Will be released soon:tm:
+None
 
 ## Hosting instructions
 For hosting, you can take two paths
-- 🐳 Docker (recommended) - Quick & easy to deploy + easy updating
-- 🖥 Bare metal - Useful when developing & debugging
+- 🐳 Docker - Quick & easy to deploy + easy updating
+- 🖥 Bare metal (recommended) - Useful when developing & debugging
 
 
-### 🐳 Docker (recommended)
+### 🐳 Docker
+Warning: Docker at present moment has some *preformance issues*, if anyone competent in docker has any idea why, please leave a github issue :)
+
 I assume you have some competency in docker.
 
 Docker Compose:
@@ -52,7 +53,7 @@ services:
 |``TWITTER_BRIDGE_TRACK_ANALYTICS``| Enables tracking of analytics (at the moment the only way to view this is by looking at the database) |``true``|
 |``TWITTER_BRIDGE_DEVELOPER_MODE``| Enables extra loggging of data useful for debugging. WARNING!: DO NOT ENABLE ON A PUBLIC INSTANCE!!!! |``"/config/sqlite/scratchcord.db"``|
 
-### 🖥 Bare metal
+### 🖥 Bare metal (recommended)
 This assumes you are somewhat competent
 #### 1. Clone the repo
 ```bash
