@@ -22,9 +22,9 @@ Twitter API v2 is unlikely to be fixed in the future.
 
 ⭐✅: 4.1.3, Near perfect. Tweeting media requires a patch, Retweets made by you fail to appear properly on timeline, pagination broken on some user elements. Notification settings crashes the app.
 
-⚠️: 5.0.0-5.1.2, Images fail to load properly
+⚠️: 5.0.0-5.0.3, Images fail to load properly, Followers & following timelines do not work
 
-❌: 5.2+ Uses Twitter API v1.1
+❌: 5.0.4+ Uses Twitter API v1.1
 
 ### Twitter iOS Integration
 
