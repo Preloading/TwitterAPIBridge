@@ -11,8 +11,9 @@ To see what devices and versions are compatible, look at [the compatibility list
 
 # Public Instances
 
-My public instance is currently undergoing small sample testing to avoid critical bugs. Will be released soon:tm:
-None
+https://twitterbridge.loganserver.net HTTP & HTTPS, Based on Releases (my instance)
+
+https://testtwitterbridge.loganserver.net HTTP & HTTPS, Based on commits (my instance) 
 
 ## Hosting instructions
 For hosting, you can take two paths
