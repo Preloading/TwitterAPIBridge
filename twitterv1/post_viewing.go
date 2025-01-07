@@ -165,6 +165,10 @@ func RelatedResults(c *fiber.Ctx) error {
 		return err
 	}
 
+	if thread.Thread.Replies == nil {
+		return EncodeAndSend(c, []bridge.RelatedResultsQuery{})
+	}
+
 	// Caching the user DIDs efficiently
 	userDIDs := []string{}
 
@@ -271,7 +275,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			MediaURL:      configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
 			MediaURLHttps: configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
 			// DisplayURL:    "Image", // i tried
-			ExpandedURL: configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
+			//ExpandedURL: configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
 		})
 		id++
 	}
@@ -289,6 +293,12 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		// fmt.Println(faucet.Features[0].Type)
 		switch faucet.Features[0].Type {
 		case "app.bsky.richtext.facet#mention":
+			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact nessisary.
+				break
+			}
+			if faucet.Index.ByteStart < 0 {
+				break
+			}
 			tweetEntities.UserMentions = append(tweetEntities.UserMentions, bridge.UserMention{
 				Name: tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
 				//ScreenName: "test",
@@ -303,6 +313,12 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				End:   faucet.Index.ByteEnd,
 			})
 		case "app.bsky.richtext.facet#link":
+			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact nessisary.
+				break
+			}
+			if faucet.Index.ByteStart < 0 {
+				break
+			}
 			tweetEntities.Urls = append(tweetEntities.Urls, bridge.URL{
 				ExpandedURL: faucet.Features[0].Uri,
 				URL:         faucet.Features[0].Uri,
@@ -322,6 +338,12 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				},
 			})
 		case "app.bsky.richtext.facet#tag":
+			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact nessisary.
+				break
+			}
+			if faucet.Index.ByteStart < 0 {
+				break
+			}
 			tweetEntities.Hashtags = append(tweetEntities.Hashtags, bridge.Hashtag{
 				Text: faucet.Features[0].Tag, // Shortcut url
 				Indices: []int{
