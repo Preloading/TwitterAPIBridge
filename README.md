@@ -15,6 +15,18 @@ https://twitterbridge.loganserver.net HTTP & HTTPS, Based on Releases (my instan
 
 https://testtwitterbridge.loganserver.net HTTP & HTTPS, Based on commits (my instance) 
 
+## Usage
+1. Install the IPA of your choosing
+2. Create a bluesky app password (assuming you have a bluesky account), menu > settings > privacy and security > app passwords. You will want to enable DMs for future DM compatibility.
+3. Open the Twitter app
+4. Click the login button
+5. Click the cog button
+6. Put your instance for both urls (you can make it http if on ios 3 provided the server supports it)
+7. Type in your bluesky handle for the username, and your bluesky app password as the password. **Usage of normal passwords is not recommended, and will be forbidden in the future**
+8. Login
+9. Hopefully success
+
+
 ## Hosting instructions
 For hosting, you can take two paths
 - 🐳 Docker - Quick & easy to deploy + easy updating
