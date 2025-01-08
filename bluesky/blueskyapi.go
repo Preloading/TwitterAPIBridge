@@ -63,10 +63,10 @@ type User struct {
 type PostRecord struct {
 	Type      string        `json:"$type"`
 	CreatedAt time.Time     `json:"createdAt"`
-	Embed     Embed         `json:"embed"`
-	Facets    []Facet       `json:"facets"`
-	Langs     []string      `json:"langs"`
-	Text      string        `json:"text"`
+	Embed     Embed         `json:"embed,omitempty"`
+	Facets    []Facet       `json:"facets,omitempty"`
+	Langs     []string      `json:"langs,omitempty"`
+	Text      string        `json:"text,omitempty"`
 	Reply     *ReplySubject `json:"reply,omitempty"`
 }
 
@@ -79,7 +79,7 @@ type PostReason struct {
 
 type Embed struct {
 	Type   string  `json:"$type"`
-	Images []Image `json:"images"`
+	Images []Image `json:"images,omitempty"`
 }
 
 type Image struct {
@@ -956,7 +956,12 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 			CreatedAt: time.Now().UTC(),
 			Reply:     replySubject,
 			Facets:    facets,
-			Embed:     &embeds,
+			Embed: func() *Embed {
+				if embeds.Type == "" {
+					return nil
+				}
+				return &embeds
+			}(),
 		},
 	}
 
