@@ -2,6 +2,8 @@ package twitterv1
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
 	"github.com/Preloading/MastodonTwitterAPI/bridge"
@@ -46,12 +48,36 @@ func UserSearch(c *fiber.Ctx) error {
 func GetMyActivity(c *fiber.Ctx) error {
 	// Thank you so much @Savefade for what this returns for follows.
 	// This function could probably optimized to use less GetUsers calls, but whatever.
-	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
-	bskyNotifcations, err := blueskyapi.GetNotifications(*pds, *oauthToken, 50, "")
+	// Context is key, or so i've heard.
+	context := ""
+	maxID := c.Query("max_id")
+	if maxID != "" {
+		maxIDInt, err := strconv.ParseInt(maxID, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
+		}
+		// I've had some problems with it giving the same result twice, so I'm going to subtract 2ms to the max_id
+		maxIDInt -= 2
+		max_time := time.UnixMilli(maxIDInt)
+		context = max_time.Format(time.RFC3339)
+	}
+
+	// count
+	countStr := c.Query("count")
+	count := 50
+	if countStr != "" {
+		countInt, err := strconv.Atoi(countStr)
+		if err == nil {
+			count = countInt
+		}
+	}
+
+	bskyNotifcations, err := blueskyapi.GetNotifications(*pds, *oauthToken, count, context)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -75,6 +101,10 @@ func GetMyActivity(c *fiber.Ctx) error {
 					break
 				}
 			}
+			if position+1 < len(bskyNotifcations.Notifications) {
+				position--
+			}
+
 			users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersInBlock, false)
 			if err != nil {
 				fmt.Println("Error:", err)
@@ -87,23 +117,27 @@ func GetMyActivity(c *fiber.Ctx) error {
 			}
 
 			twitterNotifications = append(twitterNotifications, bridge.MyActivity{
-				Action:    "follow",
-				CreatedAt: bridge.TwitterTimeConverter(notification.IndexedAt),
-				ID:        *bridge.BlueSkyToTwitterID(notification.URI),
-				Sources:   sources,
+				Action:      "follow",
+				CreatedAt:   bridge.TwitterTimeConverter(notification.IndexedAt),
+				MinPosition: notification.IndexedAt.UnixMilli(),
+				MaxPosition: bskyNotifcations.Notifications[position].IndexedAt.UnixMilli(), // I don't believe that these IDs are used for anything besides pagination & positioning
+				Sources:     sources,
 			})
+			position++
 		case "like":
 			usersInBlock := []string{notification.Author.DID}
-			notificationId := notification.URI
 			for position+1 < len(bskyNotifcations.Notifications) {
 				position++
 				if bskyNotifcations.Notifications[position].Reason == "like" && bskyNotifcations.Notifications[position].ReasonSubject == notification.ReasonSubject {
 					usersInBlock = append(usersInBlock, bskyNotifcations.Notifications[position].Author.DID)
-					notificationId = bskyNotifcations.Notifications[position].URI
 				} else {
 					break
 				}
 			}
+			if position+1 < len(bskyNotifcations.Notifications) {
+				position--
+			}
+
 			// slight optimization in network traffic, saves us from having to call seperately for the poster
 			_, poster_did, _ := blueskyapi.GetURIComponents(notification.ReasonSubject)
 			usersInBlock = append(usersInBlock, poster_did)
@@ -112,7 +146,14 @@ func GetMyActivity(c *fiber.Ctx) error {
 				fmt.Println("Error:", err)
 				return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")
 			}
-			users = users[:len(users)-1] // remove the last user, as it's the poster, and we don't need it here
+
+			// Remove the current user from the list if present (only once)
+			for i, user := range users {
+				if user.ID == *bridge.BlueSkyToTwitterID(*my_did) {
+					users = append(users[:i], users[i+1:]...)
+					break
+				}
+			}
 
 			err, likedPost := blueskyapi.GetPost(*pds, *oauthToken, notification.ReasonSubject, 0, 1)
 			if err != nil {
@@ -131,59 +172,73 @@ func GetMyActivity(c *fiber.Ctx) error {
 			}
 
 			twitterNotifications = append(twitterNotifications, bridge.MyActivity{
-				Action:    "favorite",
-				CreatedAt: bridge.TwitterTimeConverter(notification.IndexedAt),
-				ID:        *bridge.BlueSkyToTwitterID(notificationId),
-				Sources:   sources,
-				Targets:   []bridge.Tweet{likedTweet},
+				Action:      "favorite",
+				CreatedAt:   bridge.TwitterTimeConverter(notification.IndexedAt),
+				MinPosition: notification.IndexedAt.UnixMilli(),
+				MaxPosition: bskyNotifcations.Notifications[position].IndexedAt.UnixMilli(), // I don't believe that these IDs are used for anything besides pagination & positioning
+				Sources:     sources,
+				Targets:     []bridge.Tweet{likedTweet},
 			})
-		case "repost":
-			usersInBlock := []string{notification.Author.DID}
-			notificationId := notification.URI // We get the last URI so if we get a new repost ontop of this, it adds to to the prev, not a new one
-			for position+1 < len(bskyNotifcations.Notifications)+1 {
-				position++
-				if bskyNotifcations.Notifications[position].Reason == "repost" && bskyNotifcations.Notifications[position].ReasonSubject == notification.ReasonSubject {
-					usersInBlock = append(usersInBlock, bskyNotifcations.Notifications[position].Author.DID)
-					notificationId = bskyNotifcations.Notifications[position].URI
-				} else {
-					break
-				}
-			}
-			// slight optimization in network traffic, saves us from having to call seperately for the poster
-			_, poster_did, _ := blueskyapi.GetURIComponents(notification.ReasonSubject)
-			usersInBlock = append(usersInBlock, poster_did)
-			users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersInBlock, false)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")
-			}
-			users = users[:len(users)-1] // remove the last user, as it's the poster, and we don't need it here
+			position++
+		// case "repost":
+		// 	fmt.Println("Repost")
+		// 	usersInBlock := []string{notification.Author.DID}
+		// 	for position+1 < len(bskyNotifcations.Notifications)+1 {
+		// 		position++
+		// 		if bskyNotifcations.Notifications[position].Reason == "repost" && bskyNotifcations.Notifications[position].ReasonSubject == notification.ReasonSubject {
+		// 			usersInBlock = append(usersInBlock, bskyNotifcations.Notifications[position].Author.DID)
+		// 		} else {
+		// 			break
+		// 		}
+		// 	}
+		// 	if position+1 < len(bskyNotifcations.Notifications) {
+		// 		position--
+		// 	}
 
-			err, repostedPost := blueskyapi.GetPost(*pds, *oauthToken, notification.ReasonSubject, 0, 1)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return c.Status(fiber.StatusInternalServerError).SendString("Failed to get post")
-			}
+		// 	// slight optimization in network traffic, saves us from having to call seperately for the poster
+		// 	_, poster_did, _ := blueskyapi.GetURIComponents(notification.ReasonSubject)
+		// 	usersInBlock = append(usersInBlock, poster_did)
+		// 	users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersInBlock, false)
+		// 	if err != nil {
+		// 		fmt.Println("Error:", err)
+		// 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")
+		// 	}
 
-			retweetedTweet := TranslatePostToTweet(repostedPost.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
-			if repostedPost.Thread.Parent != nil {
-				retweetedTweet = TranslatePostToTweet(repostedPost.Thread.Post, repostedPost.Thread.Parent.Post.URI, repostedPost.Thread.Parent.Post.Author.DID, &repostedPost.Thread.Parent.Post.IndexedAt, nil, *oauthToken, *pds)
-			}
+		// 	// Remove the current user from the list if present (only once)
+		// 	for i, user := range users {
+		// 		if user.ID == *bridge.BlueSkyToTwitterID(*my_did) {
+		// 			users = append(users[:i], users[i+1:]...)
+		// 			break
+		// 		}
+		// 	}
 
-			var sources []bridge.TwitterUser
-			for _, user := range users {
-				sources = append(sources, *user) // pain#
-			}
+		// 	err, repostedPost := blueskyapi.GetPost(*pds, *oauthToken, notification.ReasonSubject, 0, 1)
+		// 	if err != nil {
+		// 		fmt.Println("Error:", err)
+		// 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get post")
+		// 	}
 
-			twitterNotifications = append(twitterNotifications, bridge.MyActivity{
-				Action:        "retweet",
-				CreatedAt:     bridge.TwitterTimeConverter(notification.IndexedAt),
-				ID:            *bridge.BlueSkyToTwitterID(notificationId),
-				Sources:       sources,
-				TargetObjects: []bridge.Tweet{retweetedTweet},
-			})
+		// 	retweetedTweet := TranslatePostToTweet(repostedPost.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
+		// 	if repostedPost.Thread.Parent != nil {
+		// 		retweetedTweet = TranslatePostToTweet(repostedPost.Thread.Post, repostedPost.Thread.Parent.Post.URI, repostedPost.Thread.Parent.Post.Author.DID, &repostedPost.Thread.Parent.Post.IndexedAt, nil, *oauthToken, *pds)
+		// 	}
+
+		// 	var sources []bridge.TwitterUser
+		// 	for _, user := range users {
+		// 		sources = append(sources, *user) // pain#
+		// 	}
+
+		// 	twitterNotifications = append(twitterNotifications, bridge.MyActivity{
+		// 		Action:        "retweet",
+		// 		CreatedAt:     bridge.TwitterTimeConverter(notification.IndexedAt),
+		// 		MinPosition:   notification.IndexedAt.UnixMilli(),
+		// 		MaxPosition:   bskyNotifcations.Notifications[position].IndexedAt.UnixMilli(), // I don't believe that these IDs are used for anything besides pagination & positioning
+		// 		Sources:       sources,
+		// 		TargetObjects: []bridge.Tweet{retweetedTweet},
+		// 	})
+		// 	position++
 		default:
-			//fmt.Println("Unknown notification type:", notification.Reason)
+			fmt.Println("Unknown notification type:", notification.Reason)
 		}
 
 		position++ // Increment position

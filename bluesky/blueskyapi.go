@@ -342,6 +342,7 @@ func SendRequest(token *string, method string, url string, body io.Reader) (*htt
 		req.Header.Set("Authorization", "Bearer "+*token)
 	}
 	req.Header.Set("Content-Type", "application/json") // 99% sure all bluesky requests are json.
+	req.Header.Set("UserAgent", "ATwitterAPIBridge/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {

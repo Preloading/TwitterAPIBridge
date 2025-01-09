@@ -262,13 +262,16 @@ type UserRelationships struct {
 }
 
 // Currently known how it forms follows, but we are missing favourites etc
+// Some details can be found here:
+// https://mgng.mugbum.info/Archive/View/year/2011/month/12
 type MyActivity struct {
 	Action        string        `json:"action" xml:"action"`
 	CreatedAt     string        `json:"created_at" xml:"created_at"`
-	ID            int64         `json:"id" xml:"id"`
+	MaxPosition   int64         `json:"max_position" xml:"max_position"`
+	MinPosition   int64         `json:"min_position" xml:"min_position"`
 	Sources       []TwitterUser `json:"sources"`
-	Targets       []Tweet       `json:"targets,omitempty" xml:"targets,omitempty"`
-	TargetObjects []Tweet       `json:"target_objects,omitempty" xml:"target_objects,omitempty"`
+	Targets       []Tweet       `json:"targets" xml:"targets"`
+	TargetObjects []Tweet       `json:"target_objects" xml:"target_objects"`
 }
 
 // https://web.archive.org/web/20120516154953/https://dev.twitter.com/docs/api/1/get/friendships/show
