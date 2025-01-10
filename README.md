@@ -16,7 +16,8 @@ https://twitterbridge.loganserver.net HTTP & HTTPS, Based on Releases (my instan
 https://testtwitterbridge.loganserver.net HTTP & HTTPS, Based on commits (my instance) 
 
 ## Usage
-1. Install the IPA of your choosing
+### iOS
+1. Install the IPA of your choosing (you can find some here, along with android versions: https://loganserver.net/twitters/, also elon don't sue me pls). At present moment, recommended is 4.1.3, latest to work is 5.0.3 for offical iOS)
 2. Create a bluesky app password (assuming you have a bluesky account), menu > settings > privacy and security > app passwords. You will want to enable DMs for future DM compatibility.
 3. Open the Twitter app
 4. Click the login button
