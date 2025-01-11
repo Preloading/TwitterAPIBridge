@@ -3,6 +3,8 @@ package twitterv1
 import (
 	"fmt"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
@@ -44,16 +46,22 @@ func UserSearch(c *fiber.Ctx) error {
 	return EncodeAndSend(c, users)
 }
 
+type TweetWithURI struct {
+	Tweet *bridge.Tweet
+	URI   string
+}
+
 // /i/activity/about_me.json?contributor_details=1&include_entities=true&include_my_retweet=true&send_error_codes=true
 func GetMyActivity(c *fiber.Ctx) error {
 	// Thank you so much @Savefade for what this returns for follows.
-	// This function could probably optimized to use less GetUsers calls, but whatever.
+	// This function very opimized because before it would take 7 seconds lmao
+	// we thank our AI overloads.
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
 
-	// Context is key, or so i've heard.
+	// Handle pagination
 	context := ""
 	maxID := c.Query("max_id")
 	if maxID != "" {
@@ -61,188 +69,237 @@ func GetMyActivity(c *fiber.Ctx) error {
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
 		}
-		// I've had some problems with it giving the same result twice, so I'm going to subtract 2ms to the max_id
-		maxIDInt -= 2
+		maxIDInt--
 		max_time := time.UnixMilli(maxIDInt)
 		context = max_time.Format(time.RFC3339)
 	}
 
-	// count
-	countStr := c.Query("count")
+	// Handle count
 	count := 50
-	if countStr != "" {
-		countInt, err := strconv.Atoi(countStr)
-		if err == nil {
+	if countStr := c.Query("count"); countStr != "" {
+		if countInt, err := strconv.Atoi(countStr); err == nil {
 			count = countInt
 		}
 	}
 
-	bskyNotifcations, err := blueskyapi.GetNotifications(*pds, *oauthToken, count, context)
-
+	// Get notifications
+	bskyNotifications, err := blueskyapi.GetNotifications(*pds, *oauthToken, count, context)
 	if err != nil {
-		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get notifications")
 	}
 
-	twitterNotifications := []bridge.MyActivity{}
+	// Track unique users and posts
+	uniqueUsers := make(map[string]bool)
+	uniquePosts := make(map[string]bool)
 
-	position := 0
-
-	for position < len(bskyNotifcations.Notifications) {
-		notification := bskyNotifcations.Notifications[position]
-		switch notification.Reason {
-		case "follow":
-			usersInBlock := []string{notification.Author.DID}
-			for position+1 < len(bskyNotifcations.Notifications) {
-				position++
-				if bskyNotifcations.Notifications[position].Reason == "follow" {
-					usersInBlock = append(usersInBlock, bskyNotifcations.Notifications[position].Author.DID)
-				} else {
-					break
-				}
-			}
-			if position+1 < len(bskyNotifcations.Notifications) {
-				position--
-			}
-
-			users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersInBlock, false)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")
-			}
-
-			var sources []bridge.TwitterUser
-			for _, user := range users {
-				sources = append(sources, *user) // pain
-			}
-
-			twitterNotifications = append(twitterNotifications, bridge.MyActivity{
-				Action:      "follow",
-				CreatedAt:   bridge.TwitterTimeConverter(notification.IndexedAt),
-				MinPosition: notification.IndexedAt.UnixMilli(),
-				MaxPosition: bskyNotifcations.Notifications[position].IndexedAt.UnixMilli(), // I don't believe that these IDs are used for anything besides pagination & positioning
-				Sources:     sources,
-			})
-			position++
-		case "like":
-			usersInBlock := []string{notification.Author.DID}
-			for position+1 < len(bskyNotifcations.Notifications) {
-				position++
-				if bskyNotifcations.Notifications[position].Reason == "like" && bskyNotifcations.Notifications[position].ReasonSubject == notification.ReasonSubject {
-					usersInBlock = append(usersInBlock, bskyNotifcations.Notifications[position].Author.DID)
-				} else {
-					break
-				}
-			}
-			if position+1 < len(bskyNotifcations.Notifications) {
-				position--
-			}
-
-			// slight optimization in network traffic, saves us from having to call seperately for the poster
-			_, poster_did, _ := blueskyapi.GetURIComponents(notification.ReasonSubject)
-			usersInBlock = append(usersInBlock, poster_did)
-			users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersInBlock, false)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")
-			}
-
-			// Remove the current user from the list if present (only once)
-			for i, user := range users {
-				if user.ID == *bridge.BlueSkyToTwitterID(*my_did) {
-					users = append(users[:i], users[i+1:]...)
-					break
-				}
-			}
-
-			err, likedPost := blueskyapi.GetPost(*pds, *oauthToken, notification.ReasonSubject, 0, 1)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return c.Status(fiber.StatusInternalServerError).SendString("Failed to get post")
-			}
-
-			likedTweet := TranslatePostToTweet(likedPost.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
-			if likedPost.Thread.Parent != nil {
-				likedTweet = TranslatePostToTweet(likedPost.Thread.Post, likedPost.Thread.Parent.Post.URI, likedPost.Thread.Parent.Post.Author.DID, &likedPost.Thread.Parent.Post.IndexedAt, nil, *oauthToken, *pds)
-			}
-
-			var sources []bridge.TwitterUser
-			for _, user := range users {
-				sources = append(sources, *user) // pain#
-			}
-
-			twitterNotifications = append(twitterNotifications, bridge.MyActivity{
-				Action:      "favorite",
-				CreatedAt:   bridge.TwitterTimeConverter(notification.IndexedAt),
-				MinPosition: notification.IndexedAt.UnixMilli(),
-				MaxPosition: bskyNotifcations.Notifications[position].IndexedAt.UnixMilli(), // I don't believe that these IDs are used for anything besides pagination & positioning
-				Sources:     sources,
-				Targets:     []bridge.Tweet{likedTweet},
-			})
-			position++
-		// case "repost":
-		// 	fmt.Println("Repost")
-		// 	usersInBlock := []string{notification.Author.DID}
-		// 	for position+1 < len(bskyNotifcations.Notifications)+1 {
-		// 		position++
-		// 		if bskyNotifcations.Notifications[position].Reason == "repost" && bskyNotifcations.Notifications[position].ReasonSubject == notification.ReasonSubject {
-		// 			usersInBlock = append(usersInBlock, bskyNotifcations.Notifications[position].Author.DID)
-		// 		} else {
-		// 			break
-		// 		}
-		// 	}
-		// 	if position+1 < len(bskyNotifcations.Notifications) {
-		// 		position--
-		// 	}
-
-		// 	// slight optimization in network traffic, saves us from having to call seperately for the poster
-		// 	_, poster_did, _ := blueskyapi.GetURIComponents(notification.ReasonSubject)
-		// 	usersInBlock = append(usersInBlock, poster_did)
-		// 	users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersInBlock, false)
-		// 	if err != nil {
-		// 		fmt.Println("Error:", err)
-		// 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")
-		// 	}
-
-		// 	// Remove the current user from the list if present (only once)
-		// 	for i, user := range users {
-		// 		if user.ID == *bridge.BlueSkyToTwitterID(*my_did) {
-		// 			users = append(users[:i], users[i+1:]...)
-		// 			break
-		// 		}
-		// 	}
-
-		// 	err, repostedPost := blueskyapi.GetPost(*pds, *oauthToken, notification.ReasonSubject, 0, 1)
-		// 	if err != nil {
-		// 		fmt.Println("Error:", err)
-		// 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get post")
-		// 	}
-
-		// 	retweetedTweet := TranslatePostToTweet(repostedPost.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
-		// 	if repostedPost.Thread.Parent != nil {
-		// 		retweetedTweet = TranslatePostToTweet(repostedPost.Thread.Post, repostedPost.Thread.Parent.Post.URI, repostedPost.Thread.Parent.Post.Author.DID, &repostedPost.Thread.Parent.Post.IndexedAt, nil, *oauthToken, *pds)
-		// 	}
-
-		// 	var sources []bridge.TwitterUser
-		// 	for _, user := range users {
-		// 		sources = append(sources, *user) // pain#
-		// 	}
-
-		// 	twitterNotifications = append(twitterNotifications, bridge.MyActivity{
-		// 		Action:        "retweet",
-		// 		CreatedAt:     bridge.TwitterTimeConverter(notification.IndexedAt),
-		// 		MinPosition:   notification.IndexedAt.UnixMilli(),
-		// 		MaxPosition:   bskyNotifcations.Notifications[position].IndexedAt.UnixMilli(), // I don't believe that these IDs are used for anything besides pagination & positioning
-		// 		Sources:       sources,
-		// 		TargetObjects: []bridge.Tweet{retweetedTweet},
-		// 	})
-		// 	position++
-		default:
-			fmt.Println("Unknown notification type:", notification.Reason)
+	// First pass: collect unique users and posts
+	for _, notification := range bskyNotifications.Notifications {
+		uniqueUsers[notification.Author.DID] = true
+		if notification.ReasonSubject != "" {
+			uniquePosts[notification.ReasonSubject] = true
 		}
+		if notification.Reason == "mention" || notification.Reason == "reply" {
+			uniquePosts[notification.URI] = true
+		}
+	}
 
-		position++ // Increment position
+	// Convert maps to slices
+	usersToLookUp := make([]string, 0, len(uniqueUsers))
+	postsToLookUp := make([]string, 0, len(uniquePosts))
+	for user := range uniqueUsers {
+		usersToLookUp = append(usersToLookUp, user)
+	}
+	for post := range uniquePosts {
+		postsToLookUp = append(postsToLookUp, post)
+	}
+
+	// Create thread-safe maps for results
+	var userCache sync.Map
+	var postCache sync.Map
+
+	// Process in parallel
+	var wg sync.WaitGroup
+
+	// Fetch users in chunks
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersToLookUp, false)
+		if err == nil {
+			for _, user := range users {
+				// Store by DID instead of screenName
+				userCache.Store(user.ScreenName[strings.LastIndex(user.ScreenName, "/")+1:], user)
+			}
+		}
+	}()
+
+	// Fetch posts in parallel chunks
+	postChunks := chunkSlice(postsToLookUp, 10) // Process 10 posts at a time
+	for _, chunk := range postChunks {
+		wg.Add(1)
+		go func(posts []string) {
+			defer wg.Done()
+			for _, postID := range posts {
+				if err, post := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
+					tweet := TranslatePostToTweet(
+						post.Thread.Post,
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.URI
+							}
+							return ""
+						}(),
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.Author.DID
+							}
+							return ""
+						}(),
+						func() *time.Time {
+							if post.Thread.Parent != nil {
+								return &post.Thread.Parent.Post.IndexedAt
+							}
+							return nil
+						}(),
+						nil,
+						*oauthToken,
+						*pds,
+					)
+					postCache.Store(postID, &tweet)
+				}
+			}
+		}(chunk)
+	}
+
+	wg.Wait()
+
+	// Process notifications in groups
+	twitterNotifications := []bridge.MyActivity{}
+	groupedNotifications := groupNotifications(bskyNotifications.Notifications)
+
+	// Convert each group to a Twitter activity
+	for _, group := range groupedNotifications {
+		if activity := processNotificationGroup(group, &userCache, &postCache, my_did); activity != nil {
+			twitterNotifications = append(twitterNotifications, *activity)
+		}
 	}
 
 	return EncodeAndSend(c, twitterNotifications)
+}
+
+// Helper functions
+
+func chunkSlice(slice []string, chunkSize int) [][]string {
+	var chunks [][]string
+	for i := 0; i < len(slice); i += chunkSize {
+		end := i + chunkSize
+		if end > len(slice) {
+			end = len(slice)
+		}
+		chunks = append(chunks, slice[i:end])
+	}
+	return chunks
+}
+
+type notificationGroup struct {
+	notifications []blueskyapi.Notification
+	reason        string
+	subject       string
+}
+
+func groupNotifications(notifications []blueskyapi.Notification) []notificationGroup {
+	groups := []notificationGroup{}
+	currentGroup := notificationGroup{}
+
+	for _, notification := range notifications {
+		if currentGroup.reason != notification.Reason ||
+			(notification.ReasonSubject != "" && currentGroup.subject != notification.ReasonSubject) {
+			if currentGroup.reason != "" {
+				groups = append(groups, currentGroup)
+			}
+			currentGroup = notificationGroup{
+				reason:  notification.Reason,
+				subject: notification.ReasonSubject,
+			}
+		}
+		currentGroup.notifications = append(currentGroup.notifications, notification)
+	}
+
+	if currentGroup.reason != "" {
+		groups = append(groups, currentGroup)
+	}
+
+	return groups
+}
+
+func processNotificationGroup(group notificationGroup, userCache *sync.Map, postCache *sync.Map, myDID *string) *bridge.MyActivity {
+	if len(group.notifications) == 0 {
+		return nil
+	}
+
+	first := group.notifications[0]
+	last := group.notifications[len(group.notifications)-1]
+
+	var sources []bridge.TwitterUser
+	for _, notification := range group.notifications {
+		// Load by DID
+		if user, ok := userCache.Load(notification.Author.Handle); ok {
+			sources = append(sources, *user.(*bridge.TwitterUser))
+		}
+	}
+
+	activity := &bridge.MyActivity{
+		Action:      getActionType(group.reason),
+		CreatedAt:   bridge.TwitterTimeConverter(first.IndexedAt),
+		MinPosition: first.IndexedAt.UnixMilli(),
+		MaxPosition: last.IndexedAt.UnixMilli(),
+		Sources:     sources,
+	}
+
+	if group.subject != "" {
+		if post, ok := postCache.Load(group.subject); ok {
+			tweet := post.(*bridge.Tweet)
+			switch group.reason {
+			case "like":
+				activity.Targets = []bridge.Tweet{*tweet}
+			case "repost":
+				activity.TargetObjects = []bridge.Tweet{*tweet}
+			case "reply":
+				if post, ok := postCache.Load(group.notifications[0].URI); ok {
+					replytweet := post.(*bridge.Tweet)
+					activity.Sources = nil
+					activity.Targets = []bridge.Tweet{*replytweet}
+					activity.TargetObjects = []bridge.Tweet{*tweet}
+				}
+			}
+		}
+	} else {
+		switch group.reason {
+		case "mention":
+			if post, ok := postCache.Load(group.notifications[0].URI); ok {
+				tweet := post.(*bridge.Tweet)
+				activity.Sources = nil
+				activity.TargetObjects = []bridge.Tweet{*tweet}
+			}
+		}
+	}
+
+	return activity
+}
+
+func getActionType(reason string) string {
+	switch reason {
+	case "follow":
+		return "follow"
+	case "like":
+		return "favorite"
+	case "repost":
+		return "retweet"
+	case "mention":
+		return "mention"
+	case "reply":
+		return "reply"
+	default:
+		return reason
+	}
 }

@@ -72,7 +72,9 @@ func access_token(c *fiber.Ctx) error {
 			Timestamp:            time.Now(),
 		})
 
-		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=%s&x_auth_expires=%f", oauth_token, oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(res.DID)), url.QueryEscape(authUsername), *access_token_expiry))
+		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=%s&x_auth_expires=0", oauth_token, oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(res.DID)), url.QueryEscape(authUsername)))
+	} else if authMode == "exchange_auth" {
+		return c.SendStatus(200) // uuuuuuuuh idk what this responds. I'll figure it out later.
 	}
 	// We have an unknown request. huh. Probably registration, i'll find a way to send an error msg for that later, as registration is out of scope.
 	return c.SendStatus(501)
