@@ -111,6 +111,7 @@ func InitServer(config *config.Config) {
 
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)
+	app.Get("/cdn/img/bsky/:did/:link.:filetype", CDNDownscaler)
 
 	// misc
 	app.Get("/mobile_client_api/decider/:path", MobileClientApiDecider)

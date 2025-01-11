@@ -1,6 +1,7 @@
 package twitterv1
 
 import (
+	"fmt"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -18,19 +19,29 @@ import (
 
 func CDNDownscaler(c *fiber.Ctx) error {
 	imageURL := c.Query("url")
-	unescapedURL, err := url.QueryUnescape(imageURL)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid URL")
-	}
-	imageURL = unescapedURL
 
-	if !strings.HasPrefix(imageURL, "https://cdn.bsky.app/img/") { // Later maybe lift these restrictions?
-		return c.SendStatus(fiber.StatusBadRequest)
+	if c.Params("did") != "" {
+		fmt.Println(c.Params("did"))
+		fmt.Println(c.Params("link"))
+		fmt.Println(c.Params("filetype"))
+		imageURL = "https://cdn.bsky.app/img/feed_thumbnail/plain/" + url.QueryEscape(c.Params("did")) + "/" + url.QueryEscape(c.Params("link")) + "/@jpeg"
+	} else {
+		unescapedURL, err := url.QueryUnescape(imageURL)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid URL")
+		}
+
+		imageURL = unescapedURL
+		if !strings.HasPrefix(imageURL, "https://cdn.bsky.app/img/") { // Later maybe lift these restrictions?
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
 	}
 
 	widthStr := c.Query("width")
 	heightStr := c.Query("height")
 	resizeOption := c.Query("resize")
+
+	maintainAspect := false
 
 	// So twitter likes to do a stupid thing where it appends :small or :large to the end of tweet images, so we need to strip that, and use that for dimentions
 
@@ -41,6 +52,7 @@ func CDNDownscaler(c *fiber.Ctx) error {
 		widthStr = ""
 		heightStr = ""
 		resizeOption = "none"
+		maintainAspect = true
 
 	}
 	// https://web.archive.org/web/20120412055327/https://dev.twitter.com/docs/api/1/get/help/configuration
@@ -50,12 +62,14 @@ func CDNDownscaler(c *fiber.Ctx) error {
 
 		widthStr = "340"
 		heightStr = "480"
+		maintainAspect = true
 	}
 	if strings.HasSuffix(imageURL, ":medium") {
 		imageURL = strings.TrimSuffix(imageURL, ":medium")
 
 		widthStr = "600"
 		heightStr = "1200"
+		maintainAspect = true
 	}
 	if strings.HasSuffix(imageURL, ":thumb") {
 		imageURL = strings.TrimSuffix(imageURL, ":thumb")
@@ -105,6 +119,19 @@ func CDNDownscaler(c *fiber.Ctx) error {
 	img, format, err := image.Decode(resp.Body)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to decode image")
+	}
+
+	if maintainAspect {
+		w, h := img.Bounds().Dx(), img.Bounds().Dy()
+		if w > h {
+			w = width
+			h = int(float64(width) * float64(h) / float64(w))
+		} else {
+			h = height
+			w = int(float64(height) * float64(w) / float64(h))
+		}
+		width = w
+		height = h
 	}
 
 	if width > 0 || height > 0 {

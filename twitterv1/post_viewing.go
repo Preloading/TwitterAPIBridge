@@ -267,15 +267,66 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	id := 1
 	for _, image := range tweet.Record.Embed.Images {
+		//fmt.Println("Image:", image.Image.Ref.Link)
 		// Process each image
 		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
 			Type:          "photo",
 			ID:            int64(id),
 			IDStr:         strconv.Itoa(id),
-			MediaURL:      configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
-			MediaURLHttps: configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
-			// DisplayURL:    "Image", // i tried
-			//ExpandedURL: configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape("https://cdn.bsky.app/img/feed_thumbnail/plain/"+tweet.Author.DID+"/"+image.Image.Ref.Link+"/@jpeg"),
+			MediaURL:      configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			MediaURLHttps: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			Sizes: bridge.MediaSize{
+				Thumb: func() bridge.Size {
+					w, h := image.AspectRatio.Width, image.AspectRatio.Height
+					if w > h {
+						return bridge.Size{
+							W:      150,
+							H:      int(150 * float64(h) / float64(w)),
+							Resize: "crop",
+						}
+					}
+					return bridge.Size{
+						W:      int(150 * float64(w) / float64(h)),
+						H:      150,
+						Resize: "crop",
+					}
+				}(),
+				Small: func() bridge.Size {
+					w, h := image.AspectRatio.Width, image.AspectRatio.Height
+					if w > h {
+						return bridge.Size{
+							W:      340,
+							H:      int(340 * float64(h) / float64(w)),
+							Resize: "fit",
+						}
+					}
+					return bridge.Size{
+						W:      int(340 * float64(w) / float64(h)),
+						H:      340,
+						Resize: "fit",
+					}
+				}(),
+				Medium: func() bridge.Size {
+					w, h := image.AspectRatio.Width, image.AspectRatio.Height
+					if w > h {
+						return bridge.Size{
+							W:      600,
+							H:      int(600 * float64(h) / float64(w)),
+							Resize: "fit",
+						}
+					}
+					return bridge.Size{
+						W:      int(600 * float64(w) / float64(h)),
+						H:      600,
+						Resize: "fit",
+					}
+				}(),
+				Large: bridge.Size{
+					W:      image.AspectRatio.Width,
+					H:      image.AspectRatio.Height,
+					Resize: "fit",
+				},
+			},
 		})
 		id++
 	}
@@ -389,8 +440,14 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			}
 			return bridge.TwitterTimeConverter(tweet.Record.CreatedAt)
 		}(),
-		Truncated:    false,
-		Text:         tweet.Record.Text,
+		Truncated: false,
+		Text: func() string {
+			// This fucks up all the entities :crying:
+			// if isRetweet {
+			// 	return "RT @" + bsky_retweet_og_author.Handle + ": " + tweet.Record.Text
+			// }
+			return tweet.Record.Text
+		}(),
 		Entities:     tweetEntities,
 		Annotations:  nil, // I am curious what annotations are
 		Contributors: nil,

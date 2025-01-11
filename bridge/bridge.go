@@ -135,23 +135,31 @@ type TwitterActivitiySummary struct {
 	RetweetsCount   string  `json:"retweeters_count"`
 }
 
-type MediaSize struct {
+type Size struct {
 	W      int    `json:"w" xml:"w"`
 	Resize string `json:"resize" xml:"resize"`
 	H      int    `json:"h" xml:"h"`
 }
 
+type MediaSize struct {
+	Thumb  Size `json:"thumb" xml:"thumb"`
+	Small  Size `json:"small" xml:"small"`
+	Medium Size `json:"medium" xml:"medium"`
+	Large  Size `json:"large" xml:"large"`
+}
+
 type Media struct {
-	ID            int64  `json:"id" xml:"id"`
-	IDStr         string `json:"id_str" xml:"id_str"`
-	MediaURL      string `json:"media_url" xml:"media_url"`
-	MediaURLHttps string `json:"media_url_https" xml:"media_url_https"`
-	URL           string `json:"url" xml:"url"`
-	DisplayURL    string `json:"display_url" xml:"display_url"`
-	ExpandedURL   string `json:"expanded_url" xml:"expanded_url"`
+	ID            int64     `json:"id" xml:"id"`
+	IDStr         string    `json:"id_str" xml:"id_str"`
+	MediaURL      string    `json:"media_url" xml:"media_url"`
+	MediaURLHttps string    `json:"media_url_https" xml:"media_url_https"`
+	URL           string    `json:"url,omitempty" xml:"url"`
+	DisplayURL    string    `json:"display_url,omitempty" xml:"display_url"`
+	ExpandedURL   string    `json:"expanded_url,omitempty" xml:"expanded_url"`
+	Sizes         MediaSize `json:"sizes" xml:"sizes"`
 	// Sizes         map[string]MediaSize `json:"sizes"`
 	Type    string `json:"type" xml:"type"`
-	Indices []int  `json:"indices" xml:"-"`
+	Indices []int  `json:"indices,omitempty" xml:"-"`
 	Start   int    `json:"-" xml:"start,attr"`
 	End     int    `json:"-" xml:"end,attr"`
 }
