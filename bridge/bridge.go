@@ -275,8 +275,8 @@ type UserRelationships struct {
 type MyActivity struct {
 	Action        string        `json:"action" xml:"action"`
 	CreatedAt     string        `json:"created_at" xml:"created_at"`
-	MaxPosition   int64         `json:"max_position" xml:"max_position"`
-	MinPosition   int64         `json:"min_position" xml:"min_position"`
+	MaxPosition   string        `json:"max_position" xml:"max_position"`
+	MinPosition   string        `json:"min_position" xml:"min_position"`
 	Sources       []TwitterUser `json:"sources"`
 	Targets       []Tweet       `json:"targets" xml:"targets"`
 	TargetObjects []Tweet       `json:"target_objects" xml:"target_objects"`

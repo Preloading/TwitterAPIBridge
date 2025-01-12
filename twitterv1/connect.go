@@ -251,8 +251,8 @@ func processNotificationGroup(group notificationGroup, userCache *sync.Map, post
 	activity := &bridge.MyActivity{
 		Action:        getActionType(group.reason),
 		CreatedAt:     bridge.TwitterTimeConverter(first.IndexedAt),
-		MinPosition:   first.IndexedAt.UnixMilli(),
-		MaxPosition:   last.IndexedAt.UnixMilli(),
+		MinPosition:   strconv.FormatInt(first.IndexedAt.UnixMilli(), 10),
+		MaxPosition:   strconv.FormatInt(last.IndexedAt.UnixMilli(), 10),
 		Sources:       sources,
 		Targets:       []bridge.Tweet{},
 		TargetObjects: []bridge.Tweet{},
