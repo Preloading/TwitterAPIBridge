@@ -75,7 +75,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 	}
 
 	// Handle count
-	count := 50
+	count := 20
 	if countStr := c.Query("count"); countStr != "" {
 		if countInt, err := strconv.Atoi(countStr); err == nil {
 			count = countInt
@@ -249,11 +249,13 @@ func processNotificationGroup(group notificationGroup, userCache *sync.Map, post
 	}
 
 	activity := &bridge.MyActivity{
-		Action:      getActionType(group.reason),
-		CreatedAt:   bridge.TwitterTimeConverter(first.IndexedAt),
-		MinPosition: first.IndexedAt.UnixMilli(),
-		MaxPosition: last.IndexedAt.UnixMilli(),
-		Sources:     sources,
+		Action:        getActionType(group.reason),
+		CreatedAt:     bridge.TwitterTimeConverter(first.IndexedAt),
+		MinPosition:   first.IndexedAt.UnixMilli(),
+		MaxPosition:   last.IndexedAt.UnixMilli(),
+		Sources:       sources,
+		Targets:       []bridge.Tweet{},
+		TargetObjects: []bridge.Tweet{},
 	}
 
 	if group.subject != "" {
@@ -267,7 +269,6 @@ func processNotificationGroup(group notificationGroup, userCache *sync.Map, post
 			case "reply":
 				if post, ok := postCache.Load(group.notifications[0].URI); ok {
 					replytweet := post.(*bridge.Tweet)
-					activity.Sources = nil
 					activity.Targets = []bridge.Tweet{*replytweet}
 					activity.TargetObjects = []bridge.Tweet{*tweet}
 				}
@@ -278,7 +279,7 @@ func processNotificationGroup(group notificationGroup, userCache *sync.Map, post
 		case "mention":
 			if post, ok := postCache.Load(group.notifications[0].URI); ok {
 				tweet := post.(*bridge.Tweet)
-				activity.Sources = nil
+				activity.Sources = []bridge.TwitterUser{}
 				activity.TargetObjects = []bridge.Tweet{*tweet}
 			}
 		}
