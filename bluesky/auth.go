@@ -106,6 +106,9 @@ func GetUserAuthData(handle string) (*string, *string, error) {
 		bodyBytes, _ := io.ReadAll(wellKnownDIDResp.Body)
 		bodyString := string(bodyBytes)
 
+		// Remove newline charectors, since it likes to fail the regex with them
+		bodyString = strings.ReplaceAll(bodyString, "\n", "")
+		// Check if the body is a DID
 		if regexp.MustCompile(`^did:[a-z]+:[a-zA-Z0-9._:%-]*[a-zA-Z0-9._-]$`).MatchString(bodyString) {
 			userDID = bodyString
 		}
@@ -116,6 +119,7 @@ func GetUserAuthData(handle string) (*string, *string, error) {
 		txts, err := net.LookupTXT(fmt.Sprintf("_atproto.%s", handle))
 		if err == nil {
 			for _, txt := range txts {
+				txt = strings.ReplaceAll(txt, "\n", "")
 				if regexp.MustCompile(`^did=did:[a-z]+:[a-zA-Z0-9._:%-]*[a-zA-Z0-9._-]$`).MatchString(txt) {
 					userDID = txt[4:] // Extract the DID without the 'did=' prefix
 					break
