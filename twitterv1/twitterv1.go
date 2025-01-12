@@ -6,8 +6,8 @@ import (
 	"encoding/xml"
 	"fmt"
 
-	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
-	"github.com/Preloading/MastodonTwitterAPI/config"
+	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
+	"github.com/Preloading/TwitterAPIBridge/config"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )

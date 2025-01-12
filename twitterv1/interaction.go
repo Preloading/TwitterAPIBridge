@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
-	"github.com/Preloading/MastodonTwitterAPI/bridge"
-	"github.com/Preloading/MastodonTwitterAPI/db_controller"
+	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
+	"github.com/Preloading/TwitterAPIBridge/bridge"
+	"github.com/Preloading/TwitterAPIBridge/db_controller"
 	"github.com/gofiber/fiber/v2"
 )
 

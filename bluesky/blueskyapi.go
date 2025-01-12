@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Preloading/MastodonTwitterAPI/bridge"
-	"github.com/Preloading/MastodonTwitterAPI/config"
+	"github.com/Preloading/TwitterAPIBridge/bridge"
+	"github.com/Preloading/TwitterAPIBridge/config"
 )
 
 type AuthResponse struct {

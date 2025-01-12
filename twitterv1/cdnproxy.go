@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
+	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
 	"github.com/gofiber/fiber/v2"
 	"github.com/nfnt/resize"
 )

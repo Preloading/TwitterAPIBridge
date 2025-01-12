@@ -8,8 +8,8 @@ import (
 
 	"strconv"
 
-	"github.com/Preloading/MastodonTwitterAPI/config"
-	authcrypt "github.com/Preloading/MastodonTwitterAPI/cryption"
+	"github.com/Preloading/TwitterAPIBridge/config"
+	authcrypt "github.com/Preloading/TwitterAPIBridge/cryption"
 	"github.com/google/uuid"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"

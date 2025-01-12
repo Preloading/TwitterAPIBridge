@@ -7,7 +7,7 @@ import (
 	"hash/fnv"
 	"time"
 
-	"github.com/Preloading/MastodonTwitterAPI/db_controller"
+	"github.com/Preloading/TwitterAPIBridge/db_controller"
 )
 
 type RelatedResultsQuery struct {
