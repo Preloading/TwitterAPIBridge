@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/Preloading/MastodonTwitterAPI/config"
-	"github.com/Preloading/MastodonTwitterAPI/db_controller"
-	"github.com/Preloading/MastodonTwitterAPI/twitterv1"
+	"github.com/Preloading/TwitterAPIBridge/config"
+	"github.com/Preloading/TwitterAPIBridge/db_controller"
+	"github.com/Preloading/TwitterAPIBridge/twitterv1"
 )
 
 var (

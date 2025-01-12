@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	blueskyapi "github.com/Preloading/MastodonTwitterAPI/bluesky"
-	"github.com/Preloading/MastodonTwitterAPI/bridge"
+	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
+	"github.com/Preloading/TwitterAPIBridge/bridge"
 	"github.com/gofiber/fiber/v2"
 )
 

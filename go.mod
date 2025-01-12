@@ -1,4 +1,4 @@
-module github.com/Preloading/MastodonTwitterAPI
+module github.com/Preloading/TwitterAPIBridge
 
 go 1.23.2
 
