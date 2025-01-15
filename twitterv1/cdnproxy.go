@@ -24,7 +24,7 @@ func CDNDownscaler(c *fiber.Ctx) error {
 		fmt.Println(c.Params("did"))
 		fmt.Println(c.Params("link"))
 		fmt.Println(c.Params("filetype"))
-		imageURL = "https://cdn.bsky.app/img/feed_thumbnail/plain/" + url.QueryEscape(c.Params("did")) + "/" + url.QueryEscape(c.Params("link")) + "/@jpeg"
+		imageURL = "https://cdn.bsky.app/img/feed_thumbnail/plain/" + c.Params("did") + "/" + c.Params("link") + "@jpeg"
 	} else {
 		unescapedURL, err := url.QueryUnescape(imageURL)
 		if err != nil {
