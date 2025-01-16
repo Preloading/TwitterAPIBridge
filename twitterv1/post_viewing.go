@@ -245,6 +245,25 @@ func GetStatusFromId(c *fiber.Ctx) error {
 
 // https://web.archive.org/web/20120506182126/https://dev.twitter.com/docs/platform-objects/tweets
 func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string, pds string) bridge.Tweet {
+	textOffset := 0
+
+	isRetweet := false
+	bsky_retweet_og_author := tweet.Author
+
+	if isRetweet {
+		tweet.Author = postReason.By
+	}
+
+	// Checking if this tweet is a retweet
+	if postReason != nil {
+		// This might contain other things in the future, idk
+		if postReason.Type == "app.bsky.feed.defs#reasonRepost" {
+			// We are a retweet.
+			isRetweet = true
+
+		}
+	}
+
 	if len(tweet.Record.Langs) > 0 {
 		db_controller.StoreAnalyticData(db_controller.AnalyticData{
 			DataType:  "postviewing",
@@ -257,6 +276,17 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			Timestamp: time.Now(),
 		})
 	}
+
+	processedText := func() string {
+		// This fucks up all the entities :crying:
+
+		if isRetweet {
+			retweetedText := "RT @" + bsky_retweet_og_author.Handle + ": "
+			textOffset += len(retweetedText)
+			return retweetedText + tweet.Record.Text
+		}
+		return tweet.Record.Text
+	}()
 
 	tweetEntities := bridge.Entities{
 		Hashtags:     nil,
@@ -351,17 +381,16 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				break
 			}
 			tweetEntities.UserMentions = append(tweetEntities.UserMentions, bridge.UserMention{
-				Name: tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
-				//ScreenName: "test",
+				Name:       tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
 				ScreenName: tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
 				ID:         bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
 				IDStr:      strconv.FormatInt(*bridge.BlueSkyToTwitterID(faucet.Features[0].Did), 10),
 				Indices: []int{
-					faucet.Index.ByteStart,
-					faucet.Index.ByteEnd,
+					faucet.Index.ByteStart + textOffset,
+					faucet.Index.ByteEnd + textOffset,
 				},
-				Start: faucet.Index.ByteStart,
-				End:   faucet.Index.ByteEnd,
+				Start: faucet.Index.ByteStart + textOffset,
+				End:   faucet.Index.ByteEnd + textOffset,
 			})
 		case "app.bsky.richtext.facet#link":
 			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact nessisary.
@@ -374,16 +403,16 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				ExpandedURL: faucet.Features[0].Uri,
 				URL:         faucet.Features[0].Uri,
 				DisplayURL:  tweet.Record.Text[faucet.Index.ByteStart:faucet.Index.ByteEnd],
-				Start:       faucet.Index.ByteStart,
-				End:         faucet.Index.ByteEnd,
+				Start:       faucet.Index.ByteStart + textOffset,
+				End:         faucet.Index.ByteEnd + textOffset,
 				Indices: []int{
-					faucet.Index.ByteStart,
-					faucet.Index.ByteEnd,
+					faucet.Index.ByteStart + textOffset,
+					faucet.Index.ByteEnd + textOffset,
 				},
 				XMLName: xml.Name{Local: "url"},
 				XMLFormat: bridge.URLXMLFormat{
-					Start:       faucet.Index.ByteStart,
-					End:         faucet.Index.ByteEnd,
+					Start:       faucet.Index.ByteStart + textOffset,
+					End:         faucet.Index.ByteEnd + textOffset,
 					URL:         faucet.Features[0].Uri,
 					ExpandedURL: "",
 				},
@@ -398,28 +427,19 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			tweetEntities.Hashtags = append(tweetEntities.Hashtags, bridge.Hashtag{
 				Text: faucet.Features[0].Tag, // Shortcut url
 				Indices: []int{
-					faucet.Index.ByteStart,
-					faucet.Index.ByteEnd,
+					faucet.Index.ByteStart + textOffset,
+					faucet.Index.ByteEnd + textOffset,
 				},
-				Start: faucet.Index.ByteStart,
-				End:   faucet.Index.ByteEnd,
+				Start: faucet.Index.ByteStart + textOffset,
+				End:   faucet.Index.ByteEnd + textOffset,
 			})
 		}
 
 	}
 
-	bsky_retweet_og_author := tweet.Author
-
-	isRetweet := false
-	// Checking if this tweet is a retweet
-	if postReason != nil {
-		// This might contain other things in the future, idk
-		if postReason.Type == "app.bsky.feed.defs#reasonRepost" {
-			// We are a retweet.
-			isRetweet = true
-			tweet.Author = postReason.By
-		}
-	}
+	// if isRetweet {
+	// 	tweet.Author = postReason.By
+	// }
 
 	// Get the user info
 	var author *bridge.TwitterUser
@@ -440,14 +460,8 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			}
 			return bridge.TwitterTimeConverter(tweet.Record.CreatedAt)
 		}(),
-		Truncated: false,
-		Text: func() string {
-			// This fucks up all the entities :crying:
-			// if isRetweet {
-			// 	return "RT @" + bsky_retweet_og_author.Handle + ": " + tweet.Record.Text
-			// }
-			return tweet.Record.Text
-		}(),
+		Truncated:    false,
+		Text:         processedText,
 		Entities:     tweetEntities,
 		Annotations:  nil, // I am curious what annotations are
 		Contributors: nil,
