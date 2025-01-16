@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
 	"github.com/Preloading/TwitterAPIBridge/bridge"
@@ -283,7 +284,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 		if isRetweet {
 			retweetedText := "RT @" + bsky_retweet_og_author.Handle + ": "
-			textOffset += len(retweetedText)
+			textOffset += utf8.RuneCountInString(retweetedText)
 			return retweetedText + tweet.Record.Text
 		}
 		return tweet.Record.Text
@@ -307,12 +308,12 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			displayURL = strings.ReplaceAll(displayURL, "{user_did}", tweet.Author.DID)
 
 			if len(processedText) == 0 {
-				endLen = len(displayURL)
+				endLen = utf8.RuneCountInString(displayURL)
 
 				processedText = displayURL
 			} else {
-				startLen = len(processedText) + 1
-				endLen = (len(processedText) + 1) + len(displayURL)
+				startLen = utf8.RuneCountInString(processedText) + 1
+				endLen = (utf8.RuneCountInString(processedText) + 1) + utf8.RuneCountInString(displayURL)
 
 				processedText = processedText + " " + displayURL
 			}
@@ -410,7 +411,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		// fmt.Println(faucet.Features[0].Type)
 		switch faucet.Features[0].Type {
 		case "app.bsky.richtext.facet#mention":
-			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact nessisary.
+			if faucet.Index.ByteEnd > utf8.RuneCountInString(tweet.Record.Text) { // yup! this is in fact nessisary.
 				break
 			}
 			if faucet.Index.ByteStart < 0 {
@@ -429,7 +430,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				End:   faucet.Index.ByteEnd + textOffset,
 			})
 		case "app.bsky.richtext.facet#link":
-			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact nessisary.
+			if faucet.Index.ByteEnd > utf8.RuneCountInString(tweet.Record.Text) { // yup! this is in fact nessisary.
 				break
 			}
 			if faucet.Index.ByteStart < 0 {
@@ -454,7 +455,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				},
 			})
 		case "app.bsky.richtext.facet#tag":
-			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact nessisary.
+			if faucet.Index.ByteEnd > utf8.RuneCountInString(tweet.Record.Text) { // yup! this is in fact nessisary.
 				break
 			}
 			if faucet.Index.ByteStart < 0 {
