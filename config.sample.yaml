@@ -7,6 +7,22 @@
 # BAD: http://127.0.0.1:3000/
 CDN_URL: 'http://127.0.0.1:3000'
 
+# The URL that will be displayed in the text
+# This is the URL that will be displayed in the text of the tweet
+# This is not the link seen by the viewer, not where it will actually go to.
+
+# You can also set it to nothing if you don't want a URL to be displayed.
+# This does break older clients, and has a useless URL area in the tweet.
+
+# {shortblob} is the last few letters of the bluesky cdn blob
+# {fullblob} is the full bluesky blob
+# {user_did} is the image owner's DID 
+
+IMG_DISPLAY_TEXT: 'pic.twitter.com/{shortblob}'
+
+# Same as the above, but for videos
+VID_DISPLAY_TEXT: 'pic.twitter.com/{shortblob}'
+
 # SERVER_PORT is the port the server will listen on.
 SERVER_PORT: 3000
 

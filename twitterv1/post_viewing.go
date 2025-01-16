@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
@@ -297,7 +298,26 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	id := 1
 	for _, image := range tweet.Record.Embed.Images {
-		//fmt.Println("Image:", image.Image.Ref.Link)
+		// Add the image "url" to the text
+		startLen, endLen := 0, 0
+		displayURL := configData.ImgDisplayText
+		if displayURL != "" {
+			displayURL = strings.ReplaceAll(displayURL, "{shortblob}", image.Image.Ref.Link[len(image.Image.Ref.Link)-6:])
+			displayURL = strings.ReplaceAll(displayURL, "{fullblob}", image.Image.Ref.Link)
+			displayURL = strings.ReplaceAll(displayURL, "{user_did}", tweet.Author.DID)
+
+			if len(processedText) == 0 {
+				endLen = len(displayURL)
+
+				processedText = displayURL
+			} else {
+				startLen = len(processedText) + 1
+				endLen = (len(processedText) + 1) + len(displayURL)
+
+				processedText = processedText + " " + displayURL
+			}
+		}
+
 		// Process each image
 		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
 			Type:          "photo",
@@ -305,6 +325,11 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			IDStr:         strconv.Itoa(id),
 			MediaURL:      configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
 			MediaURLHttps: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+
+			DisplayURL:  displayURL,
+			ExpandedURL: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			URL:         configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+
 			Sizes: bridge.MediaSize{
 				Thumb: func() bridge.Size {
 					w, h := image.AspectRatio.Width, image.AspectRatio.Height
@@ -357,9 +382,20 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 					Resize: "fit",
 				},
 			},
+
+			Start: startLen,
+			End:   endLen,
+			Indices: []int{
+				startLen,
+				endLen,
+			},
 		})
 		id++
 	}
+
+	// Videos
+	// TODO
+
 	for _, faucet := range tweet.Record.Facets {
 		// I haven't seen this exceed 1 element yet
 		// if len(faucet.Features) > 1 {

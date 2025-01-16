@@ -25,6 +25,9 @@ type Config struct {
     DatabasePath string `mapstructure:"DATABASE_PATH"`
 
     UseXForwardedFor bool `mapstructure:"USE_X_FORWARDED_FOR"`
+
+    ImgDisplayText string `mapstructure:"IMG_DISPLAY_TEXT"`
+    VidDisplayText string `mapstructure:"VID_DISPLAY_TEXT"`
 }
 
 // Loads our config files.
@@ -46,6 +49,8 @@ func LoadConfig() (*Config, error) {
     viper.SetDefault("TRACK_ANALYTICS", true)
     viper.SetDefault("CDN_URL", "http://localhost:3000")
     viper.SetDefault("USE_X_FORWARDED_FOR", false)
+    viper.SetDefault("IMG_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
+    viper.SetDefault("VID_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
 
     // Read config file
     if err := viper.ReadInConfig(); err != nil {
