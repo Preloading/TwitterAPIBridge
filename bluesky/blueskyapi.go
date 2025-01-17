@@ -594,6 +594,10 @@ func GetRelationships(pds string, token string, source string, others []string) 
 func AuthorTTB(author User) *bridge.TwitterUser {
 	id := bridge.BlueSkyToTwitterID(author.DID)
 	pfp_url := configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger"
+	banner_url := ""
+	if author.Banner != "" {
+		banner_url = configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Banner)
+	}
 	user := &bridge.TwitterUser{
 		ProfileSidebarFillColor: "e0ff92",
 		Name: func() string {
@@ -608,18 +612,21 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		ProfileImageURLHttps:      pfp_url,
 		ProfileImageURL:           pfp_url,
 
-		Location:                  "",
-		ProfileLinkColor:          "0000ff",
-		IsTranslator:              false,
-		ContributorsEnabled:       false,
-		URL:                       "",
-		UtcOffset:                 nil,
-		ID:                        *id,
-		IDStr:                     strconv.FormatInt(*id, 10),
 		ProfileUseBackgroundImage: false,
-		ListedCount:               0,
-		ProfileTextColor:          "000000",
-		Protected:                 false,
+
+		ProfileBannerURL: banner_url,
+
+		Location:            "",
+		ProfileLinkColor:    "0000ff",
+		IsTranslator:        false,
+		ContributorsEnabled: false,
+		URL:                 "",
+		UtcOffset:           nil,
+		ID:                  *id,
+		IDStr:               strconv.FormatInt(*id, 10),
+		ListedCount:         0,
+		ProfileTextColor:    "000000",
+		Protected:           false,
 
 		Lang:                   "en",
 		Notifications:          nil,
