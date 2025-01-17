@@ -65,7 +65,7 @@ services:
 |``TWITTER_BRIDGE_CDN_URL``| The CDN_URL is the URL where clients can access images from this server. Do not include a trailing slash. | ``"http://127.0.0.1:3000"`` |
 |``TWITTER_BRIDGE_SERVER_PORT``| The port where the server is running |``3000``|
 |``TWITTER_BRIDGE_TRACK_ANALYTICS``| Enables tracking of analytics (at the moment the only way to view this is by looking at the database) |``true``|
-|``TWITTER_BRIDGE_DEVELOPER_MODE``| Enables extra loggging of data useful for debugging. WARNING!: DO NOT ENABLE ON A PUBLIC INSTANCE!!!! |``"/config/sqlite/scratchcord.db"``|
+|``TWITTER_BRIDGE_DEVELOPER_MODE``| Enables extra loggging of data useful for debugging. WARNING!: DO NOT ENABLE ON A PUBLIC INSTANCE!!!! |``false``|
 
 ### 🖥 Bare metal (recommended)
 This assumes you are somewhat competent
