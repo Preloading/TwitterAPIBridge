@@ -247,12 +247,13 @@ type Config struct {
 
 // Used in the /friends/lookup endpoint
 type UsersRelationship struct {
-	XMLName     xml.Name    `xml:"relationship" json:"-"`
-	Name        string      `json:"name" xml:"name"`
-	IDStr       string      `json:"id_str" xml:"id_str"`
-	ID          int64       `json:"id" xml:"id"`
-	Connections Connections `json:"connections" xml:"connections"`
-	ScreenName  string      `json:"screen_name" xml:"screen_name"`
+	XMLName        xml.Name    `xml:"relationship" json:"-"`
+	Name           string      `json:"name" xml:"name"`
+	IDStr          string      `json:"id_str" xml:"id_str"`
+	ID             int64       `json:"id" xml:"id"`
+	Connections    []string    `json:"connections" xml:"-"` // JSON representation
+	ConnectionsXML Connections `json:"-" xml:"connections"` // XML representation
+	ScreenName     string      `json:"screen_name" xml:"screen_name"`
 }
 
 type Connection struct {

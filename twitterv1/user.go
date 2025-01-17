@@ -153,18 +153,23 @@ func UserRelationships(c *fiber.Ctx) error {
 		}
 
 		connections := bridge.Connections{}
+		connectionJSON := []string{}
 
 		if user.Viewer.Following != nil {
 			connections.Connection = append(connections.Connection, bridge.Connection{Value: "following"})
+			connectionJSON = append(connectionJSON, "following")
 		}
 		if user.Viewer.FollowedBy != nil {
 			connections.Connection = append(connections.Connection, bridge.Connection{Value: "followed_by"})
+			connectionJSON = append(connectionJSON, "followed_by")
 		}
 		if user.Viewer.Blocking != nil {
 			connections.Connection = append(connections.Connection, bridge.Connection{Value: "blocked"})
+			connectionJSON = append(connectionJSON, "blocking")
 		}
 		if user.Viewer.BlockedBy {
 			connections.Connection = append(connections.Connection, bridge.Connection{Value: "blocked_by"}) // Complete guess
+			connectionJSON = append(connectionJSON, "blocked_by")
 		}
 
 		relationships = append(relationships, bridge.UsersRelationship{
@@ -174,18 +179,23 @@ func UserRelationships(c *fiber.Ctx) error {
 				}
 				return user.DisplayName
 			}(),
-			ScreenName:  user.Handle,
-			ID:          *encodedUserId,
-			IDStr:       strconv.FormatInt(*encodedUserId, 10),
-			Connections: connections,
+			ScreenName:     user.Handle,
+			ID:             *encodedUserId,
+			IDStr:          strconv.FormatInt(*encodedUserId, 10),
+			ConnectionsXML: connections,
+			Connections:    connectionJSON,
 		})
 	}
 
-	root := bridge.UserRelationships{
-		Relationships: relationships,
+	if c.Params("filetype") == "xml" {
+		root := bridge.UserRelationships{
+			Relationships: relationships,
+		}
+		return EncodeAndSend(c, root)
+	} else {
+		return EncodeAndSend(c, relationships)
 	}
 
-	return EncodeAndSend(c, root)
 }
 
 // Gets the relationship between two users
