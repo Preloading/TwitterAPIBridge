@@ -327,7 +327,9 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			MediaURL:      configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
 			MediaURLHttps: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
 
-			DisplayURL:  displayURL,
+			DisplayURL: displayURL,
+			//ExpandedURL: displayURL,
+			//URL:         displayURL,
 			ExpandedURL: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
 			URL:         configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
 
@@ -384,12 +386,80 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				},
 			},
 
-			Start: startLen,
-			End:   endLen,
+			// XMLFormat: bridge.MediaXML{
+			// 	Type:          "photo",
+			// 	ID:            int64(id),
+			// 	MediaURL:      configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			// 	MediaURLHttps: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+
+			// 	DisplayURL:  displayURL,
+			// 	ExpandedURL: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			// 	URL:         configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+
+			// 	Start: startLen,
+			// 	End:   endLen,
+			// 	Sizes: bridge.MediaSize{
+			// 		Thumb: func() bridge.Size {
+			// 			w, h := image.AspectRatio.Width, image.AspectRatio.Height
+			// 			if w > h {
+			// 				return bridge.Size{
+			// 					W:      150,
+			// 					H:      int(150 * float64(h) / float64(w)),
+			// 					Resize: "crop",
+			// 				}
+			// 			}
+			// 			return bridge.Size{
+			// 				W:      int(150 * float64(w) / float64(h)),
+			// 				H:      150,
+			// 				Resize: "crop",
+			// 			}
+			// 		}(),
+			// 		Small: func() bridge.Size {
+			// 			w, h := image.AspectRatio.Width, image.AspectRatio.Height
+			// 			if w > h {
+			// 				return bridge.Size{
+			// 					W:      340,
+			// 					H:      int(340 * float64(h) / float64(w)),
+			// 					Resize: "fit",
+			// 				}
+			// 			}
+			// 			return bridge.Size{
+			// 				W:      int(340 * float64(w) / float64(h)),
+			// 				H:      340,
+			// 				Resize: "fit",
+			// 			}
+			// 		}(),
+			// 		Medium: func() bridge.Size {
+			// 			w, h := image.AspectRatio.Width, image.AspectRatio.Height
+			// 			if w > h {
+			// 				return bridge.Size{
+			// 					W:      600,
+			// 					H:      int(600 * float64(h) / float64(w)),
+			// 					Resize: "fit",
+			// 				}
+			// 			}
+			// 			return bridge.Size{
+			// 				W:      int(600 * float64(w) / float64(h)),
+			// 				H:      600,
+			// 				Resize: "fit",
+			// 			}
+			// 		}(),
+			// 		Large: bridge.Size{
+			// 			W:      image.AspectRatio.Width,
+			// 			H:      image.AspectRatio.Height,
+			// 			Resize: "fit",
+			// 		},
+			// 	},
+			// },
+
 			Indices: []int{
 				startLen,
 				endLen,
 			},
+			Start:     startLen,
+			End:       endLen,
+			StartAttr: startLen,
+			EndAttr:   endLen,
 		})
 		id++
 	}
@@ -411,64 +481,70 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		// fmt.Println(faucet.Features[0].Type)
 		switch faucet.Features[0].Type {
 		case "app.bsky.richtext.facet#mention":
-			if faucet.Index.ByteEnd > utf8.RuneCountInString(tweet.Record.Text) { // yup! this is in fact nessisary.
+			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact necessary.
 				break
 			}
 			if faucet.Index.ByteStart < 0 {
 				break
 			}
+			startIndex := utf8.RuneCountInString(tweet.Record.Text[:faucet.Index.ByteStart]) + textOffset
+			endIndex := utf8.RuneCountInString(tweet.Record.Text[:faucet.Index.ByteEnd]) + textOffset
 			tweetEntities.UserMentions = append(tweetEntities.UserMentions, bridge.UserMention{
 				Name:       tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
 				ScreenName: tweet.Record.Text[faucet.Index.ByteStart+1 : faucet.Index.ByteEnd],
 				ID:         bridge.BlueSkyToTwitterID(faucet.Features[0].Did),
 				IDStr:      strconv.FormatInt(*bridge.BlueSkyToTwitterID(faucet.Features[0].Did), 10),
 				Indices: []int{
-					faucet.Index.ByteStart + textOffset,
-					faucet.Index.ByteEnd + textOffset,
+					startIndex,
+					endIndex,
 				},
-				Start: faucet.Index.ByteStart + textOffset,
-				End:   faucet.Index.ByteEnd + textOffset,
+				Start: startIndex,
+				End:   endIndex,
 			})
 		case "app.bsky.richtext.facet#link":
-			if faucet.Index.ByteEnd > utf8.RuneCountInString(tweet.Record.Text) { // yup! this is in fact nessisary.
+			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact necessary.
 				break
 			}
 			if faucet.Index.ByteStart < 0 {
 				break
 			}
+			startIndex := utf8.RuneCountInString(tweet.Record.Text[:faucet.Index.ByteStart]) + textOffset
+			endIndex := utf8.RuneCountInString(tweet.Record.Text[:faucet.Index.ByteEnd]) + textOffset
 			tweetEntities.Urls = append(tweetEntities.Urls, bridge.URL{
 				ExpandedURL: faucet.Features[0].Uri,
 				URL:         faucet.Features[0].Uri,
 				DisplayURL:  tweet.Record.Text[faucet.Index.ByteStart:faucet.Index.ByteEnd],
-				Start:       faucet.Index.ByteStart + textOffset,
-				End:         faucet.Index.ByteEnd + textOffset,
+				Start:       startIndex,
+				End:         endIndex,
 				Indices: []int{
-					faucet.Index.ByteStart + textOffset,
-					faucet.Index.ByteEnd + textOffset,
+					startIndex,
+					endIndex,
 				},
 				XMLName: xml.Name{Local: "url"},
 				XMLFormat: bridge.URLXMLFormat{
-					Start:       faucet.Index.ByteStart + textOffset,
-					End:         faucet.Index.ByteEnd + textOffset,
+					Start:       startIndex,
+					End:         endIndex,
 					URL:         faucet.Features[0].Uri,
 					ExpandedURL: "",
 				},
 			})
 		case "app.bsky.richtext.facet#tag":
-			if faucet.Index.ByteEnd > utf8.RuneCountInString(tweet.Record.Text) { // yup! this is in fact nessisary.
+			if faucet.Index.ByteEnd > len(tweet.Record.Text) { // yup! this is in fact necessary.
 				break
 			}
 			if faucet.Index.ByteStart < 0 {
 				break
 			}
+			startIndex := utf8.RuneCountInString(tweet.Record.Text[:faucet.Index.ByteStart]) + textOffset
+			endIndex := utf8.RuneCountInString(tweet.Record.Text[:faucet.Index.ByteEnd]) + textOffset
 			tweetEntities.Hashtags = append(tweetEntities.Hashtags, bridge.Hashtag{
 				Text: faucet.Features[0].Tag, // Shortcut url
 				Indices: []int{
-					faucet.Index.ByteStart + textOffset,
-					faucet.Index.ByteEnd + textOffset,
+					startIndex,
+					endIndex,
 				},
-				Start: faucet.Index.ByteStart + textOffset,
-				End:   faucet.Index.ByteEnd + textOffset,
+				Start: startIndex,
+				End:   endIndex,
 			})
 		}
 

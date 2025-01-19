@@ -45,19 +45,25 @@ func PushDestinations(c *fiber.Ctx) error {
 
 	return c.SendString(fmt.Sprintf(`
 	<?xml version="1.0" encoding="UTF-8"?>
-	<device>
-		<device_model>iPhone</device_model>
-		<device_name>iPhone</device_name>
-		<enabled_for>23</enabled_for>
-		<language>en</language>
-		<send_error_codes>true</send_error_codes>
-		<system_name>iPhone OS</system_name>
-		<system_version>4.2.1</system_version>
-		<token>i dunno, guess who has no idea what this returns./token>
-		<udid>%s</udid>
-		<old_udid>%s</old_udid>
-		<environment>3</environment>
-	<device>
+<PushDestination>
+  <Device>
+    <UDID>some-unique-id</UDID>
+    <OldUDID>some-old-unique-id</OldUDID>
+  </Device>
+  <Environment>production</Environment>
+  <Status>Registered</Status>
+  <Channels>
+    <Channel>
+      <Name>General</Name>
+      <Enabled>true</Enabled>
+    </Channel>
+    <Channel>
+      <Name>Promotions</Name>
+      <Enabled>false</Enabled>
+    </Channel>
+  </Channels>
+</PushDestination>
+
 	`, udid, old_udid))
 }
 

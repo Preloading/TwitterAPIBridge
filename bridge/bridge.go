@@ -53,7 +53,7 @@ type Tweet struct {
 	Annotations  interface{} `json:"annotations" xml:"annotations"`
 	Contributors interface{} `json:"contributors" xml:"contributors"`
 	ID           int64       `json:"id" xml:"id"`
-	IDStr        string      `json:"id_str" xml:"id_str"`
+	IDStr        string      `json:"id_str" xml:"-"`
 	Geo          interface{} `json:"geo" xml:"geo"`
 	Place        interface{} `json:"place" xml:"place"`
 	User         TwitterUser `json:"user,omitempty" xml:"user,omitempty"`
@@ -150,8 +150,10 @@ type MediaSize struct {
 }
 
 type Media struct {
+	XMLName xml.Name `xml:"media" json:"-"`
+	// XMLFormat     MediaXML  `xml:",innerxml" json:"-"`
 	ID            int64     `json:"id" xml:"id"`
-	IDStr         string    `json:"id_str" xml:"id_str"`
+	IDStr         string    `json:"id_str" xml:"-"`
 	MediaURL      string    `json:"media_url" xml:"media_url"`
 	MediaURLHttps string    `json:"media_url_https" xml:"media_url_https"`
 	URL           string    `json:"url,omitempty" xml:"url"`
@@ -159,10 +161,12 @@ type Media struct {
 	ExpandedURL   string    `json:"expanded_url,omitempty" xml:"expanded_url"`
 	Sizes         MediaSize `json:"sizes" xml:"sizes"`
 	// Sizes         map[string]MediaSize `json:"sizes"`
-	Type    string `json:"type" xml:"type"`
-	Indices []int  `json:"indices,omitempty" xml:"-"`
-	Start   int    `json:"-" xml:"start,attr"`
-	End     int    `json:"-" xml:"end,attr"`
+	Type      string `json:"type" xml:"type"`
+	Indices   []int  `json:"indices,omitempty" xml:"-"`
+	Start     int    `xml:"start"`
+	End       int    `xml:"end"`
+	StartAttr int    `xml:"start,attr"`
+	EndAttr   int    `xml:"end,attr"`
 }
 
 type Entities struct {
