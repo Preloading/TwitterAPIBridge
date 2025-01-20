@@ -163,10 +163,10 @@ type Media struct {
 	// Sizes         map[string]MediaSize `json:"sizes"`
 	Type      string `json:"type" xml:"type"`
 	Indices   []int  `json:"indices,omitempty" xml:"-"`
-	Start     int    `xml:"start"`
-	End       int    `xml:"end"`
-	StartAttr int    `xml:"start,attr"`
-	EndAttr   int    `xml:"end,attr"`
+	Start     int    `xml:"start" json:"-"`
+	End       int    `xml:"end" json:"-"`
+	StartAttr int    `xml:"start,attr" json:"-"`
+	EndAttr   int    `xml:"end,attr" json:"-"`
 }
 
 type Entities struct {

@@ -302,6 +302,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		// Add the image "url" to the text
 		startLen, endLen := 0, 0
 		displayURL := configData.ImgDisplayText
+		mediaWebURL := ""
 		if displayURL != "" {
 			displayURL = strings.ReplaceAll(displayURL, "{shortblob}", image.Image.Ref.Link[len(image.Image.Ref.Link)-6:])
 			displayURL = strings.ReplaceAll(displayURL, "{fullblob}", image.Image.Ref.Link)
@@ -317,6 +318,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 				processedText = processedText + " " + displayURL
 			}
+			mediaWebURL = configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg"
 		}
 
 		// Process each image
@@ -330,8 +332,8 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			DisplayURL: displayURL,
 			//ExpandedURL: displayURL,
 			//URL:         displayURL,
-			ExpandedURL: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
-			URL:         configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			ExpandedURL: mediaWebURL,
+			URL:         mediaWebURL,
 
 			Sizes: bridge.MediaSize{
 				Thumb: func() bridge.Size {

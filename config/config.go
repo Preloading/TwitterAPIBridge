@@ -49,7 +49,9 @@ func LoadConfig() (*Config, error) {
     viper.SetDefault("TRACK_ANALYTICS", true)
     viper.SetDefault("CDN_URL", "http://localhost:3000")
     viper.SetDefault("USE_X_FORWARDED_FOR", false)
-    viper.SetDefault("IMG_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
+    //viper.SetDefault("IMG_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
+    // Since IMG_DISPLAY_TEXT isn't fully implemented, we'll have it disabled
+    viper.SetDefault("IMG_DISPLAY_TEXT", "")
     viper.SetDefault("VID_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
 
     // Read config file
