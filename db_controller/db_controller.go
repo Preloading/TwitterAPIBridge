@@ -83,6 +83,12 @@ type AnalyticData struct {
 	Timestamp            time.Time `gorm:"type:timestamp"`
 }
 
+// ShortLink represents the schema for the short_links table
+type ShortLink struct {
+	ShortCode   string `gorm:"type:string;primaryKey;not null"`
+	OriginalURL string `gorm:"type:string;not null"`
+}
+
 var db *gorm.DB
 var cfg config.Config
 
@@ -118,6 +124,7 @@ func InitDB(_cfg config.Config) {
 	db.AutoMigrate(&MessageContext{})
 	db.AutoMigrate(&TwitterIDs{})
 	db.AutoMigrate(&AnalyticData{})
+	db.AutoMigrate(&ShortLink{}) // Add this line
 }
 
 // StoreToken stores an encrypted access token and refresh token in the database.
@@ -271,4 +278,29 @@ func StoreAnalyticData(data AnalyticData) {
 	if result.Error != nil {
 		fmt.Println("Failed to store analytic data:", result.Error)
 	}
+}
+
+// StoreShortLink stores a short link in the database
+func StoreShortLink(shortCode string, originalURL string) error {
+	shortLink := ShortLink{
+		ShortCode:   shortCode,
+		OriginalURL: originalURL,
+	}
+
+	result := db.Create(&shortLink)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+}
+
+// GetOriginalURL retrieves the original URL from the database using the short code
+func GetOriginalURL(shortCode string) (string, error) {
+	var shortLink ShortLink
+	if err := db.Where("short_code = ?", shortCode).First(&shortLink).Error; err != nil {
+		return "", err
+	}
+
+	return shortLink.OriginalURL, nil
 }
