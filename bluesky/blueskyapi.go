@@ -80,7 +80,7 @@ type PostReason struct {
 type Embed struct {
 	Type   string  `json:"$type"`
 	Images []Image `json:"images,omitempty"`
-	Video  `json:"omitempty"`
+	//Video  `json:",omitempty"`
 }
 
 type Image struct {
@@ -863,7 +863,7 @@ func GetFollows(pds string, token string, context string, actor string) (*Follow
 }
 
 // This handles both normal & replys
-func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string, mentions []bridge.FacetParsing, urls []bridge.FacetParsing, tags []bridge.FacetParsing, imageBlob *Blob) (*ThreadRoot, error) {
+func UpdateStatus(pds string, token string, my_did string, status string, in_reply_to *string, mentions []bridge.FacetParsing, urls []bridge.FacetParsing, tags []bridge.FacetParsing, imageBlob *Blob, imageRes []int) (*ThreadRoot, error) {
 	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
 	var replySubject *ReplySubject
@@ -951,12 +951,16 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 	// Images
 	if imageBlob != nil {
 		embeds = Embed{
-			Type: "app.bsky.embed#image",
+			Type: "app.bsky.embed.images",
 			Images: []Image{
 				{
 					Alt: "", // Twitter doesn't have alt text (poor accessibility)
 					// AspectRatio: AspectRatio{Height: 1, Width: 1}, // lets see if it works without the aspect ratio ;)
 					Image: *imageBlob,
+					AspectRatio: AspectRatio{
+						Height: imageRes[0],
+						Width:  imageRes[1],
+					},
 				},
 			},
 		}
@@ -984,6 +988,7 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 	if err != nil {
 		return nil, errors.New("failed to marshal payload")
 	}
+	fmt.Println(string(reqBody))
 	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, errors.New("failed to post")
