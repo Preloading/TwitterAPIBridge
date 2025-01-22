@@ -72,9 +72,22 @@ func access_token(c *fiber.Ctx) error {
 			Timestamp:            time.Now(),
 		})
 
-		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=%s&x_auth_expires=0", oauth_token, oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(res.DID)), url.QueryEscape(authUsername)))
+		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=%s&x_auth_expires=0", oauth_token, oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(res.DID)), url.QueryEscape(authUsername))) // TODO: make this the actual screenname
 	} else if authMode == "exchange_auth" {
-		return c.SendStatus(200) // uuuuuuuuh idk what this responds. I'll figure it out later.
+		return c.Status(fiber.StatusUnauthorized).SendString("i have no idea what this should respond with, but it works if i don't have it implemented, so thats what im doing.")
+		// this is a hack
+		// auth_header := "oauth_token=\"" + c.FormValue("x_auth_access_secret") + "\""
+		// c.Request().Header.Set("Authorization", auth_header)
+		// my_did, pds, _, oauth_token, err := GetAuthFromReq(c)
+		// if err != nil {
+		// 	return c.Status(fiber.StatusUnauthorized).SendString("Unauthorized")
+		// }
+		// authenticating_user, err := blueskyapi.GetUserInfo(*pds, *oauth_token, *my_did, true)
+		// if err != nil {
+		// 	return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		// }
+
+		// return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=%s&x_auth_expires=0", *oauth_token, *oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(*my_did)), url.QueryEscape(authenticating_user.ScreenName)))
 	}
 	// We have an unknown request. huh. Probably registration, i'll find a way to send an error msg for that later, as registration is out of scope.
 	return c.SendStatus(501)
