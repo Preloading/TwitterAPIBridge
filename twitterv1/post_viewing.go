@@ -252,10 +252,6 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 	isRetweet := false
 	bsky_retweet_og_author := tweet.Author
 
-	if isRetweet {
-		tweet.Author = postReason.By
-	}
-
 	// Checking if this tweet is a retweet
 	if postReason != nil {
 		// This might contain other things in the future, idk
@@ -289,6 +285,10 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		}
 		return tweet.Record.Text
 	}()
+
+	if isRetweet {
+		tweet.Author = postReason.By
+	}
 
 	tweetEntities := bridge.Entities{
 		Hashtags:     nil,
