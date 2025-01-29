@@ -84,8 +84,9 @@ func InitServer(config *config.Config) {
 	app.Post("/1/friendships/destroy.:filetype", UnfollowUserForm)
 	app.Post("/1/friendships/destroy/:id.:filetype", UnfollowUserParams)
 	app.Get("/1/followers.:filetype", GetFollowers)
+	app.Get("/1/friends.:filetype", GetFollows)
 	app.Get("/1/statuses/followers.:filetype", GetStatusesFollowers)
-	app.Get("/1/statuses/friends.:filetype", GetFollows)
+	app.Get("/1/statuses/friends.:filetype", GetStatusesFollows)
 
 	app.Get("/1/users/recommendations.:filetype", GetSuggestedUsers)
 	app.Get("/1/users/profile_image", UserProfileImage)

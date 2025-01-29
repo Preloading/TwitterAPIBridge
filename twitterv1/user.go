@@ -491,8 +491,6 @@ func GetFollowers(c *fiber.Ctx) error {
 	}
 
 	// lets go get our user data
-	fmt.Println(c.Body())
-	fmt.Println(c.OriginalURL())
 	actor := c.FormValue("user_id")
 	if actor == "" {
 		actor = c.FormValue("screen_name")
@@ -520,7 +518,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	cursorStr := c.FormValue("cursor")
 	if cursorStr != "" {
 		cursorInt, err = strconv.ParseInt(cursorStr, 10, 64)
-		if err != nil || cursorInt != -1 {
+		if err != nil || cursorInt < 1 {
 			cursor, err = bridge.NumToTid(uint64(cursorInt))
 			if err != nil {
 				fmt.Println("Error when converting Followers Cursor:", err)
@@ -561,7 +559,6 @@ func GetFollowers(c *fiber.Ctx) error {
 
 	next_cursor, err := bridge.TidToNum(followers.Cursor)
 	if err != nil {
-		fmt.Println("Error when converting Followers Cursor:", err)
 		next_cursor = 0
 	}
 
@@ -581,7 +578,7 @@ func GetFollowers(c *fiber.Ctx) error {
 }
 
 // https://web.archive.org/web/20120407214017/https://dev.twitter.com/docs/api/1/get/statuses/friends
-func GetFollows(c *fiber.Ctx) error {
+func GetStatusesFollows(c *fiber.Ctx) error {
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
@@ -611,7 +608,7 @@ func GetFollows(c *fiber.Ctx) error {
 		actor = *actorPtr
 	}
 
-	// fetch followers
+	// fetch follows
 	followers, err := blueskyapi.GetFollows(*pds, *oauthToken, "", actor)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -639,6 +636,100 @@ func GetFollows(c *fiber.Ctx) error {
 
 	return EncodeAndSend(c, bridge.TwitterUsers{
 		Users: twitterUsersConverted,
+	})
+}
+
+func GetFollows(c *fiber.Ctx) error {
+	// auth
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// lets go get our user data
+	actor := c.FormValue("user_id")
+	if actor == "" {
+		actor = c.FormValue("screen_name")
+		if actor == "" {
+			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+		}
+	} else {
+		id, err := strconv.ParseInt(actor, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+		}
+		if actorPtr == nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+		}
+		actor = *actorPtr
+	}
+
+	cursor := ""
+	var cursorInt int64
+
+	cursorStr := c.FormValue("cursor")
+	if cursorStr != "" {
+		cursorInt, err = strconv.ParseInt(cursorStr, 10, 64)
+		if err != nil || cursorInt == -1 {
+			cursor, err = bridge.NumToTid(uint64(cursorInt))
+			if err != nil {
+				fmt.Println("Error when converting Followers Cursor:", err)
+				cursor = ""
+			}
+		} else {
+			cursor = ""
+		}
+	} else {
+		cursor = ""
+	}
+
+	// fetch follows
+	followers, err := blueskyapi.GetFollows(*pds, *oauthToken, cursor, actor)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch followers")
+	}
+
+	// convert users into twitter format
+	// This right now doesn't act on pagination, i'll figure that out later
+	var actorsToLookUp []string
+	for _, user := range followers.Followers {
+		actorsToLookUp = append(actorsToLookUp, user.DID)
+	}
+
+	twitterUsers, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, actorsToLookUp, false)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+	}
+
+	// Convert []*bridge.TwitterUser to []bridge.TwitterUser
+	var twitterUsersConverted []bridge.TwitterUser
+	for _, user := range twitterUsers {
+		twitterUsersConverted = append(twitterUsersConverted, *user)
+	}
+
+	next_cursor, err := bridge.TidToNum(followers.Cursor)
+	if err != nil {
+		next_cursor = 0
+	}
+
+	return EncodeAndSend(c, struct {
+		Users             []bridge.TwitterUser `json:"users" xml:"users"`
+		NextCursor        uint64               `json:"next_cursor" xml:"next_cursor"`
+		PreviousCursor    uint64               `json:"previous_cursor" xml:"previous_cursor"`
+		NextCursorStr     string               `json:"next_cursor_str" xml:"-"`
+		PreviousCursorStr string               `json:"previous_cursor_str" xml:"-"`
+	}{
+		Users:             twitterUsersConverted,
+		NextCursor:        next_cursor,
+		PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
+		NextCursorStr:     strconv.FormatUint(next_cursor, 10),
+		PreviousCursorStr: "0",
 	})
 }
 
