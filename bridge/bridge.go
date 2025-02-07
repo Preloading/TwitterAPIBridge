@@ -115,6 +115,7 @@ type TwitterUser struct {
 	FriendsCount              int      `json:"friends_count" xml:"friends_count"`
 	StatusesCount             int      `json:"statuses_count" xml:"statuses_count"`
 	ProfileBannerURL          string   `json:"profile_banner_url" xml:"profile_banner_url"`
+	ProfileBannerURLHttps     string   `json:"profile_banner_url_https" xml:"profile_banner_url_https"`
 	ProfileBackgroundImageURL string   `json:"profile_background_image_url" xml:"profile_background_image_url"`
 	// ProfileBackgroundImageURLHttps string  `json:"profile_background_image_url_https" xml:"profile_background_image_url_https"`
 	Following           *bool  `json:"following" xml:"following"`

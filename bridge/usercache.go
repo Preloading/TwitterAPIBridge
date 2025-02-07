@@ -92,5 +92,7 @@ func (u TwitterUser) copy() TwitterUser {
 		Status:                    u.Status,
 		ProfileImageURLHttps:      u.ProfileImageURLHttps,
 		IDStr:                     u.IDStr,
+		ProfileBannerURL:          u.ProfileBannerURL,
+		ProfileBannerURLHttps:     u.ProfileBannerURLHttps,
 	}
 }

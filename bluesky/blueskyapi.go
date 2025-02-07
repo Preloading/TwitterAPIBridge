@@ -596,7 +596,12 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 	pfp_url := configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger"
 	banner_url := ""
 	if author.Banner != "" {
-		banner_url = configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Banner)
+		banner_components := strings.Split(author.Banner, "/")
+
+		if len(banner_components) >= 8 {
+			banner_component_blob := strings.Split(banner_components[7], "@")
+			banner_url = configData.CdnURL + "/cdn/img/bsky/" + banner_components[6] + "/" + banner_component_blob[0] + ".png"
+		}
 	}
 	user := &bridge.TwitterUser{
 		ProfileSidebarFillColor: "e0ff92",
@@ -614,7 +619,8 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 
 		ProfileUseBackgroundImage: false,
 
-		ProfileBannerURL: banner_url,
+		ProfileBannerURL:      banner_url,
+		ProfileBannerURLHttps: banner_url,
 
 		Location:            "",
 		ProfileLinkColor:    "0000ff",

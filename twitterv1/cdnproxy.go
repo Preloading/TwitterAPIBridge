@@ -1,13 +1,13 @@
 package twitterv1
 
 import (
-	"fmt"
 	"image"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -19,86 +19,77 @@ import (
 
 func CDNDownscaler(c *fiber.Ctx) error {
 	imageURL := c.Query("url")
+	widthStr := c.Query("width")
+	heightStr := c.Query("height")
+	resizeOption := c.Query("resize")
+	maintainAspect := false
 
+	// Handle URL unescaping first if it's not a direct DID request
 	if c.Params("did") != "" {
-		fmt.Println(c.Params("did"))
-		fmt.Println(c.Params("link"))
-		fmt.Println(c.Params("filetype"))
-		imageURL = "https://cdn.bsky.app/img/feed_thumbnail/plain/" + c.Params("did") + "/" + c.Params("link") + "@jpeg"
+		did := c.Params("did")
+		link := c.Params("link")
+		size := c.Params("size")
+
+		// Remove any file extension from link
+		link = strings.TrimSuffix(link, filepath.Ext(link))
+
+		imageURL = "https://cdn.bsky.app/img/feed_thumbnail/plain/" + did + "/" + link + "@jpeg"
+
+		// If size is provided as a path parameter, treat it as a suffix
+		if size != "" {
+			if strings.HasPrefix(size, "mobile") || strings.HasPrefix(size, "web") || strings.HasPrefix(size, "ipad") {
+				size = "/" + size
+			} else {
+				size = ":" + size
+			}
+			// This will be processed by the suffix handling below
+			imageURL = imageURL + size
+		}
 	} else {
 		unescapedURL, err := url.QueryUnescape(imageURL)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid URL")
 		}
-
 		imageURL = unescapedURL
-		if !strings.HasPrefix(imageURL, "https://cdn.bsky.app/img/") { // Later maybe lift these restrictions?
-			return c.SendStatus(fiber.StatusBadRequest)
+	}
+
+	// Check suffixes and set dimensions before any other URL validation
+	suffixes := map[string]struct {
+		width  string
+		height string
+		aspect bool
+	}{
+		":large":          {"", "", true},
+		":small":          {"340", "480", true},
+		":medium":         {"600", "1200", true},
+		":thumb":          {"150", "150", false},
+		":profile_bigger": {"73", "73", false},
+		":profile_normal": {"48", "48", false},
+		":profile_mini":   {"24", "24", false},
+		"/mobile_retina":  {"620", "320", false},
+		"/mobile":         {"320", "160", false},
+		"/ipad":           {"626", "313", false},
+		"/ipad_retina":    {"1252", "626", false},
+		"/web":            {"520", "260", false},
+		"/web_retina":     {"1040", "520", false},
+	}
+
+	// Check for suffixes and apply dimensions
+	for suffix, dims := range suffixes {
+		if strings.HasSuffix(imageURL, suffix) {
+			imageURL = strings.TrimSuffix(imageURL, suffix)
+			if dims.width != "" {
+				widthStr = dims.width
+				heightStr = dims.height
+			}
+			maintainAspect = dims.aspect
+			break
 		}
 	}
 
-	widthStr := c.Query("width")
-	heightStr := c.Query("height")
-	resizeOption := c.Query("resize")
-
-	maintainAspect := false
-
-	// So twitter likes to do a stupid thing where it appends :small or :large to the end of tweet images, so we need to strip that, and use that for dimentions
-
-	if strings.HasSuffix(imageURL, ":large") {
-		imageURL = strings.TrimSuffix(imageURL, ":large")
-
-		// We do know what large is, buuuut it seems to work fine if we give the raw image, and i think that's fiiiiiiine
-		widthStr = ""
-		heightStr = ""
-		resizeOption = "none"
-		maintainAspect = true
-
-	}
-	// https://web.archive.org/web/20120412055327/https://dev.twitter.com/docs/api/1/get/help/configuration
-
-	if strings.HasSuffix(imageURL, ":small") {
-		imageURL = strings.TrimSuffix(imageURL, ":small")
-
-		widthStr = "340"
-		heightStr = "480"
-		maintainAspect = true
-	}
-	if strings.HasSuffix(imageURL, ":medium") {
-		imageURL = strings.TrimSuffix(imageURL, ":medium")
-
-		widthStr = "600"
-		heightStr = "1200"
-		maintainAspect = true
-	}
-	if strings.HasSuffix(imageURL, ":thumb") {
-		imageURL = strings.TrimSuffix(imageURL, ":thumb")
-
-		widthStr = "150"
-		heightStr = "150"
-
-	}
-
-	if strings.HasSuffix(imageURL, ":profile_bigger") {
-		imageURL = strings.TrimSuffix(imageURL, ":profile_bigger")
-
-		widthStr = "73"
-		heightStr = "73"
-
-	}
-	if strings.HasSuffix(imageURL, ":profile_normal") {
-		imageURL = strings.TrimSuffix(imageURL, ":profile_normal")
-
-		widthStr = "48"
-		heightStr = "48"
-
-	}
-	if strings.HasSuffix(imageURL, ":profile_mini") {
-		imageURL = strings.TrimSuffix(imageURL, ":profile_normal")
-
-		widthStr = "24"
-		heightStr = "24"
-
+	// Validate URL after suffix removal
+	if c.Params("did") == "" && !strings.HasPrefix(imageURL, "https://cdn.bsky.app/img/") {
+		return c.SendStatus(fiber.StatusBadRequest)
 	}
 
 	width, err := strconv.Atoi(widthStr)
