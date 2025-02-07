@@ -16,16 +16,29 @@ https://twitterbridge.loganserver.net HTTP & HTTPS, Based on Releases (my instan
 https://testtwitterbridge.loganserver.net HTTP & HTTPS, Based on commits (my instance) 
 
 ## Usage
-### iOS
+### iOS Official App
 1. Install the IPA of your choosing (you can find some here, along with android versions: https://loganserver.net/twitters/, also elon don't sue me pls). At present moment, recommended is 4.1.3, latest to work is 5.0.3 for offical iOS)
 2. Create a bluesky app password (assuming you have a bluesky account), menu > settings > privacy and security > app passwords. You will want to enable DMs for future DM compatibility.
 3. Open the Twitter app
 4. Click the login button
 5. Click the cog button
-6. Put your instance for both urls (you can make it http if on ios 3 provided the server supports it)
+6. Put your instance for both urls. You must include either `http://` or `https://` at the beginning. **Do not include a slash at the end.** You can find these urls/servers in the Public Instances section above.
 7. Type in your bluesky handle for the username, and your bluesky app password as the password. **Usage of normal passwords is not recommended, and will be forbidden in the future**
 8. Login
 9. Hopefully success
+
+### iOS Integration (+ image uploads on the app)
+1. Have a jailbroken iOS device running either iOS 5-6 (older versions don't have the twitter integration, and newer are incompatible with this server, but this will still make images work)
+2. Add to cydia either `http://cydia.bag-xml.com` or `http://cydia.skyglow.es` to the sources tab
+3. Find the `Bluetweety` tweak, and install it.
+4. Go to Settings > Bluetweety. (If it does not show up, check that you actually installed it.
+5. Input the server url you will use. __**DO NOT INCLUDE `http://` OR `https://` AT THE BEGINING AND THE SLASH AT THE END!!!**__ You can find a list of URLS in the Public Instances section
+6. Reboot your phone.
+7. Go to Settings > Twitter. Type your bluesky handle in the Username field (example: `preloading.bsky.social` and your app password (can be the same from the app) in the respective areas. [You can get an App Password here](https://bsky.app/settings/app-passwords)
+<sub>Or through BlueSky > Settings > Privacy and security > App passwords if you'd rather navigate to it yourself</sub>
+8. Click Login
+9. Disable the ability for the twitter app to view twitter accounts.
+10. Hopefully success
 
 
 ## Hosting instructions
@@ -89,7 +102,8 @@ go build .
 
 ## Accuracy
 This server is no where close to 100% accurate. Most of the the time this accuracy is having more values responed than what should be, and it shouldn't affect clients using this.
-
+## Support
+I give some support in bag's server under #bluetweety, https://discord.gg/bag-xml
 ## Thanks to
 [@Preloading](https://github.com/Preloading), I wrote the thing
 
