@@ -133,6 +133,10 @@ func InitServer(config *config.Config) {
 	app.Get("/1/account/settings.:filetype", GetSettings)
 	app.Get("/1/account/push_destinations/device.:filetype", PushDestinations)
 
+	// DMs
+	app.Get("/1/direct_messages.:filetype", GetAllDMs)
+	app.Get("/1/direct_messages/sent.:filetype", GetSentDMs)
+
 	// Legal cuz why not?
 	app.Get("/1/legal/tos.:filetype", TOS)
 	app.Get("/1/legal/privacy.:filetype", PrivacyPolicy)

@@ -400,6 +400,18 @@ type TwitterList struct {
 	Following       bool        `json:"following" xml:"following"`
 }
 
+type DirectMessage struct {
+	CreatedAt           string      `json:"created_at" xml:"created_at"`
+	SenderScreenName    string      `json:"sender_screen_name" xml:"sender_screen_name"`
+	Sender              TwitterUser `json:"sender"`
+	Text                string      `json:"text" xml:"text"`
+	RecipientScreenName string      `json:"recipient_screen_name" xml:"recipient_screen_name"`
+	Id                  int64       `json:"id" xml:"id"`
+	Recipient           TwitterUser `json:"recipient"`
+	RecipientId         int64       `json:"recipient_id" xml:"recipient_id"`
+	SenderId            int64       `json:"sender_id" xml:"sender_id"`
+}
+
 func encodeToUint63(input string) *int64 {
 	hasher := fnv.New64a()                  // Create a new FNV-1a 64-bit hash
 	hasher.Write([]byte(input))             // Write the input string as bytes

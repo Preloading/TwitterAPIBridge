@@ -360,6 +360,30 @@ type ListDetailed struct {
 	Items  []ListItem `json:"items"`
 }
 
+type DirectMessageLogs struct {
+	Cursor string             `json:"cursor"`
+	Logs   []DirectMessageLog `json:"logs"`
+}
+
+type DirectMessageLog struct {
+	Type    string        `json:"$type"`
+	Rev     string        `json:"rev"`
+	ConvoId string        `json:"convoId"`
+	Message DirectMessage `json:"message,omitempty"`
+}
+
+type DirectMessage struct {
+	Id     string  `json:"id"`
+	Rev    string  `json:"rev"`
+	Text   string  `json:"text"`
+	Facets []Facet `json:"facets"`
+	Embed  Embed   `json:"embed"`
+	Sender struct {
+		Did string `json:"did"`
+	} `json:"sender"`
+	SentAt time.Time `json:"sentAt"`
+}
+
 var (
 	configData *config.Config
 )
@@ -1850,6 +1874,39 @@ func GetNotifications(pds string, token string, limit int, context string) (*Not
 	}
 
 	return &notifications, nil
+}
+
+func GetDMLogs(token string, limit int, context string) (*DirectMessageLogs, error) {
+	url := "https://api.bsky.chat/xrpc/chat.bsky.convo.getLog?limit=" + fmt.Sprintf("%d", limit)
+	if context != "" {
+		url = "https://api.bsky.chat/xrpc/chat.bsky.convo.getLog?cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch dms")
+	}
+
+	dms := DirectMessageLogs{}
+	if err := json.NewDecoder(resp.Body).Decode(&dms); err != nil {
+		return nil, err
+	}
+
+	return &dms, nil
 }
 
 func UploadBlob(pds string, token string, data []byte, content_type string) (*Blob, error) {
