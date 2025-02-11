@@ -103,52 +103,111 @@ func VerifyCredentials(c *fiber.Ctx) error {
 // @return: userDID, pds, tokenUUID, accessJwt, error
 func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 	authHeader := c.Get("Authorization")
+	fallbackRoute := "https://public.api.bsky.app"
 	if configData.DeveloperMode {
 		fmt.Println("Auth Header:", authHeader)
 	}
+	var accessJwt, refreshJwt, userPDS, basicAuthSalt *string
+	var userDID, tokenUUID, encryptionKey, basicAuthUsernamePassword string
+	var access_expiry, refresh_expiry *float64
+	var err error
+
+	isBasic := false
+
 	// Define a regular expression to match the oauth_token
-	re := regexp.MustCompile(`oauth_token="([^"]+)"`)
-	matches := re.FindStringSubmatch(authHeader)
-	fallbackRoute := "https://public.api.bsky.app"
+	if strings.HasPrefix(authHeader, "Basic ") {
+		isBasic = true
+		// This is using basic authentication. Basic authentication, sucks. We have to somehow store the password, and i do not like that.
+		// But if we want iOS 2, we have to do this.
+		base64pass := strings.TrimPrefix(authHeader, "Basic ")
+		var did *string
+		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, did, basicAuthSalt, err = db_controller.GetTokenViaBasic(base64pass)
 
-	if len(matches) < 2 {
-		return nil, &fallbackRoute, nil, nil, errors.New("oauth token not found")
-	}
+		if err != nil {
+			// We might just not be signed in.
+			if err.Error() == "invalid credentials" {
+				// We are not signed in, lets log in
+				// decode the base64 string
+				basicAuthUsernamePassword, err = cryption.Base64URLDecode(base64pass)
+				if err != nil {
+					return nil, &fallbackRoute, nil, nil, err
+				}
 
-	oauthToken := matches[1]
-	oauthTokenSegments := strings.Split(oauthToken, ".")
+				// seperate the username and password
+				authUsername := strings.Split(basicAuthUsernamePassword, ":")[0]
+				authPassword := strings.Split(basicAuthUsernamePassword, ":")[1]
 
-	// Replace URL-friendly characters with original base64 characters
+				// test if password is an app password thru regex
+				if !regexp.MustCompile(`^[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}$`).MatchString(authPassword) {
+					return nil, &fallbackRoute, nil, nil, errors.New("invalid app password")
+				}
 
-	// Check that we have at least 3 segments
-	if len(oauthTokenSegments) != 3 {
-		return nil, &fallbackRoute, nil, nil, errors.New("invalid oauth token")
-	}
+				res, pds, err := blueskyapi.Authenticate(authUsername, authPassword)
+				if err != nil {
+					return nil, &fallbackRoute, nil, nil, err
+				}
 
-	// Get user DID
-	userDID, err := cryption.Base64URLDecode(oauthTokenSegments[0])
+				access_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.AccessJwt)
+				if err != nil {
+					return nil, &fallbackRoute, nil, nil, errors.New("failed to get access token expiry")
+				}
+				refresh_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.RefreshJwt)
+				if err != nil {
+					return nil, &fallbackRoute, nil, nil, errors.New("failed to get refresh token expiry")
+				}
 
-	if err != nil {
-		return nil, &fallbackRoute, nil, nil, err
-	}
+				db_controller.StoreTokenBasic(res.DID, *pds, res.AccessJwt, res.RefreshJwt, base64pass, *access_token_expiry, *refresh_token_expiry)
 
-	// Get our token UUID. This is used to look up the token in the database.
-	tokenUUID, err := cryption.Base64URLDecode(oauthTokenSegments[1])
+				return &res.DID, pds, &base64pass, &res.AccessJwt, nil
+			} else {
+				return nil, &fallbackRoute, nil, nil, err
+			}
 
-	if err != nil {
-		return nil, &fallbackRoute, nil, nil, err
-	}
+		}
 
-	// Get the encryption key for the data.
-	encryptionKey := oauthTokenSegments[2] + "="
-	encryptionKey = strings.ReplaceAll(encryptionKey, "-", "+")
-	encryptionKey = strings.ReplaceAll(encryptionKey, "_", "/")
+		userDID = *did
+	} else {
+		re := regexp.MustCompile(`oauth_token="([^"]+)"`)
+		matches := re.FindStringSubmatch(authHeader)
+		if len(matches) < 2 {
+			return nil, &fallbackRoute, nil, nil, errors.New("oauth token not found")
+		}
 
-	// Now onto getting the access token from the database.
-	accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, err := db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey)
+		oauthToken := matches[1]
+		oauthTokenSegments := strings.Split(oauthToken, ".")
 
-	if err != nil {
-		return nil, &fallbackRoute, nil, nil, err
+		// Replace URL-friendly characters with original base64 characters
+
+		// Check that we have at least 3 segments
+		if len(oauthTokenSegments) != 3 {
+			return nil, &fallbackRoute, nil, nil, errors.New("invalid oauth token")
+		}
+
+		// Get user DID
+		userDID, err = cryption.Base64URLDecode(oauthTokenSegments[0])
+
+		if err != nil {
+			return nil, &fallbackRoute, nil, nil, err
+		}
+
+		// Get our token UUID. This is used to look up the token in the database.
+		tokenUUID, err := cryption.Base64URLDecode(oauthTokenSegments[1])
+
+		if err != nil {
+			return nil, &fallbackRoute, nil, nil, err
+		}
+
+		// Get the encryption key for the data.
+		encryptionKey := oauthTokenSegments[2] + "="
+		encryptionKey = strings.ReplaceAll(encryptionKey, "-", "+")
+		encryptionKey = strings.ReplaceAll(encryptionKey, "_", "/")
+
+		// Now onto getting the access token from the database.
+		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, err = db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey)
+
+		if err != nil {
+			return nil, &fallbackRoute, nil, nil, err
+		}
 	}
 
 	if configData.DeveloperMode {
@@ -162,6 +221,12 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 		// Lets check if our refresh token has expired
 		if time.Unix(int64(*refresh_expiry), 0).Before(time.Now()) {
 			// Our refresh token has expired. We need to re-authenticate.
+			// Delete this entry from the database
+			if isBasic {
+				db_controller.DeleteTokenViaBasic(basicAuthUsernamePassword)
+			} else {
+				db_controller.DeleteToken(string(userDID), string(tokenUUID))
+			}
 			return nil, &fallbackRoute, nil, nil, errors.New("refresh token has expired")
 		}
 
@@ -184,7 +249,11 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 		}
 
 		// TODO: Recheck if the user id is still bound to that PDS
-		db_controller.UpdateToken(string(tokenUUID), string(userDID), *userPDS, new_auth.AccessJwt, new_auth.RefreshJwt, encryptionKey, *access_token_expiry, *refresh_token_expiry)
+		if isBasic {
+			db_controller.UpdateTokenBasic(userDID, *userPDS, new_auth.AccessJwt, new_auth.RefreshJwt, *access_token_expiry, *refresh_token_expiry, basicAuthUsernamePassword, *basicAuthSalt)
+		} else {
+			db_controller.UpdateToken(string(tokenUUID), string(userDID), *userPDS, new_auth.AccessJwt, new_auth.RefreshJwt, encryptionKey, *access_token_expiry, *refresh_token_expiry)
+		}
 	}
 
 	userDIDStr := string(userDID)
