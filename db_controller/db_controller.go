@@ -11,6 +11,7 @@ import (
 	"github.com/Preloading/TwitterAPIBridge/config"
 	authcrypt "github.com/Preloading/TwitterAPIBridge/cryption"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -48,18 +49,21 @@ import (
 
 // Token represents the schema for the tokens table
 type Token struct {
-	UserDid               string  `gorm:"type:string;primaryKey;not null"`
+	BasicAuthHash         string  `gorm:"type:string;"`      // I am not a fan that i have to store this for basic authentication
+	BasicAuthUsername     string  `gorm:"type:string;index"` // Add this field with an index
+	UserDid               string  `gorm:"type:string;index;not null"`
 	UserPDS               string  `gorm:"type:string;not null"`
-	TokenUUID             string  `gorm:"type:string;primaryKey;not null"`
+	TokenUUID             string  `gorm:"type:string;primaryKey"`
 	EncryptedAccessToken  string  `gorm:"type:string;not null"`
 	EncryptedRefreshToken string  `gorm:"type:string;not null"`
 	AccessExpiry          float64 `gorm:"type:float;not null"`
 	RefreshExpiry         float64 `gorm:"type:float;not null"`
+	BasicAuthSalt         string  `gorm:"type:string"`
 }
 
 type TwitterIDs struct {
 	BlueskyID   string     `gorm:"type:string;not null"`
-	TwitterID   string     `gorm:"type:string;primaryKey;not null"` // Ensure this has a unique constraint
+	TwitterID   string     `gorm:"type:string;primaryKey;not null"`
 	ReposterDid *string    `gorm:"type:string"`
 	DateCreated *time.Time `gorm:"type:timestamp"`
 }
@@ -187,6 +191,55 @@ func UpdateToken(uuid string, did string, pds string, accessToken string, refres
 	return &token.TokenUUID, nil
 }
 
+// StoreTokenBasic stores a token using basic auth (password)
+func StoreTokenBasic(did string, pds string, accessToken string, refreshToken string, username string, password string, accessExpiry float64, refreshExpiry float64) (*string, error) {
+	passwordData, err := authcrypt.GeneratePasswordHash(password)
+	if err != nil {
+		return nil, err
+	}
+
+	// generate a new UUID for the token
+	uuid, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+
+	return UpdateTokenBasic(did, pds, accessToken, refreshToken, accessExpiry, refreshExpiry, username, password, passwordData.Hash, passwordData.Salt, uuid.String())
+}
+
+// UpdateTokenBasic updates or creates a token entry using basic auth
+func UpdateTokenBasic(did string, pds string, accessToken string, refreshToken string, accessExpiry float64, refreshExpiry float64, username string, password string, passwordHash string, passwordSalt string, uuid string) (*string, error) {
+	encryptionKey := authcrypt.DeriveKeyFromPassword(password, passwordSalt)
+	encryptedAccess, err := authcrypt.Encrypt(accessToken, encryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt access token: %v", err)
+	}
+
+	encryptedRefresh, err := authcrypt.Encrypt(refreshToken, encryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt refresh token: %v", err)
+	}
+
+	token := Token{
+		UserDid:               did,
+		UserPDS:               pds,
+		EncryptedAccessToken:  encryptedAccess,
+		EncryptedRefreshToken: encryptedRefresh,
+		AccessExpiry:          accessExpiry,
+		RefreshExpiry:         refreshExpiry,
+		BasicAuthHash:         passwordHash,
+		BasicAuthSalt:         passwordSalt,
+		BasicAuthUsername:     username,
+		TokenUUID:             uuid,
+	}
+
+	if err := db.Create(&token).Error; err != nil {
+		return nil, err
+	}
+
+	return &token.TokenUUID, nil
+}
+
 // GetToken retrieves account data from the database
 // @results: accessToken, refreshToken, accessExpiry, refreshExpiry, pds, error
 
@@ -207,6 +260,93 @@ func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *str
 	}
 
 	return &accessToken, &refreshToken, &token.AccessExpiry, &token.RefreshExpiry, &token.UserPDS, nil
+}
+
+// GetTokenViaBasic retrieves a token using only the password
+// @results: accessToken, refreshToken, accessExpiry, refreshExpiry, pds, did, hash, salt, uuid, error
+func GetTokenViaBasic(username string, password string) (*string, *string, *float64, *float64, *string, *string, *string, *string, *string, error) {
+	var tokens []Token
+	if err := db.Where("basic_auth_username = ?", username).Find(&tokens).Error; err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("invalid credentials")
+	}
+	var token Token
+	if len(tokens) == 0 {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("invalid credentials")
+	}
+
+	for _, t := range tokens {
+		if err := bcrypt.CompareHashAndPassword([]byte(token.BasicAuthHash), []byte(password)); err != nil {
+			token = t
+			break
+		}
+	}
+
+	if token.EncryptedAccessToken == "" {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("invalid credentials")
+	}
+
+	encryptionKey := authcrypt.DeriveKeyFromPassword(password, token.BasicAuthSalt)
+
+	accessToken, err := authcrypt.Decrypt(token.EncryptedAccessToken, encryptionKey)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
+
+	refreshToken, err := authcrypt.Decrypt(token.EncryptedRefreshToken, encryptionKey)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
+
+	return &accessToken, &refreshToken, &token.AccessExpiry, &token.RefreshExpiry, &token.UserPDS, &token.UserDid, &token.BasicAuthHash, &token.BasicAuthSalt, &token.TokenUUID, nil
+}
+
+// DeleteToken deletes a token using did and uuid
+func DeleteToken(did string, tokenUUID string) error {
+	result := db.Where("user_did = ? AND token_uuid = ?", did, tokenUUID).Delete(&Token{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("token not found")
+	}
+	return nil
+}
+
+// DeleteTokenViaBasic deletes a token using the username and password
+func DeleteTokenViaBasic(username string, password string) error {
+	var tokens []Token
+	if err := db.Where("basic_auth_username = ?", username).Find(&tokens).Error; err != nil {
+		return fmt.Errorf("invalid credentials")
+	}
+
+	if len(tokens) == 0 {
+		return fmt.Errorf("token not found")
+	}
+
+	var foundToken Token
+	for _, t := range tokens {
+		if err := bcrypt.CompareHashAndPassword([]byte(t.BasicAuthHash), []byte(password)); err != nil {
+			foundToken = t
+			break
+		}
+	}
+
+	if foundToken.EncryptedAccessToken == "" {
+		return fmt.Errorf("invalid credentials")
+	}
+
+	result := db.Where("basic_auth_username = ? AND basic_auth_hash = ?",
+		username, foundToken.BasicAuthHash).Delete(&Token{})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("token not found")
+	}
+
+	return nil
 }
 
 // Stores ID data in the database.

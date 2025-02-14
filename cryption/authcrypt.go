@@ -9,6 +9,9 @@ import (
 	"errors"
 	"io"
 	"strings"
+
+	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // GenerateKey generates a new AES key and returns it as a base64 encoded string
@@ -140,4 +143,36 @@ func Base64URLDecode(input string) (string, error) {
 	}
 
 	return string(decoded), nil
+}
+
+type PasswordData struct {
+	Hash string
+	Salt string
+}
+
+// GeneratePasswordHash generates a secure hash of the password using bcrypt, returns hash and salt
+func GeneratePasswordHash(password string) (*PasswordData, error) {
+	// Generate a random salt
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, err
+	}
+
+	// Generate hash using bcrypt
+	hash, err := bcrypt.GenerateFromPassword([]byte(password+base64.StdEncoding.EncodeToString(salt)), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PasswordData{
+		Hash: base64.StdEncoding.EncodeToString(hash),
+		Salt: base64.StdEncoding.EncodeToString(salt),
+	}, nil
+}
+
+// DeriveKeyFromPassword generates an encryption key from a password using Argon2 and a provided salt
+func DeriveKeyFromPassword(password string, salt string) string {
+	saltBytes, _ := base64.StdEncoding.DecodeString(salt)
+	key := argon2.IDKey([]byte(password), saltBytes, 1, 64*1024, 4, 32)
+	return base64.StdEncoding.EncodeToString(key)
 }
