@@ -107,42 +107,42 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 	if configData.DeveloperMode {
 		fmt.Println("Auth Header:", authHeader)
 	}
-	var accessJwt, refreshJwt, userPDS, basicAuthSalt *string
-	var userDID, tokenUUID, encryptionKey, basicAuthUsernamePassword string
+	var accessJwt, refreshJwt, userPDS, basicHashSalt, basicAuthSalt, basicUUID *string
+	var userDID, tokenUUID, encryptionKey, basicAuthUsernamePassword, authPassword string
 	var access_expiry, refresh_expiry *float64
 	var err error
 
 	isBasic := false
+	var username string
 
 	// Define a regular expression to match the oauth_token
 	if strings.HasPrefix(authHeader, "Basic ") {
+		// This really should be rewritten. If you can, send a PR :)
 		isBasic = true
 		// This is using basic authentication. Basic authentication, sucks. We have to somehow store the password, and i do not like that.
 		// But if we want iOS 2, we have to do this.
 		base64pass := strings.TrimPrefix(authHeader, "Basic ")
 		var did *string
-		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, did, basicAuthSalt, err = db_controller.GetTokenViaBasic(base64pass)
+		basicAuthUsernamePassword, err = cryption.Base64URLDecode(base64pass)
+		if err != nil {
+			return nil, &fallbackRoute, nil, nil, err
+		}
 
+		// separate the username and password
+		username = strings.Split(basicAuthUsernamePassword, ":")[0]
+		authPassword = strings.Split(basicAuthUsernamePassword, ":")[1]
+
+		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, did, basicHashSalt, basicAuthSalt, basicUUID, err = db_controller.GetTokenViaBasic(username, authPassword)
+		fmt.Println(err)
 		if err != nil {
 			// We might just not be signed in.
 			if err.Error() == "invalid credentials" {
-				// We are not signed in, lets log in
-				// decode the base64 string
-				basicAuthUsernamePassword, err = cryption.Base64URLDecode(base64pass)
-				if err != nil {
-					return nil, &fallbackRoute, nil, nil, err
-				}
-
-				// seperate the username and password
-				authUsername := strings.Split(basicAuthUsernamePassword, ":")[0]
-				authPassword := strings.Split(basicAuthUsernamePassword, ":")[1]
-
 				// test if password is an app password thru regex
 				if !regexp.MustCompile(`^[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}$`).MatchString(authPassword) {
 					return nil, &fallbackRoute, nil, nil, errors.New("invalid app password")
 				}
 
-				res, pds, err := blueskyapi.Authenticate(authUsername, authPassword)
+				res, pds, err := blueskyapi.Authenticate(username, authPassword)
 				if err != nil {
 					return nil, &fallbackRoute, nil, nil, err
 				}
@@ -156,13 +156,16 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 					return nil, &fallbackRoute, nil, nil, errors.New("failed to get refresh token expiry")
 				}
 
-				db_controller.StoreTokenBasic(res.DID, *pds, res.AccessJwt, res.RefreshJwt, base64pass, *access_token_expiry, *refresh_token_expiry)
+				basicUUID, err = db_controller.StoreTokenBasic(res.DID, *pds, res.AccessJwt, res.RefreshJwt, username, authPassword, *access_token_expiry, *refresh_token_expiry)
 
-				return &res.DID, pds, &base64pass, &res.AccessJwt, nil
+				if err != nil {
+					return nil, &fallbackRoute, nil, nil, err
+				}
+
+				return &res.DID, pds, nil, &res.AccessJwt, nil // TODO: Maybe change the uuid to something for here?
 			} else {
 				return nil, &fallbackRoute, nil, nil, err
 			}
-
 		}
 
 		userDID = *did
@@ -223,7 +226,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 			// Our refresh token has expired. We need to re-authenticate.
 			// Delete this entry from the database
 			if isBasic {
-				db_controller.DeleteTokenViaBasic(basicAuthUsernamePassword)
+				db_controller.DeleteTokenViaBasic(username, authPassword)
 			} else {
 				db_controller.DeleteToken(string(userDID), string(tokenUUID))
 			}
@@ -250,7 +253,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 
 		// TODO: Recheck if the user id is still bound to that PDS
 		if isBasic {
-			db_controller.UpdateTokenBasic(userDID, *userPDS, new_auth.AccessJwt, new_auth.RefreshJwt, *access_token_expiry, *refresh_token_expiry, basicAuthUsernamePassword, *basicAuthSalt)
+			db_controller.UpdateTokenBasic(userDID, *userPDS, new_auth.AccessJwt, new_auth.RefreshJwt, *access_token_expiry, *refresh_token_expiry, username, authPassword, *basicHashSalt, *basicAuthSalt, *basicUUID)
 		} else {
 			db_controller.UpdateToken(string(tokenUUID), string(userDID), *userPDS, new_auth.AccessJwt, new_auth.RefreshJwt, encryptionKey, *access_token_expiry, *refresh_token_expiry)
 		}

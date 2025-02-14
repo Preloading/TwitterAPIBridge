@@ -170,17 +170,6 @@ func GeneratePasswordHash(password string) (*PasswordData, error) {
 	}, nil
 }
 
-// VerifyPasswordHash verifies if a password matches its hash using the stored salt
-func VerifyPasswordHash(password, encodedHash, encodedSalt string) bool {
-	hash, err := base64.StdEncoding.DecodeString(encodedHash)
-	if err != nil {
-		return false
-	}
-
-	err = bcrypt.CompareHashAndPassword(hash, []byte(password+encodedSalt))
-	return err == nil
-}
-
 // DeriveKeyFromPassword generates an encryption key from a password using Argon2 and a provided salt
 func DeriveKeyFromPassword(password string, salt string) string {
 	saltBytes, _ := base64.StdEncoding.DecodeString(salt)

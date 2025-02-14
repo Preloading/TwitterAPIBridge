@@ -55,6 +55,7 @@ func InitServer(config *config.Config) {
 	// Auth
 	app.Post("/oauth/access_token", access_token)
 	app.Get("/1/account/verify_credentials.:filetype", VerifyCredentials)
+	app.Get("/account/verify_credentials.:filetype", VerifyCredentials)
 
 	// Tweeting
 	app.Post("/1/statuses/update.:filetype", status_update)
