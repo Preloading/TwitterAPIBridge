@@ -167,3 +167,89 @@ func trends_woeid(c *fiber.Ctx) error {
 		},
 	})
 }
+
+func discovery(c *fiber.Ctx) error {
+	return c.SendString(`
+{
+  "statuses": [
+    {
+      "user": {
+        "id": 5123166115319017703,
+        "name": "Preloading",
+        "screen_name": "preloading.bsky.social"
+      },
+      "text": "@xsquishh.bsky.social that wasn't it but... ;)",
+      "entities": {
+        "hashtags": [],
+        "urls": []
+      }
+    }
+  ],
+  "stories": [
+    {
+      "type": "news",
+      "score": 0.92,
+      "data": {
+        "title": "Thank you for using A Twitter Bridge!",
+        "articles": [
+          {
+            "title": "Thank you for using A Twitter Bridge!",
+            "url": {
+              "display_url": "twitterbridge.loganserver.net",
+              "expanded_url": "https://twitterbridge.loganserver.net"
+            },
+            "tweet_count": 1500,
+            "media": [
+              {
+                "url": "https://example.com/idk.jpg",
+                "width": 800,
+                "height": 600
+              }
+            ]
+          }
+        ]
+      },
+      "social_proof": {
+        "social_proof_type": "social",
+        "referenced_by": {
+          "global_count": 2500,
+          "statuses": [
+            {
+              "user": {
+                "id": 5123166115319017703,
+                "name": "Preloading",
+                "screen_name": "preloading.bsky.social"
+              },
+              "text": "very cool"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "related_queries": [
+    {
+      "query": "Bluetweety"
+    },
+    {
+      "query": "A Twitter Bridge"
+    }
+  ],
+  "spelling_corrections": [
+    {
+      "results": [
+        {
+          "value": {
+            "query": "Twiter API",
+            "indices": [
+              [0, 6],
+              [7, 10]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+	`)
+}

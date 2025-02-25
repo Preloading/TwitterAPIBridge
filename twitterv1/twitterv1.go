@@ -100,6 +100,7 @@ func InitServer(config *config.Config) {
 	app.Get("/1/trends/:woeid.:filetype", trends_woeid)
 	app.Get("/1/trends/current.:filetype", trends_woeid)
 	app.Get("/i/search.:filetype", InternalSearch)
+	app.Get("/i/discovery.:filetype", discovery)
 
 	// Account / Settings
 	app.Post("/1/account/update_profile.:filetype", UpdateProfile)
