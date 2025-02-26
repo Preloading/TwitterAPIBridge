@@ -247,6 +247,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 
 // https://web.archive.org/web/20120506182126/https://dev.twitter.com/docs/platform-objects/tweets
 func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string, pds string) bridge.Tweet {
+	var err error
 	textOffset := 0
 
 	isRetweet := false
@@ -301,11 +302,22 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 	for _, image := range tweet.Record.Embed.Images {
 		// Add the image "url" to the text
 		startLen, endLen := 0, 0
+		formattedImageURL := configData.ImgURLText
 		displayURL := configData.ImgDisplayText
+		shortCode := ""
 		if displayURL != "" {
 			displayURL = strings.ReplaceAll(displayURL, "{shortblob}", image.Image.Ref.Link[len(image.Image.Ref.Link)-6:])
 			displayURL = strings.ReplaceAll(displayURL, "{fullblob}", image.Image.Ref.Link)
 			displayURL = strings.ReplaceAll(displayURL, "{user_did}", tweet.Author.DID)
+			if strings.Contains(displayURL, "{shortcode}") {
+				shortCode, err = CreateShortLink("/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg")
+				if err != nil {
+					fmt.Println("Error creating short link:", err)
+					displayURL = strings.ReplaceAll(displayURL, "{shortcode}", "")
+				} else {
+					displayURL = strings.ReplaceAll(displayURL, "{shortcode}", shortCode)
+				}
+			}
 
 			if len(processedText) == 0 {
 				endLen = utf8.RuneCountInString(displayURL)
@@ -318,6 +330,25 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				processedText = processedText + " " + displayURL
 			}
 		}
+		if formattedImageURL != "" {
+			formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortblob}", image.Image.Ref.Link[len(image.Image.Ref.Link)-6:])
+			formattedImageURL = strings.ReplaceAll(formattedImageURL, "{fullblob}", image.Image.Ref.Link)
+			formattedImageURL = strings.ReplaceAll(formattedImageURL, "{user_did}", tweet.Author.DID)
+			if strings.Contains(formattedImageURL, "{shortcode}") {
+				if shortCode == "" {
+					shortCode, err = CreateShortLink("/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg")
+					if err != nil {
+						fmt.Println("Error creating short link:", err)
+						formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortcode}", "")
+					} else {
+						formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortcode}", shortCode)
+					}
+				} else {
+					formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortcode}", shortCode)
+				}
+
+			}
+		}
 
 		// Process each image
 		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
@@ -327,11 +358,9 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			MediaURL:      configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
 			MediaURLHttps: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
 
-			DisplayURL: displayURL,
-			//ExpandedURL: displayURL,
-			//URL:         displayURL,
+			DisplayURL:  displayURL,
 			ExpandedURL: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
-			URL:         configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			URL:         formattedImageURL,
 
 			Sizes: bridge.MediaSize{
 				Thumb: func() bridge.Size {
@@ -556,7 +585,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	// Get the user info
 	var author *bridge.TwitterUser
-	author, err := blueskyapi.GetUserInfo(pds, token, tweet.Author.DID, false)
+	author, err = blueskyapi.GetUserInfo(pds, token, tweet.Author.DID, false)
 	if err != nil {
 		fmt.Println("Error:", err)
 		// fallback
