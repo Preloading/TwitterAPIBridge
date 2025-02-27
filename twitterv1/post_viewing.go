@@ -327,7 +327,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				startLen = utf8.RuneCountInString(processedText) + 1
 				endLen = (utf8.RuneCountInString(processedText) + 1) + utf8.RuneCountInString(displayURL)
 
-				processedText = processedText + " " + displayURL
+				processedText = processedText + "\n" + displayURL
 			}
 		}
 		if formattedImageURL != "" {
