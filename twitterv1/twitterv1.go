@@ -112,6 +112,7 @@ func InitServer(config *config.Config) {
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)
 	app.Get("/cdn/img/bsky/:did/:link.:filetype", CDNDownscaler)
+	app.Get("/cdn/vid/bsky/:did/:link", CDNVideoProxy)
 
 	// Shortcut
 	app.Get("/img/:ref", RedirectToLink)

@@ -201,3 +201,20 @@ func UserProfileImage(c *fiber.Ctx) error {
 	//c.Redirect("https://cdn.bsky.app/img/" + screen_name + ":profile_bigger")
 	return c.Redirect(userinfo.ProfileImageURL)
 }
+
+// This is here because it doesn't just want a direct link to the m3u8 file.
+// So we make an extremely basic site that just includes the video, and maybe the alt text if i care enough
+func CDNVideoProxy(c *fiber.Ctx) error {
+	video_url := "https://video.bsky.app/watch/" + c.Params("did") + "/" + c.Params("link") + "/720p/video.m3u8" // 720p on an iphone 2g oh god
+	thumbnail_url := "https://video.cdn.bsky.app/hls/" + c.Params("did") + "/" + c.Params("link") + "/thumbnail.jpg"
+
+	c.Context().SetContentType("text/html")
+
+	// Is the below minified? yup!
+	// tbh, you could pretty easily just run it thru a prettier and it would make sense, but i'll explain it here:
+	// It's a basic html page that includes the hls.js library, a video element, and a script that checks if the browser supports hls, and if it doesn't, it uses hls.js to play the video
+	// why u hef to be mad golang warning thingy?
+	return c.SendString(fmt.Sprintf(`
+	<meta content="width=device-width,initial-scale=1"name=viewport><title>Bluesky Video</title><style>*{margin:0;padding:0;width:100%%;height:100%%}</style><body><script src=https://cdn.jsdelivr.net/npm/hls.js@1></script><video autoplay="autoplay" controls id=v poster=%s src=%s></video><script>var v=document.getElementById("v");if(v.canPlayType("application/vnd.apple.mpegurl"));else if(Hls.isSupported()){var h=new Hls;h.loadSource(v.src),h.attachMedia(v)}</script>
+	`, thumbnail_url, video_url))
+}

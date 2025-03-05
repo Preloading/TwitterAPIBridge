@@ -528,7 +528,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			displayURL = strings.ReplaceAll(displayURL, "{fullblob}", video.Video.Ref.Link)
 			displayURL = strings.ReplaceAll(displayURL, "{user_did}", tweet.Author.DID)
 			if strings.Contains(displayURL, "{shortcode}") {
-				shortCode, err = CreateShortLink("https://video.bsky.app/watch/" + tweet.Author.DID + "/" + video.Video.Ref.Link + "/720p/video.m3u8")
+				shortCode, err = CreateShortLink("/cdn/vid/bsky/" + tweet.Author.DID + "/" + video.Video.Ref.Link + "/")
 				if err != nil {
 					fmt.Println("Error creating short link:", err)
 					displayURL = strings.ReplaceAll(displayURL, "{shortcode}", "")
@@ -554,7 +554,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			formattedVideoURL = strings.ReplaceAll(formattedVideoURL, "{user_did}", tweet.Author.DID)
 			if strings.Contains(formattedVideoURL, "{shortcode}") {
 				if shortCode == "" {
-					shortCode, err = CreateShortLink("https://video.bsky.app/watch/" + tweet.Author.DID + "/" + video.Video.Ref.Link + "/720p/video.m3u8")
+					shortCode, err = CreateShortLink("/cdn/vid/bsky/" + tweet.Author.DID + "/" + video.Video.Ref.Link + "/")
 					if err != nil {
 						fmt.Println("Error creating short link:", err)
 						formattedVideoURL = strings.ReplaceAll(formattedVideoURL, "{shortcode}", "")
