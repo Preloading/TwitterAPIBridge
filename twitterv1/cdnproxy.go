@@ -1,6 +1,7 @@
 package twitterv1
 
 import (
+	"fmt"
 	"image"
 	"image/gif"
 	"image/jpeg"

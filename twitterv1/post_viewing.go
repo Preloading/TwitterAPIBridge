@@ -349,19 +349,20 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				}
 
 			}
-			mediaWebURL = configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg"
 		}
+
+		mediaWebURL := configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg"
 
 		// Process each image
 		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
 			Type:          "photo",
 			ID:            int64(id),
 			IDStr:         strconv.Itoa(id),
-			MediaURL:      configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
-			MediaURLHttps: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			MediaURL:      mediaWebURL,
+			MediaURLHttps: mediaWebURL,
 
 			DisplayURL:  displayURL,
-			ExpandedURL: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			ExpandedURL: mediaWebURL,
 			URL:         formattedImageURL,
 
 			Sizes: bridge.MediaSize{
