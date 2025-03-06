@@ -194,6 +194,7 @@ type URLXMLFormat struct {
 	End         int      `xml:"end,attr"`
 	URL         string   `xml:"url"`
 	ExpandedURL string   `xml:"expanded_url"`
+	DisplayURL  string   `xml:"display_url"`
 }
 
 type Hashtag struct {

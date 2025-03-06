@@ -80,7 +80,7 @@ type PostReason struct {
 type Embed struct {
 	Type   string  `json:"$type"`
 	Images []Image `json:"images,omitempty"`
-	//Video  `json:",omitempty"`
+	Video  `json:",omitempty"`
 }
 
 type Image struct {
@@ -92,7 +92,7 @@ type Image struct {
 type Video struct {
 	Alt         string      `json:"alt"`
 	AspectRatio AspectRatio `json:"aspectRatio"`
-	Video       Blob        `json:"video"`
+	Video       *Blob       `json:"video"`
 }
 
 type AspectRatio struct {

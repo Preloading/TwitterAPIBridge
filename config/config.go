@@ -2,6 +2,8 @@
 // This is not the config file. The config file can be found in the root directory as config.yaml
 // (you may need to create it, copy config.sample.yml )
 
+// This file is where the config file is parsed & loaded. Modifying this is highly discouraged (unless your a developer).
+
 package config
 
 import (
@@ -27,7 +29,9 @@ type Config struct {
     UseXForwardedFor bool `mapstructure:"USE_X_FORWARDED_FOR"`
 
     ImgDisplayText string `mapstructure:"IMG_DISPLAY_TEXT"`
+    ImgURLText string `mapstructure:"IMG_URL_TEXT"`
     VidDisplayText string `mapstructure:"VID_DISPLAY_TEXT"`
+    VidURLText string `mapstructure:"VID_URL_TEXT"`
 }
 
 // Loads our config files.

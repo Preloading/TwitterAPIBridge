@@ -18,10 +18,14 @@ CDN_URL: 'http://127.0.0.1:3000'
 # {fullblob} is the full bluesky blob
 # {user_did} is the image owner's DID 
 
-IMG_DISPLAY_TEXT: 'pic.twitter.com/{shortblob}'
+IMG_DISPLAY_TEXT: 'pic.twitter.com/{shortcode}'
+
+# Now this link is where it actually will go to (sometimes), although this is not displayed to the user*
+# IMG_URL_TEXT: 'http://127.0.0.1:3000/cdn/img/bsky/{user_did}/{fullblob}.jpg' # if you don't want to do any redirects, it will eventually arrive here.
+IMG_URL_TEXT: 'http://127.0.0.1:3000/img/{shortcode}' # if you want to do a redirect, and have it be short, it should arrive here.
 
 # Same as the above, but for videos
-VID_DISPLAY_TEXT: 'pic.twitter.com/{shortblob}'
+VID_DISPLAY_TEXT: 'pic.twitter.com/{shortcode}'
 
 # SERVER_PORT is the port the server will listen on.
 SERVER_PORT: 3000
