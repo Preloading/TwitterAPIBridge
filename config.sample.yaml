@@ -27,6 +27,10 @@ IMG_URL_TEXT: 'http://127.0.0.1:3000/img/{shortcode}' # if you want to do a redi
 # Same as the above, but for videos
 VID_DISPLAY_TEXT: 'pic.twitter.com/{shortcode}'
 
+# Same as the above (again), but for videos
+VID_URL_TEXT: 'http://127.0.0.1:3000/img/{shortcode}'
+
+
 # SERVER_PORT is the port the server will listen on.
 SERVER_PORT: 3000
 
