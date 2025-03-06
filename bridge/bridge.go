@@ -115,6 +115,7 @@ type TwitterUser struct {
 	FriendsCount              int      `json:"friends_count" xml:"friends_count"`
 	StatusesCount             int      `json:"statuses_count" xml:"statuses_count"`
 	ProfileBannerURL          string   `json:"profile_banner_url" xml:"profile_banner_url"`
+	ProfileBannerURLHttps     string   `json:"profile_banner_url_https" xml:"profile_banner_url_https"`
 	ProfileBackgroundImageURL string   `json:"profile_background_image_url" xml:"profile_background_image_url"`
 	// ProfileBackgroundImageURLHttps string  `json:"profile_background_image_url_https" xml:"profile_background_image_url_https"`
 	Following           *bool  `json:"following" xml:"following"`
@@ -163,10 +164,10 @@ type Media struct {
 	// Sizes         map[string]MediaSize `json:"sizes"`
 	Type      string `json:"type" xml:"type"`
 	Indices   []int  `json:"indices,omitempty" xml:"-"`
-	Start     int    `xml:"start"`
-	End       int    `xml:"end"`
-	StartAttr int    `xml:"start,attr"`
-	EndAttr   int    `xml:"end,attr"`
+	Start     int    `xml:"start" json:"-"`
+	End       int    `xml:"end" json:"-"`
+	StartAttr int    `xml:"start,attr" json:"-"`
+	EndAttr   int    `xml:"end,attr" json:"-"`
 }
 
 type Entities struct {

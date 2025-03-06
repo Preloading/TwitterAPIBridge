@@ -1,7 +1,11 @@
 package twitterv1
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"regexp"
 	"strconv"
@@ -39,7 +43,7 @@ func status_update(c *fiber.Ctx) error {
 		}
 	}
 
-	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id, mentions, links, tags, nil)
+	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id, mentions, links, tags, nil, []int{})
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -73,29 +77,36 @@ func status_update_with_media(c *fiber.Ctx) error {
 
 	status := c.FormValue("status")
 
-	// The docs say it's an array, but I can only upload one image.... so idk
-	image, err := c.FormFile("media")
+	// The docs say it's an array, but I can only upload one imageData.... so idk
+	imageData, err := c.FormFile("media")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusBadRequest).SendString("Please upload an image")
 	}
 
 	// read the image file content
-	file, err := image.Open()
+	file, err := imageData.Open()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to open image file")
 	}
 	defer file.Close()
 
-	imageData, err := io.ReadAll(file)
+	imageBytes, err := io.ReadAll(file)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to read image file")
 	}
 
+	// Get image resolution
+	imageConfig, _, err := image.DecodeConfig(bytes.NewReader(imageBytes))
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to decode image")
+	}
+
 	// upload our new profile picture
-	imageBlob, err := blueskyapi.UploadBlob(*pds, *oauthToken, imageData, c.Get("Content-Type"))
+	imageBlob, err := blueskyapi.UploadBlob(*pds, *oauthToken, imageBytes, c.Get("Content-Type"))
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to upload image")
@@ -117,7 +128,16 @@ func status_update_with_media(c *fiber.Ctx) error {
 		}
 	}
 
-	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken, *my_did, status, in_reply_to_status_id, mentions, links, tags, imageBlob)
+	thread, err := blueskyapi.UpdateStatus(*pds, *oauthToken,
+		*my_did,
+		status,
+		in_reply_to_status_id,
+		mentions,
+		links,
+		tags,
+		imageBlob,
+		[]int{imageConfig.Height, imageConfig.Width},
+	)
 
 	if err != nil {
 		fmt.Println("Error:", err)

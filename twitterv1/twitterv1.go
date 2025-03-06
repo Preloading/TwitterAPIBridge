@@ -55,6 +55,7 @@ func InitServer(config *config.Config) {
 	// Auth
 	app.Post("/oauth/access_token", access_token)
 	app.Get("/1/account/verify_credentials.:filetype", VerifyCredentials)
+	app.Get("/account/verify_credentials.:filetype", VerifyCredentials)
 
 	// Tweeting
 	app.Post("/1/statuses/update.:filetype", status_update)
@@ -83,9 +84,10 @@ func InitServer(config *config.Config) {
 	app.Post("/1/friendships/create.:filetype", FollowUser)
 	app.Post("/1/friendships/destroy.:filetype", UnfollowUserForm)
 	app.Post("/1/friendships/destroy/:id.:filetype", UnfollowUserParams)
-
-	app.Get("/1/statuses/followers.:filetype", GetFollowers)
-	app.Get("/1/statuses/friends.:filetype", GetFollows)
+	app.Get("/1/followers.:filetype", GetFollowers)
+	app.Get("/1/friends.:filetype", GetFollows)
+	app.Get("/1/statuses/followers.:filetype", GetStatusesFollowers)
+	app.Get("/1/statuses/friends.:filetype", GetStatusesFollows)
 
 	app.Get("/1/users/recommendations.:filetype", GetSuggestedUsers)
 	app.Get("/1/users/profile_image", UserProfileImage)
@@ -111,8 +113,10 @@ func InitServer(config *config.Config) {
 
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)
+	app.Get("/cdn/img/bsky/:did/:link", CDNDownscaler)
 	app.Get("/cdn/img/bsky/:did/:link.:filetype", CDNDownscaler)
 	app.Get("/cdn/vid/bsky/:did/:link", CDNVideoProxy)
+	app.Get("/cdn/img/bsky/:did/:link/:size", CDNDownscaler)
 
 	// Shortcut
 	app.Get("/img/:ref", RedirectToLink)

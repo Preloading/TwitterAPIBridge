@@ -1,5 +1,5 @@
 # Compatiblity
-At present moment, we have only recreated the v1 api, which spans from 2006-2012.
+At present moment, we have only recreated the v1 api, which spans from 2006-2012. Out of this span, only 2010 to 2012 works due to basic authentication
 
 Twitter API v2 is unlikely to be fixed in the future.
 
@@ -20,17 +20,17 @@ Twitter API v2 is unlikely to be fixed in the future.
 
 ⭐⚠️: 3.3.6, Uses a **lot** of XML, Posts with images are broken (have (null) at the start), many other faults and missing endpoints
 
-⭐✅: 4.1.3, Near perfect. Tweeting media requires a patch, Retweets made by you fail to appear properly on timeline, pagination broken on some user elements. Notification settings crashes the app.
+⭐✅: 4.1.3, Near perfect. Tweeting with media attached requires the BlueTweety tweak, Retweets made by you fail to appear properly on timeline, pagination broken on some minor elements. Notification settings crashes the app.
 
-⚠️: 5.0.0-5.0.3, Followers & following timelines do not work
+⭐✅: 5.0.0-5.0.3, same as 4.1.3. 5.0.2+ has the aspect ratio change implemented for the iPhone 5.
 
 ❌: 5.0.4+ Uses Twitter API v1.1
 
 ### Twitter iOS Integration
 
-❓: iOS 5, needs patch, untested
+✅: iOS 5-6, Works through Bluetweety
 
-✅: iOS 6, tested thru proxy, needs patch
+❌: iOS 7+, Uses Twitter API v1.1
 
 ### Tweetie2
 

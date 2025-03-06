@@ -26,8 +26,8 @@ func getUserMutex(userID string) *sync.Mutex {
 
 func PushDestinations(c *fiber.Ctx) error {
 	// TODO: figure out what the hell this is supposed to do to make notifications not crash.
-	old_udid := c.Query("old_udid")
-	udid := c.Query("udid")
+	// old_udid := c.Query("old_udid")
+	// udid := c.Query("udid")
 	// environment := c.Query("environment")
 
 	// 	app_version=4.1.3&
@@ -43,28 +43,25 @@ func PushDestinations(c *fiber.Ctx) error {
 	// token=
 	// udid=291C3725-6221-4B96-A897-3436AE9D48DF
 
-	return c.SendString(fmt.Sprintf(`
-	<?xml version="1.0" encoding="UTF-8"?>
-<PushDestination>
-  <Device>
-    <UDID>some-unique-id</UDID>
-    <OldUDID>some-old-unique-id</OldUDID>
-  </Device>
-  <Environment>production</Environment>
-  <Status>Registered</Status>
-  <Channels>
-    <Channel>
-      <Name>General</Name>
-      <Enabled>true</Enabled>
-    </Channel>
-    <Channel>
-      <Name>Promotions</Name>
-      <Enabled>false</Enabled>
-    </Channel>
-  </Channels>
-</PushDestination>
-
-	`, udid, old_udid))
+	//	return c.SendString(fmt.Sprintf(`
+	//
+	// <?xml version="1.0" encoding="UTF-8"?>
+	// <TwitterApplePushDestination>
+	//
+	//	<enabled-for>1</enabled-for>
+	//	<available-levels>3</available-levels>
+	//	<token>base64-encoded-device-token</token>
+	//	<udid>device-udid</udid>
+	//	<environment>production</environment>
+	//	<device-name>iPhone</device-name>
+	//	<device-model>iPhone12,1</device-model>
+	//	<system-name>iOS</system-name>
+	//	<system-version>15.0</system-version>
+	//	<language>en</language>
+	//	<app-version>1.0.0</app-version>
+	//
+	// </TwitterApplePushDestination>`))
+	return c.SendStatus(fiber.StatusNotImplemented) // This just crashes atm, so lets just disable it for now till we can figure this out.
 }
 
 // TODO
