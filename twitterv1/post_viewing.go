@@ -45,6 +45,26 @@ func user_timeline(c *fiber.Ctx) error {
 	return convert_timeline(c, actor, blueskyapi.GetUserTimeline)
 }
 
+func media_timeline(c *fiber.Ctx) error {
+	actor := c.Query("screen_name")
+	if actor == "" {
+		actor = c.Query("user_id")
+		if actor == "" {
+			return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+		}
+		actorInt, err := strconv.ParseInt(actor, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		actorPtr, err := bridge.TwitterIDToBlueSky(&actorInt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		actor = *actorPtr
+	}
+	return convert_timeline(c, actor, blueskyapi.GetMediaTimeline)
+}
+
 func likes_timeline(c *fiber.Ctx) error {
 	// We shall pretend that the only thing it can be is a user id. TODO: maybe rectify this later
 	actor := c.Params("id")

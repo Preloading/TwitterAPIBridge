@@ -717,6 +717,39 @@ func GetUserTimeline(pds string, token string, context string, actor string, lim
 	return nil, &feeds
 }
 
+func GetMediaTimeline(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
+	apiURL := pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&limit=" + fmt.Sprintf("%d", limit) + "&filter=posts_with_media"
+	if context != "" {
+		apiURL = pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit) + "&filter=posts_with_media"
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch timeline"), nil
+	}
+
+	feeds := Timeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return err, nil
+	}
+
+	return nil, &feeds
+}
+
 func GetPost(pds string, token string, uri string, depth int, parentHeight int) (error, *ThreadRoot) {
 	// Example URL at://did:plc:dqibjxtqfn6hydazpetzr2w4/app.bsky.feed.post/3lchbospvbc2j
 
