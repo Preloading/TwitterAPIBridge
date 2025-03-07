@@ -12,6 +12,8 @@ import (
 )
 
 type Config struct {
+    // Version of the server
+    Version string `mapstructure:"VERSION"`
 	// Accessible server address
 	CdnURL string `mapstructure:"CDN_URL"`
 	// The port to run the server on
@@ -43,21 +45,20 @@ func LoadConfig() (*Config, error) {
     
     // Read environment variables with a specific prefix
     viper.SetEnvPrefix("TWITTER_BRIDGE")
-    viper.AutomaticEnv()
 
     // Set default values
+    viper.SetDefault("VERSION", "1.0.4-beta") // wait till i forget to update this
     viper.SetDefault("SERVER_PORT", "3000")
     viper.SetDefault("DEVELOPER_MODE", false)
     viper.SetDefault("DATABASE_TYPE", "sqlite")
     viper.SetDefault("DATABASE_PATH", "./db/twitterbridge.db")
     viper.SetDefault("TRACK_ANALYTICS", true)
-    viper.SetDefault("CDN_URL", "http://localhost:3000")
+    viper.SetDefault("CDN_URL", "http://127.0.0.1:3000")
     viper.SetDefault("USE_X_FORWARDED_FOR", false)
-    //viper.SetDefault("IMG_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
-    // Since IMG_DISPLAY_TEXT isn't fully implemented, we'll have it disabled
-    viper.SetDefault("IMG_DISPLAY_TEXT", "")
+    viper.SetDefault("IMG_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
     viper.SetDefault("VID_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
-
+    viper.SetDefault("IMG_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
+    viper.SetDefault("VID_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
     // Read config file
     if err := viper.ReadInConfig(); err != nil {
         fmt.Println("No config file found, relying on environment variables")

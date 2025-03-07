@@ -10,6 +10,7 @@ import (
 	"github.com/Preloading/TwitterAPIBridge/config"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/template/html/v2"
 )
 
 var (
@@ -19,6 +20,7 @@ var (
 func InitServer(config *config.Config) {
 	configData = config
 	blueskyapi.InitConfig(configData)
+	engine := html.New("./static", ".html")
 	app := fiber.New(fiber.Config{
 		//DisablePreParseMultipartForm: true,
 		ProxyHeader: func() string {
@@ -27,6 +29,7 @@ func InitServer(config *config.Config) {
 			}
 			return ""
 		}(),
+		Views: engine,
 	})
 
 	// Initialize default config
@@ -47,10 +50,21 @@ func InitServer(config *config.Config) {
 	// app.Get("/", func(c *fiber.Ctx) error {
 	// 	return c.SendString("Hello, World!")
 	// Serve static files from the "static" folder
-	app.Static("/", "./static")
 	app.Static("/favicon.ico", "./static/favicon.ico")
 	app.Static("/robots.txt", "./static/robots.txt")
 	app.Static("/static", "./static")
+
+	// Serve /
+	app.Get("/", func(c *fiber.Ctx) error {
+		// Render index within layouts/nested/main within layouts/nested/base
+		return c.Render("index", fiber.Map{
+			"DeveloperMode": config.DeveloperMode,
+			"NotConfigured": configData.CdnURL == "http://127.0.0.1:3000",
+			"PrefixedURL":   "https://" + c.Hostname(),
+			"UnPrefixedURL": c.Hostname(),
+			"Version":       config.Version,
+		}, "index")
+	})
 
 	// Auth
 	app.Post("/oauth/access_token", access_token)

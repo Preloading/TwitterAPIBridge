@@ -11,16 +11,14 @@
             padding: 0;
             background-color: #f4f4f4;
         }
-        h1 {
-            text-align: center;
-        }
-        h2 {
-            text-align: center;
-        }
-        p {
+        .text-center {
             text-align: center;
         }
         .bar {
+            background: -webkit-linear-gradient(#1da1f2, #1d56f2);
+            background: -moz-linear-gradient(#1da1f2, #1d56f2);
+            background: -o-linear-gradient(#1da1f2, #1d56f2);
+            background: -ms-linear-gradient(#1da1f2, #1d56f2);
             background: linear-gradient(#1da1f2, #1d56f2);;
             box-shadow: 0 1px 3px rgba(0,0,0,0.25),0 -1px 0 rgba(0,0,0,0.1) inset;
             height: 5px;
@@ -39,27 +37,132 @@
         .dev-warning img {
             vertical-align: middle;
         }
+        .subtext {
+            color: #ccc;
+            font-size: 0.8em;
+        }
+        .info {
+            margin: 1em;
+        }
+        .promoImage {
+            max-width: 1000px;
+            width: 100%;
+            
+            display: block;
+            text-align:center;
+            margin-left:auto;margin-right:auto;
+        }
+        code {
+            background-color: #242424;
+            border-color: #181818;
+            color:#f4f4f4;
+            padding: 0.2em;
+            border-radius: 0.2em;
+        }
     </style>
 </head>
 <body>
-    <h1>A Twitter API Translator</h1>
-    <h2>Specifically Bluesky -> Twitter API V1</h2>
+    <h1 class="text-center">A Twitter API Translator</h1>
+    <h2 class="text-center">Specifically Bluesky -> Twitter API V1</h2>
+    <p class="subtext text-center">Running version {{.Version}}</p>
     <div class="bar"></div>
     <br>
+    {{if .NotConfigured}}
+    <div class="dev-warning">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAACGFjVEwAAAACAAAAAPONk3AAAAAMUExURf//AP+uAP///wAAAB/mRh0AAAABdFJOUwBA5thmAAAAGmZjVEwAAAAAAAAAGAAAABgAAAAAAAAAAABkAGQAALb1ADAAAABmSURBVCjPfdJBEsAgCANAjP//cyugKAZzzE5qx1YkAggNWkPRU9GeSQWjB4hUYD0RbXq/wAY/ZKnATxhwSgV2GQFL5rsqbJM58MQER79N1sAetSYxcPBJOiEm/h1yHsAF9tfcEfkAAuECObCQ8esAAAAaZmNUTAAAAAEAAAACAAAACwAAAAsAAAAIAGQAZAAABgD2jwAAABFmZEFUAAAAAijPY2BiYsCLAAL3AC2FC0/sAAAAGHRFWHRTb2Z0d2FyZQBnaWYyYXBuZy5zZi5uZXSW/xPIAAAAAElFTkSuQmCC">
+        <b>This instance of A Twitter Bridge has not been configured properly! In present moment, images will not load. If you are the instance hoster, <a href="https://github.com/Preloading/TwitterAPIBridge?tab=readme-ov-file#3-configure-configyaml-edit-the-file-youll-see-decription-of-what-each-thing-does">jump back to step 3</a>. More specifically, configure CDN_URL from the default in config.yaml.</b>
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAACGFjVEwAAAACAAAAAPONk3AAAAAMUExURf//AP+uAP///wAAAB/mRh0AAAABdFJOUwBA5thmAAAAGmZjVEwAAAAAAAAAGAAAABgAAAAAAAAAAABkAGQAALb1ADAAAABmSURBVCjPfdJBEsAgCANAjP//cyugKAZzzE5qx1YkAggNWkPRU9GeSQWjB4hUYD0RbXq/wAY/ZKnATxhwSgV2GQFL5rsqbJM58MQER79N1sAetSYxcPBJOiEm/h1yHsAF9tfcEfkAAuECObCQ8esAAAAaZmNUTAAAAAEAAAACAAAACwAAAAsAAAAIAGQAZAAABgD2jwAAABFmZEFUAAAAAijPY2BiYsCLAAL3AC2FC0/sAAAAGHRFWHRTb2Z0d2FyZQBnaWYyYXBuZy5zZi5uZXSW/xPIAAAAAElFTkSuQmCC">
+    </div>
+    <br>
+    <div class="bar"></div>
+    <br>
+    {{end}}
+    {{if .DeveloperMode}}
     <!-- Developer Mode Warning -->
-    <!-- <div class="dev-warning">
+    <div class="dev-warning">
         <img src="data:image/png;base64,R0lGODlhGAAYAPMAAP////vzBf9kA90JB/IIhEcApQAA0wKr6h+3FABkElYsBZBxOr+/v4CAgEBAQAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1HaWZCdWlsZGVyIDAuMiBieSBZdmVzIFBpZ3VldAAh+QQNZAAMACwAAAAAGAAYAEMEZ5DJSRkANWcwOngP52lWN1xoipoYWZqjK4nnBa7xDO9832q0k2zDov1cxk/ISEralhcWxYm6qaSvnhaLzA2nvOMwyZVRy8CiFQ32PHFCYlEJj0+CqmsZprLWMXh5gnxBW1stgokqEhEAIfkEDWQADAAsAAAAABgAGABDBGCQyUkZADVnMPq93YBpnPedZzhqVqiyVCmioBe7eK6vm8vDE1lNBJQIUS+SivZJGpdMpK2lq/qKpV/xidPCjk7gcei9mVJT5VlK7EHZ7aAvKosz5vQ6Rp9vLq2ASX10EhEAOw==">
         <b>
         This server has developer mode enabled. This means the owner of this instance can view plaintext credentials and tokens. Use with caution!
         </b>
         <img src="data:image/png;base64,R0lGODlhGAAYAPMAAP////vzBf9kA90JB/IIhEcApQAA0wKr6h+3FABkElYsBZBxOr+/v4CAgEBAQAAAACH/C05FVFNDQVBFMi4wAwEAAAAh/h1HaWZCdWlsZGVyIDAuMiBieSBZdmVzIFBpZ3VldAAh+QQNZAAMACwAAAAAGAAYAEMEZ5DJSRkANWcwOngP52lWN1xoipoYWZqjK4nnBa7xDO9832q0k2zDov1cxk/ISEralhcWxYm6qaSvnhaLzA2nvOMwyZVRy8CiFQ32PHFCYlEJj0+CqmsZprLWMXh5gnxBW1stgokqEhEAIfkEDWQADAAsAAAAABgAGABDBGCQyUkZADVnMPq93YBpnPedZzhqVqiyVCmioBe7eK6vm8vDE1lNBJQIUS+SivZJGpdMpK2lq/qKpV/xidPCjk7gcei9mVJT5VlK7EHZ7aAvKosz5vQ6Rp9vLq2ASX10EhEAOw==">
-    </div> -->
-    <h3>What is this?</h3>
-    <p>This is a server that allows you to access Bluesky using the Twitter API format. This allows old twitter clients to be useful again, and gives a way to browse Bluesky using a native app, without needing to write a custom one.</p>
-    <h3>What versions of twitter is this compatible with?</h3>
-    <p>A list of tested & compatible twitter clients can be found on my github, <a href="https://github.com/Preloading/TwitterAPIBridge/blob/main/COMPATIBILITY.md">or by clicking here</a></p> <!-- sorry SEO-->
+    </div>
+    <br>
+    <div class="bar"></div>
+    
+    {{end}}
+    <img class="promoImage" src="/static/bluetweety.png" alt="An iPhone 3G, iPhone 4S, and Nexus 4 showing the Twitter home timeline" class="text-center">
+    <div class="info">
+        <h2>What is this?</h2>
+        <p>This is a server that allows you to access Bluesky using the Twitter API format. This allows old twitter clients to be useful again, and gives a way to browse Bluesky using a native app on old devices, without needing to write a custom one.</p>
+        <div class="bar"></div>
+        <div>
+            <h2>Usage Instructions</h2>
+            <div>
+                <h3>Official iOS app</h3>
+                <ol>
+                    <li>Install Twitter. <a href="https://loganserver.net/twitters/">You can find versions of twitter here.</a> Recommended versions are 4.1.3, and 5.0.3</li>
+                    <li>Create a Bluesky app password. <a href="https://bsky.app/settings/security">You can find this here.</a> Enabling DMs is currently optional, though will be used for future versions.<p style="font-size:0.8em;">or do this thru Bluesky > Settings > Privacy and security > App passwords</p></li>
+                    <li>Open the Twitter app on your device.</li>
+                    
+                    <li>Press the Login button (or signin depending on version)</li>
+                    <li>Press the cog/settings menu</li>
+                    <li>Put <code>{{.PrefixedURL}}</code> into the URL spots. <a href="https://github.com/Preloading/TwitterAPIBridge?tab=readme-ov-file#public-instances">Other public instances can be found on the twitter bridge github.</a></li>
+                    <li>Go back to the login prompt.</li>
+                    <li>Enter your bluesky handle for the username, and your Bluesky app password as the password. <b>Usage of normal passwords is not recommended, and will be forbidden in the future</b></li>
+                    <li>Press the sign in button</li>
+                    <li>If everything worked, you should be in! Enjoy!</li>
+                </ol>
+                <h3>iOS Twitter Integration + image uploads in app</h3>
+                <p>Thanks to <a href="https://bag-xml.com">bag.xml</a> & <a href="https://cydia.skyglow.es">Requis</a>, a Cydia tweak now exists to redirect the iOS integration, and to enable for image uploads.</p>
+                <ol>
+                    <li>Have a jailbroken device. For intergation, it should be running iOS 5-7. The min iOS version for image uploads isn't known right now.</li>
+                    <li>Add either <code>http://cydia.bag-xml.com</code> or <code>http://cydia.skyglow.es</code> to Cydia's sources tab.</li>
+                    <li>Install the package <code>Bluetweety</code> from the repo.</li>
+                    <li>Go to Settings > Bluetweety. (if it does not show up, check that it actually installed)</li>
+                    <li>Input <code>{{.UnPrefixedURL}}</code> into the URL. <b>Do NOT include https:// at the start, and a / at the end!!!!</b></li>
+                    <li>Reboot your phone. Yes this is a required step.</li>
+                    <li>Go to Settings > Twitter.</li>
+                    <li>Type your bluesky handle (example: preloading.bsky.social) and your app password (can be the same from the app) in the respective areas.</li>
+                    <li>Click Login</li>
+                    <li>Scroll down, and disable the ability for the Twitter app to view Twitter accounts.</li>
+                    <li>Hopefully success!</li>
+                </ol>
 
-    <p>If you find this useful, please add a <a href=https://github.com/Preloading/TwitterAPIBridge><img src="./static/star.png" alt="star" height="15"></a>!</p>
+            </div>
+
+        </div>
+        <div class="bar"></div>
+        <h1>FAQ.</h1>
+        <h2>What is this compatible with?</h2>
+        <p>A list of tested & compatible twitter clients can be found on my github, <a href="https://github.com/Preloading/TwitterAPIBridge/blob/main/COMPATIBILITY.md">or by clicking here</a>. If it's not there <a href="https://tryitands.ee">try it and see!</a> (and maybe make a PR of the outcome). In general, this bridge supports around 2010-2012.</p> <!-- sorry SEO-->
+        <h2>Bluesky is cool and all, but I want it to be actually <abbr title="X/Twitter">Xitter</abbr>!</h2>
+        <p>There are various reasons why having this be with twitter data is infeasible, and would not work. This includes:</p>
+        <ol>
+            <li><a href="https://docs.x.com/x-api/getting-started/about-x-api">Running it (and making it) would cost $5000/month</a>, or potentially even more!</li>
+            <li>Twitter has become a hellscape.</li>
+            <li>Sign in would likely be extremely hard/impossible.</li>
+            <li>Twitter has been extremely hostile to <a href="https://x.com/fenix_app/status/1616577597042728961">third</a> <a href="https://tapbots.com/tweetbot/">party</a> <a href="https://twitterrific.com/beyond">clients</a></li>
+        </ol>
+        <h2>I found the mobile app API keys! Can't you use those!??!?!?</h2>
+        <p>No.</p>
+        <ol>
+            <li>We would be violating the TOS of Xitter using these keys, we would get IP banned, and potentially the users of the service banned.</li>
+            <li>It would have to be self-host only. Any pre-hosted version would get IP banned extremely quickly</li>
+            <li>These keys have restricted access, and only allow internal API points, which have little to no documentation.</li>
+        </ol>
+        <h2>Can you do {INSERT OTHER SOCIAL MEDIA APP}</h2>
+        <p>Probably not. I have some plans to potentially do mastodon in the far future, but anything other than that, no.</p>
+        <h2>Support?</h2>
+        <p>I give support on the <a href="https://discord.gg/bag-xml">bag.xml discord server</a>, in the #bluetweety channel. You can also @ me on Bluesky, <a href="https://bsky.app/profile/preloading.bsky.social">@preloading.bsky.social</a>, if using my hosted version.</p>
+        <h2>Is this open source/Can I host a version?</h2>
+        <p>Yes! <a href="https://github.com/Preloading/TwitterAPIBridge">You can find the source code here.</a></p>
+        <h2>Is Twitter API v1.1 planned?</h2>
+        <p>It is planned, but I'd like to finish v1.0 first.</p>
+    </div>
+    <div class="bar"></div>
+    <p class="text-center">Made with ❤️, by Preloading</p>
+    <p class="text-center">If you find this useful, please add a <a href=https://github.com/Preloading/TwitterAPIBridge><img src="./static/star.png" alt="star" height="15"></a>!</p>
+    <p class="text-center subtext">This is not affiliated with Twitter (now X) nor Bluesky.</p>
 <!-- 
     <img src="./static/old_twitter.png" alt="Twitter">
     <img src="./static/bluesky.png" alt="Bluesky" height="75"> -->
