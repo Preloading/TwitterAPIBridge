@@ -60,6 +60,37 @@ TRACK_ANALYTICS: true
 # Enable this if behind a reverse proxy
 USE_X_FORWARDED_FOR: false
 
+
+####################################
+#           Auth Info              #
+####################################
+
+# JWT Token Secret
+# This is used to sign the JWT tokens used for user sessions.
+# It should be a random string.
+# DO NOT SHARE WHATEVER YOU PUT HERE
+# It must be at least 32 characters long, but longer = better security
+SECRET_KEY: ''
+
+# This controls whether to accept the older token format.
+# If this a new server, keep it at default.
+# If you want to keep old users signed in, set it to 1.
+MIN_TOKEN_VERSION: 2
+
+# Server Identifer
+# This is used to identify which server granted which token to the client
+# It really can be anything, but it should be unique to your server.
+# Example:
+# SERVER_IDENTIFIER: 'examplebridge'
+SERVER_IDENTIFIER: ''
+
+# Server URLs
+# These are the URLs that the server can be accessed from.
+# These are put into the JWT token for lookup.
+SERVER_URLS:
+  - 'http://example.com'
+  - 'https://example.com'
+
 # DEVELOPER_MODE
 # This is used to enable some extra logging useful during development.
 # DO NOT ENABLE THIS IN A PUBLIC INSTANCE!!!

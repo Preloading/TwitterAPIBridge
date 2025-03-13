@@ -59,6 +59,7 @@ type Token struct {
 	AccessExpiry          float64 `gorm:"type:float;not null"`
 	RefreshExpiry         float64 `gorm:"type:float;not null"`
 	BasicAuthSalt         string  `gorm:"type:string"`
+	TokenVersion          int     `gorm:"type:int;default:1"`
 }
 
 type TwitterIDs struct {
@@ -157,7 +158,7 @@ func StoreToken(did string, pds string, accessToken string, refreshToken string,
 	}
 
 	// Update or create token
-	finalUUID, err := UpdateToken(uuid.String(), did, pds, accessToken, refreshToken, encryptionKey, accessExpiry, refreshExpiry)
+	finalUUID, err := UpdateToken(uuid.String(), did, pds, accessToken, refreshToken, encryptionKey, accessExpiry, refreshExpiry, 2)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +166,7 @@ func StoreToken(did string, pds string, accessToken string, refreshToken string,
 	return finalUUID, nil
 }
 
-func UpdateToken(uuid string, did string, pds string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64) (*string, error) {
+func UpdateToken(uuid string, did string, pds string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64, tokenVersion int) (*string, error) {
 	encryptedAccess, err := authcrypt.Encrypt(accessToken, encryptionKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt access token: %v", err)
@@ -184,6 +185,7 @@ func UpdateToken(uuid string, did string, pds string, accessToken string, refres
 		EncryptedRefreshToken: encryptedRefresh,
 		AccessExpiry:          accessExpiry,
 		RefreshExpiry:         refreshExpiry,
+		TokenVersion:          tokenVersion,
 	}
 
 	result := db.Clauses(clause.OnConflict{
@@ -253,9 +255,9 @@ func UpdateTokenBasic(did string, pds string, accessToken string, refreshToken s
 // GetToken retrieves account data from the database
 // @results: accessToken, refreshToken, accessExpiry, refreshExpiry, pds, error
 
-func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *string, *float64, *float64, *string, error) {
+func GetToken(did string, tokenUUID string, encryptionKey string, tokenVersion int) (*string, *string, *float64, *float64, *string, error) {
 	var token Token
-	if err := db.Where("user_did = ? AND token_uuid = ?", did, tokenUUID).First(&token).Error; err != nil {
+	if err := db.Where("user_did = ? AND token_uuid = ? AND token_version = ?", did, tokenUUID, tokenVersion).First(&token).Error; err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
 

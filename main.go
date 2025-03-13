@@ -20,6 +20,14 @@ func main() {
 		return
 	}
 
+	if configData.SecretKey == "" {
+		fmt.Println("The JWT Secret key must be set in config.yaml.")
+		return
+	} else if len(configData.SecretKey) < 32 {
+		fmt.Println("The JWT Secret key must be 32 bytes long")
+		return
+	}
+
 	db_controller.InitDB(*configData)
 	twitterv1.InitServer(configData)
 }
