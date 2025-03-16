@@ -37,10 +37,12 @@ type Config struct {
 
     // Secret key used for JWT. Must be at least 32 bytes long. Keep this secret!
     SecretKey string `mapstructure:"SECRET_KEY"` 
+    // The security key but in bytes.
+    SecretKeyBytes []byte
     // Min Version token version the server will accept
     MinTokenVersion int `mapstructure:"MIN_TOKEN_VERSION"`
     // Server Identifier, used for knowing what server a token belongs to.
-    ServerIdentifier string `mapstructure:"SERVER_REFERENCE"`
+    ServerIdentifier string `mapstructure:"SERVER_IDENTIFIER"`
     // Server URLs used for contacting the server
     ServerURLs []string `mapstructure:"SERVER_URLS"`
 }
@@ -81,6 +83,8 @@ func LoadConfig() (*Config, error) {
     if err := viper.Unmarshal(&config); err != nil {
         return nil, err
     }
+
+    config.SecretKeyBytes = []byte(config.SecretKey)
 
     return &config, nil
 }

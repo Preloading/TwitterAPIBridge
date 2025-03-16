@@ -13,7 +13,7 @@ import (
 	"github.com/Preloading/TwitterAPIBridge/cryption"
 	"github.com/Preloading/TwitterAPIBridge/db_controller"
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -70,9 +70,16 @@ func access_token(c *fiber.Ctx) error {
 			TokenUUID:        *uuid,
 			ServerIdentifier: configData.ServerIdentifier,
 			ServerURLs:       configData.ServerURLs,
+			RegisteredClaims: &jwt.RegisteredClaims{
+				// No ExpiresAt field means the token never expires
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				NotBefore: jwt.NewNumericDate(time.Now()),
+				Issuer:    configData.ServerIdentifier,
+				ExpiresAt: jwt.NewNumericDate(time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)), // it dies without this. i guess it's also nice to have ig
+			},
 		})
 
-		oauth_token, err := token.SignedString(configData.SecretKey)
+		oauth_token, err := token.SignedString(configData.SecretKeyBytes)
 		if err != nil {
 			return c.SendStatus(500)
 		}
@@ -89,7 +96,7 @@ func access_token(c *fiber.Ctx) error {
 
 		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=%s&x_auth_expires=0", oauth_token, oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(res.DID)), url.QueryEscape(authUsername))) // TODO: make this the actual screenname
 	} else if authMode == "exchange_auth" {
-		return c.Status(fiber.StatusUnauthorized).SendString("i have no idea what this should respond with, but it works if i don't have it implemented, so thats what im doing.")
+		return c.Status(fiber.StatusUnauthorized).SendString("i have no idea what this should respond with, but it works if i don't have it implemented, so thats what im doing. If you do know what this does, lmk! <3")
 		// this is a hack
 		// auth_header := "oauth_token=\"" + c.FormValue("x_auth_access_secret") + "\""
 		// c.Request().Header.Set("Authorization", auth_header)
@@ -184,7 +191,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 					return nil, &fallbackRoute, nil, nil, errors.New("failed to get refresh token expiry")
 				}
 
-				basicUUID, err = db_controller.StoreTokenBasic(res.DID, *pds, res.AccessJwt, res.RefreshJwt, username, authPassword, *access_token_expiry, *refresh_token_expiry)
+				_, err = db_controller.StoreTokenBasic(res.DID, *pds, res.AccessJwt, res.RefreshJwt, username, authPassword, *access_token_expiry, *refresh_token_expiry)
 
 				if err != nil {
 					return nil, &fallbackRoute, nil, nil, err
@@ -218,7 +225,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 
 		} else {
 			token, err := jwt.ParseWithClaims(oauthToken, tokenData, func(token *jwt.Token) (interface{}, error) {
-				return configData.SecretKey, nil
+				return configData.SecretKeyBytes, nil
 			})
 
 			if err != nil {
@@ -237,10 +244,14 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 			}
 		}
 
-		// move all the token data into respective vars
+		// move all the token data into respective vars (aka technical debt)
 		userDID = tokenData.DID
 		tokenUUID = tokenData.TokenUUID
 		encryptionKey = tokenData.CryptoKey
+
+		// Fix the encryption key
+		encryptionKey = strings.ReplaceAll(encryptionKey, "-", "+") + "="
+		encryptionKey = strings.ReplaceAll(encryptionKey, "_", "/")
 
 		// Now onto getting the access token from the database.
 		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, err = db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey, tokenType)
@@ -339,7 +350,7 @@ func CheckTokenType(token string) int {
 		// Check if possibleUUID is a UUID v4
 		_, err = uuid.Parse(possibleUUID)
 		if err == nil {
-			return 2
+			return 1
 		}
 	}
 	return 2
@@ -375,16 +386,11 @@ func ConvertV1TokenToV2(token string) (*bridge.AuthToken, error) {
 		return nil, errors.New("invalid token")
 	}
 
-	// Get the encryption key for the data.
-	encryptionKey := parts[2] + "="
-	encryptionKey = strings.ReplaceAll(encryptionKey, "-", "+")
-	encryptionKey = strings.ReplaceAll(encryptionKey, "_", "/")
-
 	return &bridge.AuthToken{
 		Version:          1,
 		Platform:         "bluesky",
 		DID:              userDID,
-		CryptoKey:        encryptionKey,
+		CryptoKey:        parts[2],
 		TokenUUID:        tokenUUID,
 		ServerIdentifier: configData.ServerIdentifier,
 		ServerURLs:       configData.ServerURLs,

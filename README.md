@@ -76,9 +76,18 @@ services:
 |``TWITTER_BRIDGE_DATABASE_TYPE``| They type of database to connect to. Options include sqlite, mysql, and postgres. |``"sqlite"``|
 |``TWITTER_BRIDGE_DATABASE_PATH``| Changes where it looks for the database (Path/DSN) (see https://gorm.io/docs/connecting_to_the_database.html) |``"/config/database/sqlite.db"``|
 |``TWITTER_BRIDGE_CDN_URL``| The CDN_URL is the URL where clients can access images from this server. Do not include a trailing slash. | ``"http://127.0.0.1:3000"`` |
+|``TWITTER_BRIDGE_IMG_DISPLAY_TEXT``| The display URL shown in tweets for images. See config.sample.yaml for more info. | ``"pic.twitter.com/{shortblob}"`` |
+|``TWITTER_BRIDGE_VID_DISPLAY_TEXT``| The display URL shown in tweets for videos. See config.sample.yaml for more info. | ``"pic.twitter.com/{shortblob}"`` |
+|``TWITTER_BRIDGE_IMG_URL_TEXT``| The URL where the client will go when clicking an image link. See config.sample.yaml for more info. | ``"http://127.0.0.1:3000/img/{shortblob}"`` |
+|``TWITTER_BRIDGE_VID_URL_TEXT``| The URL where the client will go when clicking an video link. See config.sample.yaml for more info. | ``"http://127.0.0.1:3000/img/{shortblob}"`` |
 |``TWITTER_BRIDGE_SERVER_PORT``| The port where the server is running |``3000``|
 |``TWITTER_BRIDGE_TRACK_ANALYTICS``| Enables tracking of analytics (at the moment the only way to view this is by looking at the database) |``true``|
+|``TWITTER_BRIDGE_USE_X_FORWARDED_FOR``| Uses X_Forwarded_For when used thru a proxy. |``false``|
 |``TWITTER_BRIDGE_DEVELOPER_MODE``| Enables extra loggging of data useful for debugging. WARNING!: DO NOT ENABLE ON A PUBLIC INSTANCE!!!! |``false``|
+|``TWITTER_BRIDGE_MIN_TOKEN_VERSION``| Sets the minimum token version. If this is a new server, it should be set to 2. If you want to keep older users signed in, set it to 1 |``1``|
+|``TWITTER_BRIDGE_SECRET_KEY``| The JWT secret key. KEEP THIS SECRET!!!! This follows everything that a normal JWT must be. |None|
+|``TWITTER_BRIDGE_SERVER_IDENTIFIER``| A way for other services to know which server issued a token. Try to keep this unique across servers. |None|
+|``TWITTER_BRIDGE_SERVER_URLS``| URLs your server can be accessesed, stored in the token. |None|
 
 ### 🖥 Bare metal (recommended)
 This assumes you are somewhat competent
