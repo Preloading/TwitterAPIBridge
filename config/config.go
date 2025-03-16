@@ -34,6 +34,17 @@ type Config struct {
     ImgURLText string `mapstructure:"IMG_URL_TEXT"`
     VidDisplayText string `mapstructure:"VID_DISPLAY_TEXT"`
     VidURLText string `mapstructure:"VID_URL_TEXT"`
+
+    // Secret key used for JWT. Must be at least 32 bytes long. Keep this secret!
+    SecretKey string `mapstructure:"SECRET_KEY"` 
+    // The security key but in bytes.
+    SecretKeyBytes []byte
+    // Min Version token version the server will accept
+    MinTokenVersion int `mapstructure:"MIN_TOKEN_VERSION"`
+    // Server Identifier, used for knowing what server a token belongs to.
+    ServerIdentifier string `mapstructure:"SERVER_IDENTIFIER"`
+    // Server URLs used for contacting the server
+    ServerURLs []string `mapstructure:"SERVER_URLS"`
 }
 
 // Loads our config files.
@@ -59,6 +70,9 @@ func LoadConfig() (*Config, error) {
     viper.SetDefault("VID_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
     viper.SetDefault("IMG_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
     viper.SetDefault("VID_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
+    viper.SetDefault("SECRET_KEY", "")
+    viper.SetDefault("MIN_TOKEN_VERSION", 1)
+    
     // Read config file
     if err := viper.ReadInConfig(); err != nil {
         fmt.Println("No config file found, relying on environment variables")
@@ -69,6 +83,8 @@ func LoadConfig() (*Config, error) {
     if err := viper.Unmarshal(&config); err != nil {
         return nil, err
     }
+
+    config.SecretKeyBytes = []byte(config.SecretKey)
 
     return &config, nil
 }

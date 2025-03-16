@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Preloading/TwitterAPIBridge/db_controller"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type RelatedResultsQuery struct {
@@ -351,6 +352,17 @@ type FacetParsing struct {
 	Start int
 	End   int
 	Item  string
+}
+
+type AuthToken struct {
+	*jwt.RegisteredClaims
+	Version          int      `json:"version"`           // Version of the token
+	Platform         string   `json:"platform"`          // What platform (bsky, mastodon, etc) was this token made on.
+	CryptoKey        string   `json:"crypto_key"`        // An AES key used to make this mostly stateless.
+	DID              string   `json:"did"`               // Bluesky user did
+	TokenUUID        string   `json:"token_uuid"`        // The UUID of the token used to identify it.
+	ServerIdentifier string   `json:"server_identifier"` // A way to identify the server that issued this token. Useful for any service that wants to use A Twitter Bridge.
+	ServerURLs       []string `json:"server_urls"`       // URLs to access that server
 }
 
 func encodeToUint63(input string) *int64 {
