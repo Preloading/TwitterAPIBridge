@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
@@ -254,7 +255,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 		encryptionKey = strings.ReplaceAll(encryptionKey, "_", "/")
 
 		// Now onto getting the access token from the database.
-		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, err = db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey, tokenType)
+		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, err = db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey, 2) // Use token version 2 for OAuth
 
 		if err != nil {
 			return nil, &fallbackRoute, nil, nil, err
@@ -267,7 +268,22 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 
 	// Check if the access token has expired
 	if time.Unix(int64(*access_expiry), 0).Before(time.Now()) {
-		// Our access token has expired. We need to refresh it.
+		// Get a lock before attempting refresh
+		userLock := GetLock(tokenUUID)
+		userLock.Lock()
+		defer userLock.Unlock()
+
+		// Check if we were locked
+		if _, _, currentAccessExpiry, _, _, err := db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey, 2); err == nil && *currentAccessExpiry != *access_expiry {
+			// Token data has changed while we were waiting for the lock, let's recall this
+			return GetAuthFromReq(c)
+		}
+
+		if !time.Unix(int64(*access_expiry), 0).Before(time.Now()) {
+			// Token was refreshed by another request while we were waiting
+			userDIDStr := string(userDID)
+			return &userDIDStr, userPDS, &tokenUUID, accessJwt, nil
+		}
 
 		// Lets check if our refresh token has expired
 		if time.Unix(int64(*refresh_expiry), 0).Before(time.Now()) {
@@ -395,4 +411,49 @@ func ConvertV1TokenToV2(token string) (*bridge.AuthToken, error) {
 		ServerIdentifier: configData.ServerIdentifier,
 		ServerURLs:       configData.ServerURLs,
 	}, nil
+}
+
+// Some stuff to avoid refreshing race conditions
+
+type TokenLockManager struct {
+	locks sync.Map
+}
+
+type lockInfo struct {
+	mutex      *sync.Mutex
+	lastAccess time.Time
+}
+
+var (
+	manager         = &TokenLockManager{}
+	cleanupInterval = 5 * time.Minute
+)
+
+func init() {
+	go cleanup()
+}
+
+func cleanup() {
+	for {
+		time.Sleep(cleanupInterval)
+		now := time.Now()
+		manager.locks.Range(func(key, value interface{}) bool {
+			if lock, ok := value.(*lockInfo); ok {
+				if now.Sub(lock.lastAccess) > cleanupInterval {
+					manager.locks.Delete(key)
+				}
+			}
+			return true
+		})
+	}
+}
+
+func GetLock(userDID string) *sync.Mutex {
+	lock, _ := manager.locks.LoadOrStore(userDID, &lockInfo{
+		mutex:      &sync.Mutex{},
+		lastAccess: time.Now(),
+	})
+	lockData := lock.(*lockInfo)
+	lockData.lastAccess = time.Now()
+	return lockData.mutex
 }
