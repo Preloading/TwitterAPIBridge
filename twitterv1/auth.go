@@ -255,7 +255,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 		encryptionKey = strings.ReplaceAll(encryptionKey, "_", "/")
 
 		// Now onto getting the access token from the database.
-		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, err = db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey, 2) // Use token version 2 for OAuth
+		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, err = db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey, tokenType) // Use token version 2 for OAuth
 
 		if err != nil {
 			return nil, &fallbackRoute, nil, nil, err
