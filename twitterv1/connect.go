@@ -276,7 +276,7 @@ func processNotificationGroup(group notificationGroup, userCache *sync.Map, post
 		}
 	} else {
 		switch group.reason {
-		case "mention":
+		case "mention", "quote":
 			if post, ok := postCache.Load(group.notifications[0].URI); ok {
 				tweet := post.(*bridge.Tweet)
 				activity.Sources = []bridge.TwitterUser{}
@@ -297,6 +297,8 @@ func getActionType(reason string) string {
 	case "repost":
 		return "retweet"
 	case "mention":
+		return "mention"
+	case "quote":
 		return "mention"
 	case "reply":
 		return "reply"
