@@ -676,8 +676,16 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			return &idStr
 		}(),
 		// InReplyToScreenName: &tweet.Author.DisplayName,
-		User:   *author,
-		Source: "Bluesky",
+		User: *author,
+		Source: func() string {
+			// small lil easter egg, if the account is bridged thru bridgy fed, we change the source to mastodon.
+			// We can check this if the account ends with .ap.brid.gy
+			if strings.HasSuffix(tweet.Author.Handle, ".ap.brid.gy") {
+				return "Mastodon"
+			} else {
+				return "Bluesky"
+			}
+		}(),
 		InReplyToStatusID: func() *int64 {
 			if replyMsgBskyURI == "" || replyUserBskyId == "" {
 				return nil
