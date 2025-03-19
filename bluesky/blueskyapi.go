@@ -770,6 +770,40 @@ func GetMediaTimeline(pds string, token string, context string, actor string, li
 	return nil, &feeds
 }
 
+// https://docs.bsky.app/docs/api/app-bsky-graph-get-list
+func GetListTimeline(pds string, token string, context string, listURI string, limit int) (error, *Timeline) {
+	apiURL := pds + "/xrpc/app.bsky.feed.getListFeed?list=" + url.QueryEscape(listURI) + "&limit=" + fmt.Sprintf("%d", limit)
+	if context != "" {
+		apiURL = pds + "/xrpc/app.bsky.feed.getListFeed?list=" + url.QueryEscape(listURI) + "&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch timeline"), nil
+	}
+
+	feeds := Timeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return err, nil
+	}
+
+	return nil, &feeds
+}
+
 func GetPost(pds string, token string, uri string, depth int, parentHeight int) (error, *ThreadRoot) {
 	// Example URL at://did:plc:dqibjxtqfn6hydazpetzr2w4/app.bsky.feed.post/3lchbospvbc2j
 

@@ -2,12 +2,14 @@ package twitterv1
 
 import (
 	"strconv"
+	"strings"
 
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
 	"github.com/Preloading/TwitterAPIBridge/bridge"
 	"github.com/gofiber/fiber/v2"
 )
 
+// https://web.archive.org/web/20120807220901/https://dev.twitter.com/docs/api/1/get/lists
 func GetUsersLists(c *fiber.Ctx) error {
 	screen_name := c.Query("screen_name")
 
@@ -60,7 +62,7 @@ func GetUsersLists(c *fiber.Ctx) error {
 		id := bridge.BlueSkyToTwitterID(list.URI)
 
 		twitterLists = append(twitterLists, bridge.TwitterList{
-			Slug:            listRKEY,
+			Slug:            listDID + "/" + listRKEY,
 			Name:            list.Name,
 			URI:             listDID + "/" + listRKEY,
 			FullName:        list.Name,
@@ -88,4 +90,31 @@ func GetUsersLists(c *fiber.Ctx) error {
 		PreviousCursor:    -1,
 		PreviousCursorStr: "0", // Previous can equal the top element in the list, provided that this isn't the beginning of the list, or smth like that.
 	})
+}
+
+// https://web.archive.org/web/20120807221920/https://dev.twitter.com/docs/api/1/get/lists/statuses
+func list_timeline(c *fiber.Ctx) error {
+	list := c.Query("slug")
+	if list == "" {
+		list = c.Query("list_id")
+		if list == "" {
+			return c.Status(fiber.StatusBadRequest).SendString("No List Provided")
+		}
+		listIdInt, err := strconv.ParseInt(list, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+		}
+		listPtr, err := bridge.TwitterIDToBlueSky(&listIdInt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+		}
+		list = *listPtr
+	} else {
+		listParts := strings.Split(list, "/")
+		if len(listParts) != 2 {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid list slug provided")
+		}
+		list = "at://" + listParts[0] + "/app.bsky.graph.list/" + listParts[1]
+	}
+	return convert_timeline(c, list, blueskyapi.GetListTimeline)
 }

@@ -118,6 +118,7 @@ func InitServer(config *config.Config) {
 
 	// Lists
 	app.Get("/1/lists.:filetype", GetUsersLists)
+	app.Get("/1/lists/statuses.:filetype", list_timeline)
 
 	// Account / Settings
 	app.Post("/1/account/update_profile.:filetype", UpdateProfile)
