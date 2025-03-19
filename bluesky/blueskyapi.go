@@ -329,6 +329,26 @@ type Notifications struct {
 	SeenAt        time.Time      `json:"seenAt"`
 }
 
+type ListInfo struct {
+	URI     string `json:"uri"`
+	CID     string `json:"cid"`
+	Creator User   `json:"creator"`
+	Name    string `json:"name"`
+	// ignoring purpose
+
+	Description       string     `json:"description"`
+	DescriptionFacets []Facet    `json:"descriptionFacets"`
+	Avatar            string     `json:"avatar"`
+	ListItemCount     int        `json:"listItemCount"`
+	IndexedAt         time.Time  `json:"indexedAt"`
+	Viewer            PostViewer `json:"viewer"`
+}
+
+type Lists struct {
+	Lists  []ListInfo `json:"lists"`
+	Cursor string     `json:"cursor"`
+}
+
 var (
 	configData *config.Config
 )
@@ -1367,7 +1387,7 @@ func GetPostLikes(pds string, token string, uri string, limit int) (*Likes, erro
 func GetActorLikes(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
 	url := fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s", limit, actor)
 	if context != "" {
-		url = fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s&context=%s", limit, actor, context)
+		url = fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s&cursor=%s", limit, actor, context)
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
@@ -1628,6 +1648,39 @@ func GetTrends(pds string, token string) (*TrendingTopics, error) {
 	}
 
 	return &trends, nil
+}
+
+func GetUsersLists(pds string, token string, actor string, limit int, cursor string) (*Lists, error) {
+	url := fmt.Sprintf(pds+"/xrpc/app.bsky.graph.getLists?limit=%d&actor=%s", limit, actor)
+	if cursor != "" {
+		url = fmt.Sprintf(pds+"/xrpc/app.bsky.graph.getLists?limit=%d&actor=%s&cursor=%s", limit, actor, cursor)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch a user's lists")
+	}
+
+	lists := Lists{}
+	if err := json.NewDecoder(resp.Body).Decode(&lists); err != nil {
+		return nil, err
+	}
+
+	return &lists, nil
 }
 
 func GetMySuggestedUsers(pds string, token string, limit int) ([]User, error) {

@@ -116,6 +116,9 @@ func InitServer(config *config.Config) {
 	app.Get("/1/trends/current.:filetype", trends_woeid)
 	app.Get("/i/search.:filetype", InternalSearch)
 
+	// Lists
+	app.Get("/1/lists.:filetype", GetUsersLists)
+
 	// Account / Settings
 	app.Post("/1/account/update_profile.:filetype", UpdateProfile)
 	app.Post("/1/account/update_profile_image.:filetype", UpdateProfilePicture)
