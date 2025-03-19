@@ -531,6 +531,22 @@ func GetFollowers(c *fiber.Ctx) error {
 		cursor = ""
 	}
 
+	if cursorInt == 0 {
+		return EncodeAndSend(c, struct {
+			Users             []bridge.TwitterUser `json:"users" xml:"users"`
+			NextCursor        uint64               `json:"next_cursor" xml:"next_cursor"`
+			PreviousCursor    uint64               `json:"previous_cursor" xml:"previous_cursor"`
+			NextCursorStr     string               `json:"next_cursor_str" xml:"-"`
+			PreviousCursorStr string               `json:"previous_cursor_str" xml:"-"`
+		}{
+			Users:             []bridge.TwitterUser{},
+			NextCursor:        0,
+			PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
+			NextCursorStr:     "0",
+			PreviousCursorStr: "0",
+		})
+	}
+
 	// fetch followers
 	followers, err := blueskyapi.GetFollowers(*pds, *oauthToken, cursor, actor)
 	if err != nil {
@@ -685,6 +701,22 @@ func GetFollows(c *fiber.Ctx) error {
 		}
 	} else {
 		cursor = ""
+	}
+
+	if cursorInt == 0 {
+		return EncodeAndSend(c, struct {
+			Users             []bridge.TwitterUser `json:"users" xml:"users"`
+			NextCursor        uint64               `json:"next_cursor" xml:"next_cursor"`
+			PreviousCursor    uint64               `json:"previous_cursor" xml:"previous_cursor"`
+			NextCursorStr     string               `json:"next_cursor_str" xml:"-"`
+			PreviousCursorStr string               `json:"previous_cursor_str" xml:"-"`
+		}{
+			Users:             []bridge.TwitterUser{},
+			NextCursor:        0,
+			PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
+			NextCursorStr:     "0",
+			PreviousCursorStr: "0",
+		})
 	}
 
 	// fetch follows
