@@ -366,12 +366,22 @@ type AuthToken struct {
 }
 
 type TwitterLists struct {
-	XMLName           xml.Name      `xml:"lists" json:"-"`
-	PreviousCursor    int64         `json:"previous_cursor" xml:"previous_cursor"`
-	Lists             []TwitterList `json:"lists" xml:"list"`
-	PreviousCursorStr string        `json:"previous_cursor_str" xml:"previous_cursor_str"`
-	NextCursor        uint64        `json:"next_cursor" xml:"next_cursor"`
-	NextCursorStr     string        `json:"next_cursor_str" xml:"next_cursor_str"`
+	XMLName xml.Name      `xml:"lists" json:"-"`
+	Lists   []TwitterList `json:"lists" xml:"list"`
+	Cursors
+}
+
+type TwitterListMembers struct {
+	XMLName xml.Name       `xml:"users" json:"-"`
+	Users   []*TwitterUser `json:"users" xml:"users"`
+	Cursors
+}
+
+type Cursors struct {
+	PreviousCursor    int64  `json:"previous_cursor" xml:"previous_cursor"`
+	PreviousCursorStr string `json:"previous_cursor_str" xml:"previous_cursor_str"`
+	NextCursor        uint64 `json:"next_cursor" xml:"next_cursor"`
+	NextCursorStr     string `json:"next_cursor_str" xml:"next_cursor_str"`
 }
 
 type TwitterList struct {

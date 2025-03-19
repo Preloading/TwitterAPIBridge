@@ -344,9 +344,20 @@ type ListInfo struct {
 	Viewer            PostViewer `json:"viewer"`
 }
 
+type ListItem struct {
+	URI     string `json:"uri"`
+	Subject User   `json:"subject"`
+}
+
 type Lists struct {
 	Lists  []ListInfo `json:"lists"`
 	Cursor string     `json:"cursor"`
+}
+
+type ListDetailed struct {
+	List   ListInfo   `json:"list"`
+	Cursor string     `json:"cursor"`
+	Items  []ListItem `json:"items"`
 }
 
 var (
@@ -1715,6 +1726,39 @@ func GetUsersLists(pds string, token string, actor string, limit int, cursor str
 	}
 
 	return &lists, nil
+}
+
+func GetList(pds string, token string, listURI string, limit int, cursor string) (*ListDetailed, error) {
+	url := fmt.Sprintf(pds+"/xrpc/app.bsky.graph.getList?limit=%d&list=%s", limit, listURI)
+	if cursor != "" {
+		url = fmt.Sprintf(pds+"/xrpc/app.bsky.graph.getList?limit=%d&list=%s&cursor=%s", limit, listURI, cursor)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch a user's lists")
+	}
+
+	list := ListDetailed{}
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		return nil, err
+	}
+
+	return &list, nil
 }
 
 func GetMySuggestedUsers(pds string, token string, limit int) ([]User, error) {

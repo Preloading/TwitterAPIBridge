@@ -83,11 +83,13 @@ func GetUsersLists(c *fiber.Ctx) error {
 	}
 
 	return EncodeAndSend(c, bridge.TwitterLists{
-		Lists:             twitterLists,
-		NextCursor:        nextCursor,
-		NextCursorStr:     strconv.FormatUint(nextCursor, 10),
-		PreviousCursor:    -1,
-		PreviousCursorStr: "0", // Previous can equal the top element in the list, provided that this isn't the beginning of the list, or smth like that.
+		Lists: twitterLists,
+		Cursors: bridge.Cursors{
+			NextCursor:        nextCursor,
+			NextCursorStr:     strconv.FormatUint(nextCursor, 10),
+			PreviousCursor:    -1,
+			PreviousCursorStr: "0", // Previous can equal the top element in the list, provided that this isn't the beginning of the list, or smth like that.
+		},
 	})
 }
 
@@ -135,4 +137,96 @@ func list_timeline(c *fiber.Ctx) error {
 		list = "at://" + owner + "/app.bsky.graph.list/" + list
 	}
 	return convert_timeline(c, list, blueskyapi.GetListTimeline)
+}
+
+func GetListMembers(c *fiber.Ctx) error {
+	list := c.Query("slug")
+	if list == "" {
+		list = c.Query("list_id")
+		if list == "" {
+			return c.Status(fiber.StatusBadRequest).SendString("No List Provided")
+		}
+		listIdInt, err := strconv.ParseInt(list, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+		}
+		listPtr, err := bridge.TwitterIDToBlueSky(&listIdInt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+		}
+		list = *listPtr
+	} else {
+		owner := c.Query("owner_screen_name")
+		if owner == "" {
+			owner = c.Query("owner_id")
+			if owner == "" {
+				return c.Status(fiber.StatusBadRequest).SendString("No Owner Provided")
+			}
+			ownerIdInt, err := strconv.ParseInt(list, 10, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid owner id provided")
+			}
+			ownerPtr, err := bridge.TwitterIDToBlueSky(&ownerIdInt)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid owner id provided")
+			}
+			owner = *ownerPtr
+		} else {
+			ownerDID, err := blueskyapi.ResolveDIDFromHandle(owner)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid owner handle provided")
+			}
+			owner = *ownerDID
+		}
+
+		list = "at://" + owner + "/app.bsky.graph.list/" + list
+	}
+
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		blankstring := ""
+		oauthToken = &blankstring
+	}
+
+	// Cursor
+	cursor := c.Query("cursor")
+	if cursor == "-1" {
+		cursor = ""
+	}
+
+	// Get our list
+	listInfo, err := blueskyapi.GetList(*pds, *oauthToken, list, 20, cursor) // No clue what the limit was on actual twitter.
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get list")
+	}
+
+	// Get the full user info on the members of the list.
+	membersDID := []string{}
+
+	for _, member := range listInfo.Items {
+		membersDID = append(membersDID, member.Subject.DID)
+	}
+
+	members, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, membersDID, false)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get list member's info")
+	}
+
+	// Next Cursor
+	nextCursor, err := bridge.TidToNum(listInfo.Cursor)
+	if err != nil {
+		nextCursor = 0
+	}
+
+	return EncodeAndSend(c, bridge.TwitterListMembers{
+		Users: members,
+		Cursors: bridge.Cursors{
+			NextCursor:        nextCursor,
+			NextCursorStr:     strconv.FormatUint(nextCursor, 10),
+			PreviousCursor:    -1,
+			PreviousCursorStr: "-1", // Previous can equal the top element in the list, provided that this isn't the beginning of the list, or smth like that.
+		},
+	})
 }
