@@ -2,7 +2,6 @@ package twitterv1
 
 import (
 	"strconv"
-	"strings"
 
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
 	"github.com/Preloading/TwitterAPIBridge/bridge"
@@ -62,7 +61,7 @@ func GetUsersLists(c *fiber.Ctx) error {
 		id := bridge.BlueSkyToTwitterID(list.URI)
 
 		twitterLists = append(twitterLists, bridge.TwitterList{
-			Slug:            listDID + "/" + listRKEY,
+			Slug:            listRKEY,
 			Name:            list.Name,
 			URI:             listDID + "/" + listRKEY,
 			FullName:        list.Name,
@@ -110,11 +109,30 @@ func list_timeline(c *fiber.Ctx) error {
 		}
 		list = *listPtr
 	} else {
-		listParts := strings.Split(list, "/")
-		if len(listParts) != 2 {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid list slug provided")
+		owner := c.Query("owner_screen_name")
+		if owner == "" {
+			owner = c.Query("owner_id")
+			if owner == "" {
+				return c.Status(fiber.StatusBadRequest).SendString("No Owner Provided")
+			}
+			ownerIdInt, err := strconv.ParseInt(list, 10, 64)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid owner id provided")
+			}
+			ownerPtr, err := bridge.TwitterIDToBlueSky(&ownerIdInt)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid owner id provided")
+			}
+			owner = *ownerPtr
+		} else {
+			ownerDID, err := blueskyapi.ResolveDIDFromHandle(owner)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid owner handle provided")
+			}
+			owner = *ownerDID
 		}
-		list = "at://" + listParts[0] + "/app.bsky.graph.list/" + listParts[1]
+
+		list = "at://" + owner + "/app.bsky.graph.list/" + list
 	}
 	return convert_timeline(c, list, blueskyapi.GetListTimeline)
 }

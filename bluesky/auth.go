@@ -92,9 +92,26 @@ func RefreshToken(pds string, refreshToken string) (*AuthResponse, error) {
 func GetUserAuthData(handle string) (*string, *string, error) {
 	// thank you https://discord.com/channels/1097580399187738645/1097580399187738648/1318477650485973004 (ducky.ws) on https://discord.gg/zYvmrHAr8M for explaining this to me
 
+	// Get the user's DID
+	userDID, err := ResolveDIDFromHandle(handle)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get the user's PDS
+	userPDS, err := ResolvePDSFromDID(*userDID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// and finally, return our data
+	return userDID, userPDS, nil
+}
+
+func ResolveDIDFromHandle(handle string) (*string, error) {
 	// Validate our handle
 	if !regexp.MustCompile(`^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$`).MatchString(handle) {
-		return nil, nil, errors.New("invalid handle")
+		return nil, errors.New("invalid handle")
 	}
 	userDID := ""
 
@@ -129,11 +146,13 @@ func GetUserAuthData(handle string) (*string, *string, error) {
 	}
 
 	if userDID == "" {
-		return nil, nil, errors.New("user does not exist")
+		return nil, errors.New("user does not exist")
 	}
 
-	// Get the user's PDS
+	return &userDID, nil
+}
 
+func ResolvePDSFromDID(userDID string) (*string, error) {
 	// we must do different things depending on the DID type.
 	didDocReqUrl := ""
 	switch strings.Split(userDID, ":")[1] {
@@ -147,17 +166,17 @@ func GetUserAuthData(handle string) (*string, *string, error) {
 	// get the DID doc
 	didDocReq, err := http.Get(didDocReqUrl)
 	if err != nil {
-		return nil, nil, errors.New("could not find PDS")
+		return nil, errors.New("could not find PDS")
 	}
 	bodyBytes, err := io.ReadAll(didDocReq.Body)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	var userDIDDoc DIDDoc
 	err = json.Unmarshal(bodyBytes, &userDIDDoc)
 	didDocReq.Body.Close()
 	if err != nil {
-		return nil, nil, errors.New("could not find PDS")
+		return nil, errors.New("could not find PDS")
 	}
 
 	// get the user's PDS
@@ -169,9 +188,8 @@ func GetUserAuthData(handle string) (*string, *string, error) {
 		}
 	}
 	if userPDS == "" {
-		return nil, nil, errors.New("could not find PDS")
+		return nil, errors.New("could not find PDS")
 	}
 
-	// and finally, return our data
-	return &userDID, &userPDS, nil
+	return &userPDS, nil
 }
