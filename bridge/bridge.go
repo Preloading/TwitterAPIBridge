@@ -365,6 +365,41 @@ type AuthToken struct {
 	ServerURLs       []string `json:"server_urls"`       // URLs to access that server
 }
 
+type TwitterLists struct {
+	XMLName xml.Name      `xml:"lists" json:"-"`
+	Lists   []TwitterList `json:"lists" xml:"list"`
+	Cursors
+}
+
+type TwitterListMembers struct {
+	XMLName xml.Name       `xml:"users" json:"-"`
+	Users   []*TwitterUser `json:"users" xml:"users"`
+	Cursors
+}
+
+type Cursors struct {
+	PreviousCursor    int64  `json:"previous_cursor" xml:"previous_cursor"`
+	PreviousCursorStr string `json:"previous_cursor_str" xml:"previous_cursor_str"`
+	NextCursor        uint64 `json:"next_cursor" xml:"next_cursor"`
+	NextCursorStr     string `json:"next_cursor_str" xml:"next_cursor_str"`
+}
+
+type TwitterList struct {
+	XMLName         xml.Name    `xml:"list" json:"-"`
+	Slug            string      `json:"slug" xml:"slug"`
+	Name            string      `json:"name" xml:"name"`
+	URI             string      `json:"uri" xml:"uri"`
+	IDStr           string      `json:"id_str" xml:"id_str"`
+	SubscriberCount int         `json:"subscriber_count" xml:"subscriber_count"`
+	MemberCount     int         `json:"member_count" xml:"member_count"`
+	Mode            string      `json:"mode" xml:"mode"`
+	ID              int64       `json:"id" xml:"id"`
+	FullName        string      `json:"full_name" xml:"full_name"`
+	Description     string      `json:"description" xml:"description"`
+	User            TwitterUser `json:"user" xml:"user"`
+	Following       bool        `json:"following" xml:"following"`
+}
+
 func encodeToUint63(input string) *int64 {
 	hasher := fnv.New64a()                  // Create a new FNV-1a 64-bit hash
 	hasher.Write([]byte(input))             // Write the input string as bytes

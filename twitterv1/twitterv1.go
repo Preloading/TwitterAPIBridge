@@ -116,6 +116,17 @@ func InitServer(config *config.Config) {
 	app.Get("/1/trends/current.:filetype", trends_woeid)
 	app.Get("/i/search.:filetype", InternalSearch)
 
+	// Lists
+	app.Get("/1/lists.:filetype", GetUsersLists)
+	app.Get("/1/:user/lists.:filetype", GetUsersLists)
+	app.Get("/1/lists/statuses.:filetype", list_timeline)
+	app.Get("/1/:user/lists/:slug/statuses.:filetype", list_timeline)
+	app.Get("/1/lists/members.:filetype", GetListMembers)
+	app.Get("/1/:user/:list/members.:filetype", GetListMembers)
+
+	app.Get("/1/lists/subscriptions.:filetype", GetUsersLists)       // This doesn't actually exist on bluesky, but here's something similar enough. Lists made by you.
+	app.Get("/1/:user/lists/subscriptions.:filetype", GetUsersLists) // Well, if i'm to get technical, you can subscribe to moderation lists, but not the lists this expects.
+
 	// Account / Settings
 	app.Post("/1/account/update_profile.:filetype", UpdateProfile)
 	app.Post("/1/account/update_profile_image.:filetype", UpdateProfilePicture)
