@@ -87,9 +87,11 @@ func InternalSearch(c *fiber.Ctx) error {
 	// Create a map for quick lookup of reply dates and user IDs
 	replyDateMap := make(map[string]time.Time)
 	replyUserIdMap := make(map[string]string)
+	replyHandleMap := make(map[string]string)
 	for _, post := range replyToPostData {
 		replyDateMap[post.URI] = post.IndexedAt
 		replyUserIdMap[post.URI] = post.Author.DID
+		replyHandleMap[post.URI] = post.Author.Handle
 	}
 
 	// Translate to twitter
@@ -97,6 +99,7 @@ func InternalSearch(c *fiber.Ctx) error {
 	for _, search := range bskySearch {
 		var replyDate *time.Time
 		var replyUserId *string
+		var replyUserHandle *string
 		if search.Record.Reply != nil {
 			if date, exists := replyDateMap[search.Record.Reply.Parent.URI]; exists {
 				replyDate = &date
@@ -104,12 +107,15 @@ func InternalSearch(c *fiber.Ctx) error {
 			if userId, exists := replyUserIdMap[search.Record.Reply.Parent.URI]; exists {
 				replyUserId = &userId
 			}
+			if handle, exists := replyHandleMap[search.Record.Reply.Parent.URI]; exists {
+				replyUserHandle = &handle
+			}
 		}
 
 		if replyDate == nil {
-			tweets = append(tweets, TranslatePostToTweet(search, "", "", nil, nil, *oauthToken, *pds))
+			tweets = append(tweets, TranslatePostToTweet(search, "", "", "", nil, nil, *oauthToken, *pds))
 		} else {
-			tweets = append(tweets, TranslatePostToTweet(search, search.Record.Reply.Parent.URI, *replyUserId, replyDate, nil, *oauthToken, *pds))
+			tweets = append(tweets, TranslatePostToTweet(search, search.Record.Reply.Parent.URI, *replyUserId, *replyUserHandle, replyDate, nil, *oauthToken, *pds))
 		}
 
 	}

@@ -155,6 +155,12 @@ func GetMyActivity(c *fiber.Ctx) error {
 							}
 							return ""
 						}(),
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.Author.Handle
+							}
+							return ""
+						}(),
 						func() *time.Time {
 							if post.Thread.Parent != nil {
 								return &post.Thread.Parent.Post.IndexedAt

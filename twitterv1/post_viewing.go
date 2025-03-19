@@ -145,7 +145,7 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
-		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds))
+		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, item.Reply.Parent.Author.Handle, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds))
 	}
 
 	if c.Params("filetype") == "xml" { // i wonder why twitter ditched xml
@@ -216,7 +216,7 @@ func RelatedResults(c *fiber.Ctx) error {
 		twitterReplies.Results = append(twitterReplies.Results, bridge.Results{
 			Kind:  "Tweet",
 			Score: 1.0,
-			Value: TranslatePostToTweet(reply.Post, uri, strconv.FormatInt(*postAuthor, 10), &thread.Thread.Post.Record.CreatedAt, nil, *oauthToken, *pds),
+			Value: TranslatePostToTweet(reply.Post, uri, strconv.FormatInt(*postAuthor, 10), reply.Post.Author.Handle, &thread.Thread.Post.Record.CreatedAt, nil, *oauthToken, *pds),
 			Annotations: []bridge.Annotations{
 				{
 					ConversationRole: "Descendant",
@@ -259,15 +259,15 @@ func GetStatusFromId(c *fiber.Ctx) error {
 
 	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
 	if thread.Thread.Parent == nil {
-		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, thread.Thread.Parent.Post.Author.Handle, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
 	}
 }
 
 // This gigantic function is used to convert the bluesky post format, into a format that is compatible with the twitter API.
 // https://web.archive.org/web/20120506182126/https://dev.twitter.com/docs/platform-objects/tweets
-func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string, pds string) bridge.Tweet {
+func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyUserHandle string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string, pds string) bridge.Tweet {
 	var err error
 	textOffset := 0
 
@@ -708,7 +708,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				retweet_bsky := tweet
 				retweet_bsky.Author = bsky_retweet_og_author
 				//retweet_bsky.Viewer.Repost = nil
-				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil, token, pds)
+				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyUserHandle, replyTimeStamp, nil, token, pds)
 				translatedTweet.CurrentUserRetweet = nil
 				return &bridge.RetweetedTweet{
 					Tweet: translatedTweet, // Oh how i love XML
