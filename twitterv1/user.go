@@ -518,7 +518,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	cursorStr := c.FormValue("cursor")
 	if cursorStr != "" {
 		cursorInt, err = strconv.ParseInt(cursorStr, 10, 64)
-		if err != nil || cursorInt < 1 {
+		if err != nil || cursorInt > 1 {
 			cursor, err = bridge.NumToTid(uint64(cursorInt))
 			if err != nil {
 				fmt.Println("Error when converting Followers Cursor:", err)
@@ -674,7 +674,7 @@ func GetFollows(c *fiber.Ctx) error {
 	cursorStr := c.FormValue("cursor")
 	if cursorStr != "" {
 		cursorInt, err = strconv.ParseInt(cursorStr, 10, 64)
-		if err != nil || cursorInt == -1 {
+		if err != nil || cursorInt > 1 {
 			cursor, err = bridge.NumToTid(uint64(cursorInt))
 			if err != nil {
 				fmt.Println("Error when converting Followers Cursor:", err)
