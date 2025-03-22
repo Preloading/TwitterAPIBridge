@@ -198,7 +198,7 @@ func InitServer(config *config.Config) {
 	AddV1Path(app.Post, "/account/apple_push_destinations/destroy.:filetype", RemovePush)
 
 	// DMs
-	app.Get("/1/direct_messages.:filetype", GetAllDMs)
+	app.Get("/1/direct_messages.:filetype", GetRecievedDMs)
 	app.Get("/1/direct_messages/sent.:filetype", GetSentDMs)
 
 	// Legal cuz why not?
