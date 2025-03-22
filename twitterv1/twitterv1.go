@@ -134,7 +134,7 @@ func InitServer(config *config.Config) {
 	app.Get("/1/account/push_destinations/device.:filetype", PushDestinations)
 
 	// DMs
-	app.Get("/1/direct_messages.:filetype", GetAllDMs)
+	app.Get("/1/direct_messages.:filetype", GetRecievedDMs)
 	app.Get("/1/direct_messages/sent.:filetype", GetSentDMs)
 
 	// Legal cuz why not?
