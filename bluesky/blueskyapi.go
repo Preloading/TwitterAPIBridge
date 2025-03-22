@@ -384,6 +384,20 @@ type DirectMessage struct {
 	SentAt time.Time `json:"sentAt"`
 }
 
+type ConvoInfo struct {
+	Id          string        `json:"id"`
+	Rev         string        `json:"rev"`
+	Members     []User        `json:"members"`
+	LastMessage DirectMessage `json:"lastMessage"`
+	Muted       bool          `json:"muted"`
+	Status      string        `json:"status"` // Can be either "request" or "accepted"
+	UnreadCount int           `json:"unreadCount"`
+}
+
+type ConvoInfoContainer struct {
+	Convo ConvoInfo `json:"convo"`
+}
+
 var (
 	configData *config.Config
 )
@@ -1907,6 +1921,36 @@ func GetDMLogs(token string, limit int, context string) (*DirectMessageLogs, err
 	}
 
 	return &dms, nil
+}
+
+func GetConvoInfo(token string, convoId string) (*ConvoInfo, error) {
+	url := "https://api.bsky.chat/xrpc/chat.bsky.convo.getConvo?convoId=" + convoId
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch dms")
+	}
+
+	convoInfo := ConvoInfoContainer{}
+	if err := json.NewDecoder(resp.Body).Decode(&convoInfo); err != nil {
+		return nil, err
+	}
+
+	return &convoInfo.Convo, nil
 }
 
 func UploadBlob(pds string, token string, data []byte, content_type string) (*Blob, error) {
