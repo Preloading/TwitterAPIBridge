@@ -173,3 +173,215 @@ func trends_woeid(c *fiber.Ctx) error {
 		},
 	})
 }
+
+func discovery(c *fiber.Ctx) error {
+
+	return c.SendString(`
+ 
+
+{
+  "statuses": [
+{
+		"coordinates": null,
+		"favorited": false,
+		"created_at": "Tue Apr 01 05:34:17 +0000 2025",
+		"truncated": false,
+		"entities": {
+			"media": [],
+			"urls": null,
+			"user_mentions": [
+				{
+					"name": "theonion.com",
+					"id": 5479733389352290846,
+					"id_str": "5479733389352290846",
+					"indices": [
+						59,
+						72
+					],
+					"screen_name": "theonion.com"
+				}
+			],
+			"hashtags": null
+		},
+		"text": "In a legendary move, the world's finest news organization, @theonion.com has purchased \"A Twitter Bridge\". From now on, we will:\n\n- Be including ads into our platform, hosted by the onion\n- All news stories will be from the onion\n- and more!\n\nEnjoy this enhanced version of A Twitter Bridge.",
+		"annotations": null,
+		"contributors": null,
+		"id": 6396966313848207287,
+		"id_str": "6396966313848207287",
+		"geo": null,
+		"place": null,
+		"user": {
+			"name": "Preloading",
+			"profile_sidebar_border_color": "87bc44",
+			"profile_background_tile": false,
+			"profile_sidebar_fill_color": "e0ff92",
+			"created_at": "Sat Nov 16 02:29:14 +0000 2024",
+			"profile_image_url": "` + configData.CdnURL + `/cdn/img/?url=https%3A%2F%2Fcdn.bsky.app%2Fimg%2Favatar%2Fplain%2Fdid%3Aplc%3Akhcyntihpu7snjszuojjgjc4%2Fbafkreifjrbt5v4h7ufdxuwuivlkagawbwsxaqattjmjlxcfrhiymjnozvy%40jpeg:profile_bigger",
+			"profile_image_url_https": "` + configData.CdnURL + `/cdn/img/?url=https%3A%2F%2Fcdn.bsky.app%2Fimg%2Favatar%2Fplain%2Fdid%3Aplc%3Akhcyntihpu7snjszuojjgjc4%2Fbafkreifjrbt5v4h7ufdxuwuivlkagawbwsxaqattjmjlxcfrhiymjnozvy%40jpeg:profile_bigger",
+			"location": "",
+			"profile_link_color": "0000ff",
+			"follow_request_sent": false,
+			"url": "",
+			"favourites_count": 0,
+			"contributors_enabled": false,
+			"utc_offset": null,
+			"id": 5123166115319017703,
+			"id_str": "5123166115319017703",
+			"profile_use_background_image": false,
+			"profile_text_color": "000000",
+			"protected": false,
+			"followers_count": 92,
+			"lang": "en",
+			"notifications": null,
+			"time_zone": null,
+			"verified": false,
+			"profile_background_color": "c0deed",
+			"geo_enabled": false,
+			"description": "I make stuff that doesn't work.\n\nhe/him\nDiscord: @Preloading\nMastodon: @preloading@mastodon.social\nWebsite: loganserver.net",
+			"friends_count": 48,
+			"statuses_count": 160,
+			"profile_banner_url": "",
+			"profile_banner_url_https": "",
+			"profile_background_image_url": "",
+			"following": null,
+			"screen_name": "preloading.dev",
+			"show_all_inline_media": false,
+			"is_translator": false,
+			"listed_count": 0,
+			"default_profile": false,
+			"default_profile_image": false
+		},
+		"source": "Bluesky",
+		"in_reply_to_user_id": null,
+		"in_reply_to_user_id_str": null,
+		"in_reply_to_status_id": null,
+		"in_reply_to_status_id_str": null,
+		"in_reply_to_screen_name": null,
+		"possibly_sensitive": false,
+		"retweet_count": 0,
+		"retweeted": false
+	}
+  ],
+  "stories": [
+    {
+      "type": "news",
+      "score": 0.92,
+      "data": {
+        "title": "The onion has now bought A Twitter Bridge!",
+        "articles": [
+          {
+            "title": "The onion has now bought A Twitter Bridge!",
+            "url": {
+              "display_url": "twitterbridge.loganserver.net",
+              "expanded_url": "https://twitterbridge.loganserver.net"
+            },
+            "tweet_count": 9999999999,
+            "media": []
+          }
+        ]
+      },
+      "social_proof": {
+        "social_proof_type": "social",
+        "referenced_by": {
+          "global_count": 99999999999,
+          "statuses": [
+            {
+		"coordinates": null,
+		"favorited": false,
+		"created_at": "Tue Apr 01 05:34:17 +0000 2025",
+		"truncated": false,
+		"entities": {
+			"media": [],
+			"urls": null,
+			"user_mentions": [
+				{
+					"name": "theonion.com",
+					"id": 5479733389352290846,
+					"id_str": "5479733389352290846",
+					"indices": [
+						59,
+						72
+					],
+					"screen_name": "theonion.com"
+				}
+			],
+			"hashtags": null
+		},
+		"text": "In a legendary move, the world's finest news organization, @theonion.com has purchased \"A Twitter Bridge\". From now on, we will:\n\n- Be including ads into our platform, hosted by the onion\n- All news stories will be from the onion\n- and more!\n\nEnjoy this enhanced version of A Twitter Bridge.",
+		"annotations": null,
+		"contributors": null,
+		"id": 6396966313848207287,
+		"id_str": "6396966313848207287",
+		"geo": null,
+		"place": null,
+		"user": {
+			"name": "Preloading",
+			"profile_sidebar_border_color": "87bc44",
+			"profile_background_tile": false,
+			"profile_sidebar_fill_color": "e0ff92",
+			"created_at": "Sat Nov 16 02:29:14 +0000 2024",
+			"profile_image_url": "` + configData.CdnURL + `/cdn/img/?url=https%3A%2F%2Fcdn.bsky.app%2Fimg%2Favatar%2Fplain%2Fdid%3Aplc%3Akhcyntihpu7snjszuojjgjc4%2Fbafkreifjrbt5v4h7ufdxuwuivlkagawbwsxaqattjmjlxcfrhiymjnozvy%40jpeg:profile_bigger",
+			"profile_image_url_https": "` + configData.CdnURL + `/cdn/img/?url=https%3A%2F%2Fcdn.bsky.app%2Fimg%2Favatar%2Fplain%2Fdid%3Aplc%3Akhcyntihpu7snjszuojjgjc4%2Fbafkreifjrbt5v4h7ufdxuwuivlkagawbwsxaqattjmjlxcfrhiymjnozvy%40jpeg:profile_bigger",
+			"location": "",
+			"profile_link_color": "0000ff",
+			"follow_request_sent": false,
+			"url": "",
+			"favourites_count": 0,
+			"contributors_enabled": false,
+			"utc_offset": null,
+			"id": 5123166115319017703,
+			"id_str": "5123166115319017703",
+			"profile_use_background_image": false,
+			"profile_text_color": "000000",
+			"protected": false,
+			"followers_count": 92,
+			"lang": "en",
+			"notifications": null,
+			"time_zone": null,
+			"verified": false,
+			"profile_background_color": "c0deed",
+			"geo_enabled": false,
+			"description": "I make stuff that doesn't work.\n\nhe/him\nDiscord: @Preloading\nMastodon: @preloading@mastodon.social\nWebsite: loganserver.net",
+			"friends_count": 48,
+			"statuses_count": 160,
+			"profile_banner_url": "",
+			"profile_banner_url_https": "",
+			"profile_background_image_url": "",
+			"following": null,
+			"screen_name": "preloading.dev",
+			"show_all_inline_media": false,
+			"is_translator": false,
+			"listed_count": 0,
+			"default_profile": false,
+			"default_profile_image": false
+		},
+		"source": "Bluesky",
+		"in_reply_to_user_id": null,
+		"in_reply_to_user_id_str": null,
+		"in_reply_to_status_id": null,
+		"in_reply_to_status_id_str": null,
+		"in_reply_to_screen_name": null,
+		"possibly_sensitive": false,
+		"retweet_count": 0,
+		"retweeted": false
+	}
+          ]
+        }
+      }
+    }
+  ],
+  "related_queries": [
+    {
+      "query": "The Onion"
+    },
+    {
+      "query": "A Twitter Bridge"
+    }
+  ],
+  "spelling_corrections": []
+}
+
+
+	`)
+
+}
