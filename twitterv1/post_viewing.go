@@ -659,6 +659,19 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		Geo:               nil,
 		Place:             nil,
 		PossiblySensitive: false,
+		Cards: []bridge.TwitterCard{
+			{
+				Summaries: []bridge.CardSummary{
+					{
+						Type:        "summary_large_image",
+						Title:       "Twitter Cards!?!",
+						Description: "omg is this twitter cards!11!! :O",
+						Url:         "https://example.com",
+						Image:       "https://cdn.bsky.app/img/banner/plain/did:plc:dqibjxtqfn6hydazpetzr2w4/bafkreibmdkirirtkyf2wzroezw6c72yieckeqro6ecvmkax3ctklzzlq2y@jpeg",
+					},
+				},
+			},
+		},
 		InReplyToUserID: func() *int64 {
 			if replyMsgBskyURI == "" || replyUserBskyId == "" {
 				return nil

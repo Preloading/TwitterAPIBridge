@@ -44,21 +44,22 @@ type RetweetedTweet struct {
 
 // https://web.archive.org/web/20120708212016/https://dev.twitter.com/docs/platform-objects/tweets
 type Tweet struct {
-	XMLName      xml.Name    `xml:"status" json:"-"`
-	Coordinates  interface{} `json:"coordinates" xml:"coordinates"`
-	Favourited   bool        `json:"favorited" xml:"favorited"`
-	CreatedAt    string      `json:"created_at" xml:"created_at"`
-	Truncated    bool        `json:"truncated" xml:"truncated"`
-	Entities     Entities    `json:"entities" xml:"entities"`
-	Text         string      `json:"text" xml:"text"`
-	Annotations  interface{} `json:"annotations" xml:"annotations"`
-	Contributors interface{} `json:"contributors" xml:"contributors"`
-	ID           int64       `json:"id" xml:"id"`
-	IDStr        string      `json:"id_str" xml:"-"`
-	Geo          interface{} `json:"geo" xml:"geo"`
-	Place        interface{} `json:"place" xml:"place"`
-	User         TwitterUser `json:"user,omitempty" xml:"user,omitempty"`
-	Source       string      `json:"source" xml:"source"`
+	XMLName      xml.Name      `xml:"status" json:"-"`
+	Coordinates  interface{}   `json:"coordinates" xml:"coordinates"`
+	Favourited   bool          `json:"favorited" xml:"favorited"`
+	CreatedAt    string        `json:"created_at" xml:"created_at"`
+	Truncated    bool          `json:"truncated" xml:"truncated"`
+	Entities     Entities      `json:"entities" xml:"entities"`
+	Text         string        `json:"text" xml:"text"`
+	Annotations  interface{}   `json:"annotations" xml:"annotations"`
+	Contributors interface{}   `json:"contributors" xml:"contributors"`
+	ID           int64         `json:"id" xml:"id"`
+	IDStr        string        `json:"id_str" xml:"-"`
+	Geo          interface{}   `json:"geo" xml:"geo"`
+	Place        interface{}   `json:"place" xml:"place"`
+	User         TwitterUser   `json:"user,omitempty" xml:"user,omitempty"`
+	Source       string        `json:"source" xml:"source"`
+	Cards        []TwitterCard `json:"cards,omitempty" xml:"cards,omitempty"`
 
 	// Reply stuff
 	InReplyToUserID      *int64  `json:"in_reply_to_user_id" xml:"in_reply_to_user_id"`
@@ -213,6 +214,30 @@ type UserMention struct {
 	Start      int    `json:"-" xml:"start,attr"`
 	End        int    `json:"-" xml:"end,attr"`
 	ScreenName string `json:"screen_name" xml:"screen_name"`
+}
+
+type TwitterCard struct {
+	Summaries []CardSummary `json:"summaries" xml:"summaries"`
+	Photos    []CardPhotos  `json:"photos" xml:"photos"`
+	Players   []CardPlayers `json:"players" xml:"players"`
+}
+
+type CardSummary struct {
+	Type        string `json:"type" xml:"type"`
+	Title       string `json:"title" xml:"title"`
+	Description string `json:"description" xml:"description"`
+	Url         string `json:"url" xml:"url"`
+	Image       string `json:"image" xml:"image"` // Image URL
+}
+
+type CardPhotos struct {
+	Type     string `json:"type" xml:"type"`
+	MediaURL string `json:"media_url" xml:"media_url"`
+}
+
+type CardPlayers struct {
+	Type     string `json:"type" xml:"type"`
+	VideoURL string `json:"video_url" xml:"video_url"`
 }
 
 type SleepTime struct {
