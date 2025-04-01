@@ -155,7 +155,7 @@ func list_timeline(c *fiber.Ctx) error {
 		list = *listPtr
 	}
 
-	return convert_timeline(c, list, blueskyapi.GetListTimeline)
+	return convert_timeline(c, list, blueskyapi.GetListTimeline, false)
 }
 
 func GetListMembers(c *fiber.Ctx) error {
