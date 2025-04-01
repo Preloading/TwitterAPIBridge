@@ -185,7 +185,7 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 						&item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds)
 					onionTweet.PromotedContent = &bridge.PromotedContent{
 						ImpressionId:   "aprilfoolscalledtheonion",
-						DisclosureType: "political",
+						DisclosureType: "promotion",
 					}
 					onionTweets = append(onionTweets, onionTweet)
 				}

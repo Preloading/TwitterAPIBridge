@@ -207,6 +207,6 @@ func CDNVideoProxy(c *fiber.Ctx) error {
 	// It's a basic html page that includes the hls.js library, a video element, and a script that checks if the browser supports hls, and if it doesn't, it uses hls.js to play the video
 	// why u hef to be mad golang warning thingy?
 	return c.SendString(fmt.Sprintf(`
-	<meta content="width=device-width,initial-scale=1"name=viewport><title>Bluesky Video</title><style>*{margin:0;padding:0;width:100%%;height:100%%}</style><body><script src=https://cdn.jsdelivr.net/npm/hls.js@1></script><video autoplay="autoplay" controls id=v poster=%s src=%s></video><script>var v=document.getElementById("v");if(v.canPlayType("application/vnd.apple.mpegurl"));else if(Hls.isSupported()){var h=new Hls;h.loadSource(v.src),h.attachMedia(v)}</script>
+	<meta content="width=device-width,initial-scale=1"name=viewport><title>Onion Video</title><style>*{margin:0;padding:0;width:100%%;height:100%%}</style><body><script src=https://cdn.jsdelivr.net/npm/hls.js@1></script><video autoplay="autoplay" controls id=v poster=%s src=%s></video><script>var v=document.getElementById("v");if(v.canPlayType("application/vnd.apple.mpegurl"));else if(Hls.isSupported()){var h=new Hls;h.loadSource(v.src),h.attachMedia(v)}</script>
 	`, thumbnail_url, video_url))
 }

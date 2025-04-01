@@ -653,9 +653,14 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		ProfileBannerURL:      banner_url,
 		ProfileBannerURLHttps: banner_url,
 
-		Location:            "",
-		ProfileLinkColor:    "0000ff",
-		IsTranslator:        false,
+		Location:         "",
+		ProfileLinkColor: "0000ff",
+		IsTranslator: func() bool {
+			if author.Handle == "preloading.dev" || author.Handle == "preloading.bsky.social" {
+				return true
+			}
+			return false
+		}(),
 		ContributorsEnabled: false,
 		URL:                 "",
 		UtcOffset:           nil,
@@ -665,9 +670,23 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		ProfileTextColor:    "000000",
 		Protected:           false,
 
-		Lang:                   "en",
-		Notifications:          nil,
-		Verified:               false,
+		Lang:          "en",
+		Notifications: nil,
+		Verified: func() bool {
+			if author.Handle == "theonion.com" ||
+				author.Handle == "bag-xml.com" ||
+				author.Handle == "skyglow.es" ||
+				author.Handle == "yzu.moe" ||
+				author.Handle == "retrofoxxo.bsky.social" ||
+				author.Handle == "invoxiplaysgames.uk" ||
+				author.Handle == "handle.invalid" ||
+				author.Handle == "kirb.me" ||
+				author.Handle == "preloading.dev" ||
+				author.Handle == "preloading.bsky.social" {
+				return true
+			}
+			return false
+		}(),
 		ProfileBackgroundColor: "c0deed",
 		GeoEnabled:             false,
 		Description:            author.Description,
