@@ -78,18 +78,7 @@ type Tweet struct {
 	Retweeted          bool                `json:"retweeted" xml:"retweeted"`
 	RetweetedStatus    *RetweetedTweet     `json:"retweeted_status,omitempty" xml:"retweeted_status,omitempty"`
 	CurrentUserRetweet *CurrentUserRetweet `json:"current_user_retweet,omitempty" xml:"current_user_retweet,omitempty"`
-
-	// lulz
-	PromotedContent *PromotedContent `json:"promoted_content,omitempty" xml:"promoted_content,omitempty"`
 }
-
-// https://seriot.ch/projects/abusing_twitter_api.html#42 + decomp of android
-type PromotedContent struct {
-	ImpressionId    string `json:"impression_id" xml:"impression_id"`
-	DisclosureType  string `json:"disclosure_type" xml:"disclosure_type"` // Known possible are political and promotional
-	PromotedTrendId int    `json:"promoted_trend_id,omitempty" xml:"promoted_trend_id,omitempty"`
-}
-
 type CurrentUserRetweet struct {
 	ID    int64  `json:"id"`
 	IDStr string `json:"id_str"`

@@ -115,7 +115,6 @@ func InitServer(config *config.Config) {
 	app.Get("/1/trends/:woeid.:filetype", trends_woeid)
 	app.Get("/1/trends/current.:filetype", trends_woeid)
 	app.Get("/i/search.:filetype", InternalSearch)
-	app.Get("/i/discovery.json", discovery)
 
 	// Lists
 	app.Get("/1/lists.:filetype", GetUsersLists)

@@ -3,7 +3,6 @@ package twitterv1
 import (
 	"encoding/xml"
 	"fmt"
-	"math"
 	"net/url"
 	"slices"
 	"strconv"
@@ -23,7 +22,7 @@ type TweetsRoot struct {
 }
 
 func home_timeline(c *fiber.Ctx) error {
-	return convert_timeline(c, "", blueskyapi.GetTimeline, false)
+	return convert_timeline(c, "", blueskyapi.GetTimeline)
 }
 
 func user_timeline(c *fiber.Ctx) error {
@@ -43,7 +42,7 @@ func user_timeline(c *fiber.Ctx) error {
 		}
 		actor = *actorPtr
 	}
-	return convert_timeline(c, actor, blueskyapi.GetUserTimeline, false)
+	return convert_timeline(c, actor, blueskyapi.GetUserTimeline)
 }
 
 func media_timeline(c *fiber.Ctx) error {
@@ -63,7 +62,7 @@ func media_timeline(c *fiber.Ctx) error {
 		}
 		actor = *actorPtr
 	}
-	return convert_timeline(c, actor, blueskyapi.GetMediaTimeline, false)
+	return convert_timeline(c, actor, blueskyapi.GetMediaTimeline)
 }
 
 func likes_timeline(c *fiber.Ctx) error {
@@ -79,28 +78,17 @@ func likes_timeline(c *fiber.Ctx) error {
 	}
 	actor = *actorPtr
 
-	return convert_timeline(c, actor, blueskyapi.GetActorLikes, false)
+	return convert_timeline(c, actor, blueskyapi.GetActorLikes)
 }
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
-func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline), noAdFetch bool) error {
+func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline)) error {
 	// Get all of our keys, beeps, and bops
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
-
-	// Are ads enabled
-	enablePromotedContentStr := c.Query("pc")
-	pcEnabled := false
-	if enablePromotedContentStr != "" && !noAdFetch {
-		pcEnabled = true
-	}
-
-	// Essentially how this will work
-	// We check if we have retreived more than 3 tweets in this timeline, then we will use the same cursor from this to fetch tweets from the onion.
-	// We fetch based on abs(actual tweets / 5)
 
 	// Limits
 	limitStr := c.Query("count")
@@ -158,56 +146,6 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 
 	for _, item := range res.Feed {
 		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, item.Reply.Parent.Author.Handle, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds))
-	}
-
-	// fun
-	if pcEnabled {
-		if len(tweets) > 3 {
-			foolsAmount := int(math.Abs(float64(len(tweets)) / 5))
-
-			// get the reliable source of tweats
-			err, onionRes := blueskyapi.GetUserTimeline(*pds, *oauthToken, context, "theonion.com", foolsAmount)
-			if err == nil && onionRes != nil {
-				// Cache The Onion's user DIDs
-				onionDIDs := []string{}
-				for _, item := range onionRes.Feed {
-					if !slices.Contains(onionDIDs, item.Post.Author.DID) {
-						onionDIDs = append(onionDIDs, item.Post.Author.DID)
-					}
-				}
-				blueskyapi.GetUsersInfo(*pds, *oauthToken, onionDIDs, false)
-
-				// Convert Onion posts to tweets
-				onionTweets := []bridge.Tweet{}
-				for _, item := range onionRes.Feed {
-					onionTweet := TranslatePostToTweet(item.Post, item.Reply.Parent.URI,
-						item.Reply.Parent.Author.DID, item.Reply.Parent.Author.Handle,
-						&item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds)
-					onionTweet.PromotedContent = &bridge.PromotedContent{
-						ImpressionId:   "aprilfoolscalledtheonion",
-						DisclosureType: "promotion",
-					}
-					onionTweets = append(onionTweets, onionTweet)
-				}
-
-				// Interleave the tweets
-				finalTweets := []bridge.Tweet{}
-				tweetIndex := 0
-				onionIndex := 0
-
-				for i := 0; i < len(tweets)+len(onionTweets); i++ {
-					if i%6 == 5 && onionIndex < len(onionTweets) { // Every 6th tweet is from The Onion
-						finalTweets = append(finalTweets, onionTweets[onionIndex])
-						onionIndex++
-					} else if tweetIndex < len(tweets) {
-						finalTweets = append(finalTweets, tweets[tweetIndex])
-						tweetIndex++
-					}
-				}
-
-				tweets = finalTweets
-			}
-		}
 	}
 
 	if c.Params("filetype") == "xml" { // i wonder why twitter ditched xml
