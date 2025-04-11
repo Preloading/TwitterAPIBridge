@@ -18,26 +18,34 @@ Twitter API v2 is unlikely to be fixed in the future.
 
 ### Twitter for iOS (offical)
 
-⭐⚠️: 3.3.6, Uses a **lot** of XML, Posts with images are broken (have (null) at the start), many other faults and missing endpoints
+⭐⚠️: 3.3.6, Uses a **lot** of XML, many other faults and missing endpoints.
 
-⭐✅: 4.1.3, Near perfect. Tweeting with media attached requires the BlueTweety tweak, Retweets made by you fail to appear properly on timeline, pagination broken on some minor elements. Notification settings crashes the app.
+⚠️: 4.0.1, quite similar to 3.3.6, tweets with 
 
-⭐✅: 5.0.0-5.0.3, same as 4.1.3. 5.0.2+ has the aspect ratio change implemented for the iPhone 5.
+⭐✅: 4.1.3, Near perfect. Tweeting with media attached requires the BlueTweety tweak, Retweets made by you fail to appear properly on timeline, pagination broken on some minor elements.
+
+⭐✅: 5.0.0-5.0.3, 5.0.2+ has the aspect ratio change implemented for the iPhone 5. Note: Long URLs break retrieving parent tweets
 
 ❌: 5.0.4+ Uses Twitter API v1.1
 
 ### Twitter iOS Integration
 
-✅: iOS 5-6, Works through Bluetweety
+✅: iOS 5-7, Works through Bluetweety
 
-❌: iOS 7+, Uses Twitter API v1.1
+❌: iOS 8+, Uses Twitter API v1.1
 
 ### Tweetie2
 
 ### Tweetie
-❌: Uses basic authentication
+❌: Login works, uses alternate endpoints to most things, pagination completely broken.
+
+### Twitterific
+an iOS 2 version: Same as tweetie
+
+### Tweetbot
+some ios 5 version or smth: Requires PIN auth, which is unimplemented.
 
 ## Android
-⭐⚠️: 3.3.0, Partly works, Followers & following timelines do not work, Connect tab is missing follows & retweets.
+⭐⚠️: 3.3.0, Partly works, Followers & following timelines do not work, Connect tab is missing follows & retweets. Crashes are common. Requires a patched apk
 
 ⚠️: 3.1.2, same as 3.3.0

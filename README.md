@@ -11,9 +11,9 @@ To see what devices and versions are compatible, look at [the compatibility list
 
 # Public Instances
 
-https://twitterbridge.loganserver.net HTTP & HTTPS, Based on Releases (my instance)
+https://twb.preloading.dev HTTP & HTTPS, Based on Releases (my instance) (old url still works)
 
-https://testtwitterbridge.loganserver.net HTTP & HTTPS, Based on commits (my instance) 
+https://ttwb.preloading.dev HTTP & HTTPS, Based on commits (my instance) (old url still works)
 
 ## Usage
 ### iOS Official App
