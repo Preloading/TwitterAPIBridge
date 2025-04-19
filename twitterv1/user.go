@@ -485,7 +485,7 @@ func GetStatusesFollowers(c *fiber.Ctx) error {
 
 func GetFollowers(c *fiber.Ctx) error {
 	// auth
-	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
@@ -495,7 +495,11 @@ func GetFollowers(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.FormValue("screen_name")
 		if actor == "" {
-			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			if userDID != nil {
+				actor = *userDID
+			} else {
+				return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			}
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
@@ -657,7 +661,7 @@ func GetStatusesFollows(c *fiber.Ctx) error {
 
 func GetFollows(c *fiber.Ctx) error {
 	// auth
-	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
@@ -667,7 +671,11 @@ func GetFollows(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.FormValue("screen_name")
 		if actor == "" {
-			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			if userDID != nil {
+				actor = *userDID
+			} else {
+				return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			}
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
