@@ -1427,7 +1427,7 @@ func GetPostLikes(pds string, token string, uri string, limit int) (*Likes, erro
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-actor-likes
 // Bluesky for SOME REASON limits viewing the likes to your own user. WHy?
-// What is the point of having an "actor" field if you can only use 1 actor?
+// What is the point of having an "actor" field if you can only use 1 actor?"ADD THIS TO LOOKUP TABLE"
 // I'm still gonna implement it, we can hope it will be expanded in the future.
 func GetActorLikes(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
 	url := fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s", limit, actor)
@@ -1763,6 +1763,35 @@ func GetList(pds string, token string, listURI string, limit int, cursor string)
 
 func GetMySuggestedUsers(pds string, token string, limit int) ([]User, error) {
 	url := pds + "/xrpc/app.bsky.actor.getSuggestions?limit=" + fmt.Sprintf("%d", limit)
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch suggested users")
+	}
+
+	users := UserSearchResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, err
+	}
+	return users.Actors, nil
+}
+
+func GetTopicSuggestedUsers(pds string, token string, limit int, category string) ([]User, error) {
+	url := pds + "/xrpc/app.bsky.unspecced.getSuggestedUsers?limit=" + fmt.Sprintf("%d", limit) + "&category=" + category
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {

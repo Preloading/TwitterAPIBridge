@@ -406,6 +406,14 @@ type TopicSuggestion struct {
 	Size int    `json:"size" xml:"size"`
 }
 
+// https://web.archive.org/web/20120516160741/https://dev.twitter.com/docs/api/1/get/users/suggestions/%3Aslug
+type TopicUserSuggestions struct {
+	Name  string         `json:"name" xml:"name"`
+	Slug  string         `json:"slug" xml:"slug"`
+	Size  int            `json:"size" xml:"size"`
+	Users []*TwitterUser `json:"users" xml:"users"`
+}
+
 func encodeToUint63(input string) *int64 {
 	hasher := fnv.New64a()                  // Create a new FNV-1a 64-bit hash
 	hasher.Write([]byte(input))             // Write the input string as bytes

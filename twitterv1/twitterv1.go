@@ -115,6 +115,8 @@ func InitServer(config *config.Config) {
 	app.Get("/1/trends/:woeid.:filetype", trends_woeid)
 	app.Get("/1/trends/current.:filetype", trends_woeid)
 	app.Get("/1/users/suggestions.:filetype", SuggestedTopics)
+	app.Get("/1/users/suggestions.:filetype", GetTopicSuggestedUsers)
+	app.Get("/1/users/suggestions/:slug.:filetype", SuggestedTopics)
 	app.Get("/i/search.:filetype", InternalSearch)
 
 	// Lists
