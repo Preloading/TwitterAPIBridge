@@ -173,3 +173,128 @@ func trends_woeid(c *fiber.Ctx) error {
 		},
 	})
 }
+
+func SuggestedTopics(c *fiber.Ctx) error {
+	// I think this is hard coded in?
+	// It expects a size, but uhhh, it can be unlimited on bsky sooooo...
+	// It might be worth it later to get the config for this
+	// Also localization
+	suggestions := []bridge.TopicSuggestion{
+		{
+			Name: "Animals",
+			Slug: "animals",
+			Size: 20,
+		},
+		{
+			Name: "Art",
+			Slug: "art",
+			Size: 20,
+		},
+		{
+			Name: "Books",
+			Slug: "books",
+			Size: 20,
+		},
+		{
+			Name: "Comedy",
+			Slug: "comedy",
+			Size: 20,
+		},
+		{
+			Name: "Comics",
+			Slug: "comics",
+			Size: 20,
+		},
+		{
+			Name: "Culture",
+			Slug: "culture",
+			Size: 20,
+		},
+		{
+			Name: "Software Dev",
+			Slug: "dev",
+			Size: 20,
+		},
+		{
+			Name: "Education",
+			Slug: "education",
+			Size: 20,
+		},
+		{
+			Name: "Food",
+			Slug: "food",
+			Size: 20,
+		},
+		{
+			Name: "Video Games",
+			Slug: "gaming",
+			Size: 20,
+		},
+		{
+			Name: "Journalism",
+			Slug: "journalism",
+			Size: 20,
+		},
+		{
+			Name: "Movies",
+			Slug: "movies",
+			Size: 20,
+		},
+		{
+			Name: "Music",
+			Slug: "music",
+			Size: 20,
+		},
+		{
+			Name: "Nature",
+			Slug: "nature",
+			Size: 20,
+		},
+		{
+			Name: "News",
+			Slug: "news",
+			Size: 20,
+		},
+		{
+			Name: "Pets",
+			Slug: "pets",
+			Size: 20,
+		},
+		{
+			Name: "Photography",
+			Slug: "photography",
+			Size: 20,
+		},
+		{
+			Name: "Politics",
+			Slug: "politics",
+			Size: 20,
+		},
+		{
+			Name: "Science",
+			Slug: "science",
+			Size: 20,
+		},
+		{
+			Name: "Sports",
+			Slug: "sports",
+			Size: 20,
+		},
+		{
+			Name: "Tech",
+			Slug: "tech",
+			Size: 20,
+		},
+		{
+			Name: "TV",
+			Slug: "tv",
+			Size: 20,
+		},
+		{
+			Name: "Writers",
+			Slug: "writers",
+			Size: 20,
+		},
+	}
+	return EncodeAndSend(c, suggestions)
+}

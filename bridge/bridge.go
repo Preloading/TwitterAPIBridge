@@ -400,6 +400,12 @@ type TwitterList struct {
 	Following       bool        `json:"following" xml:"following"`
 }
 
+type TopicSuggestion struct {
+	Name string `json:"name" xml:"name"`
+	Slug string `json:"slug" xml:"slug"`
+	Size int    `json:"size" xml:"size"`
+}
+
 func encodeToUint63(input string) *int64 {
 	hasher := fnv.New64a()                  // Create a new FNV-1a 64-bit hash
 	hasher.Write([]byte(input))             // Write the input string as bytes
