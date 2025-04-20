@@ -84,6 +84,7 @@ func InitServer(config *config.Config) {
 	// Posts
 	app.Get("/1/statuses/home_timeline.:filetype", home_timeline)
 	app.Get("/1/statuses/user_timeline.:filetype", user_timeline)
+	app.Get("/1/favorites/toptweets.:filetype", hot_post_timeline)
 	app.Get("/1/statuses/media_timeline.:filetype", media_timeline)
 	app.Get("/1/statuses/show/:id.:filetype", GetStatusFromId)
 	app.Get("/i/statuses/:id/activity/summary.:filetype", TweetInfo)
@@ -115,8 +116,7 @@ func InitServer(config *config.Config) {
 	app.Get("/1/trends/:woeid.:filetype", trends_woeid)
 	app.Get("/1/trends/current.:filetype", trends_woeid)
 	app.Get("/1/users/suggestions.:filetype", SuggestedTopics)
-	app.Get("/1/users/suggestions.:filetype", GetTopicSuggestedUsers)
-	app.Get("/1/users/suggestions/:slug.:filetype", SuggestedTopics)
+	app.Get("/1/users/suggestions/:slug.:filetype", GetTopicSuggestedUsers)
 	app.Get("/i/search.:filetype", InternalSearch)
 
 	// Lists

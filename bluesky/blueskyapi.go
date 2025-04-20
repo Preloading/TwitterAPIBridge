@@ -714,6 +714,38 @@ func GetTimeline(pds string, token string, context string, feed string, limit in
 	return nil, &feeds
 }
 
+// https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
+func GetHotPosts(pds string, token string, context string, feed string, limit int) (error, *Timeline) {
+	url := pds + "/xrpc/app.bsky.feed.getFeed?feed=at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot&limit=" + fmt.Sprintf("%d", limit)
+	// Context is removed, since how it gets context is witchcraft.
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch timeline"), nil
+	}
+
+	feeds := Timeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return err, nil
+	}
+
+	return nil, &feeds
+}
+
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-author-feed
 func GetUserTimeline(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
 	apiURL := pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&limit=" + fmt.Sprintf("%d", limit)

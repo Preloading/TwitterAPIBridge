@@ -238,7 +238,7 @@ func GetTopicSuggestedUsers(c *fiber.Ctx) error {
 	}
 
 	slug := c.Params("slug")
-	if slug != "" {
+	if slug == "" {
 		return c.Status(fiber.StatusInternalServerError).SendString("Missing Slug")
 	}
 

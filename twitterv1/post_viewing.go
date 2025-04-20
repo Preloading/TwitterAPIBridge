@@ -22,7 +22,11 @@ type TweetsRoot struct {
 }
 
 func home_timeline(c *fiber.Ctx) error {
-	return convert_timeline(c, "", blueskyapi.GetTimeline)
+	return convert_timeline(c, "", true, blueskyapi.GetTimeline)
+}
+
+func hot_post_timeline(c *fiber.Ctx) error {
+	return convert_timeline(c, "", true, blueskyapi.GetHotPosts)
 }
 
 func user_timeline(c *fiber.Ctx) error {
@@ -42,7 +46,7 @@ func user_timeline(c *fiber.Ctx) error {
 		}
 		actor = *actorPtr
 	}
-	return convert_timeline(c, actor, blueskyapi.GetUserTimeline)
+	return convert_timeline(c, actor, false, blueskyapi.GetUserTimeline)
 }
 
 func media_timeline(c *fiber.Ctx) error {
@@ -62,7 +66,7 @@ func media_timeline(c *fiber.Ctx) error {
 		}
 		actor = *actorPtr
 	}
-	return convert_timeline(c, actor, blueskyapi.GetMediaTimeline)
+	return convert_timeline(c, actor, false, blueskyapi.GetMediaTimeline)
 }
 
 func likes_timeline(c *fiber.Ctx) error {
@@ -78,11 +82,11 @@ func likes_timeline(c *fiber.Ctx) error {
 	}
 	actor = *actorPtr
 
-	return convert_timeline(c, actor, blueskyapi.GetActorLikes)
+	return convert_timeline(c, actor, false, blueskyapi.GetActorLikes)
 }
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
-func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline)) error {
+func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline)) error {
 	// Get all of our keys, beeps, and bops
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
