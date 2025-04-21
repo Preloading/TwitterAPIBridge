@@ -84,6 +84,7 @@ func InitServer(config *config.Config) {
 	// Posts
 	app.Get("/1/statuses/home_timeline.:filetype", home_timeline)
 	app.Get("/1/statuses/user_timeline.:filetype", user_timeline)
+	app.Get("/1/statuses/mentions.:filetype", mentions_timeline)
 	app.Get("/1/favorites/toptweets.:filetype", hot_post_timeline)
 	app.Get("/1/statuses/media_timeline.:filetype", media_timeline)
 	app.Get("/1/statuses/show/:id.:filetype", GetStatusFromId)

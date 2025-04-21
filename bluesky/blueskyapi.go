@@ -1913,6 +1913,39 @@ func GetNotifications(pds string, token string, limit int, context string) (*Not
 	return &notifications, nil
 }
 
+func GetMentions(pds string, token string, limit int, context string) (*Notifications, error) {
+	url := pds + "/xrpc/app.bsky.notification.listNotifications?reasons=mention&reasons=reply&reasons=quote&limit=" + fmt.Sprintf("%d", limit)
+	if context != "" {
+		url = pds + "/xrpc/app.bsky.notification.listNotifications?reasons=mention&reasons=reply&reasons=quote&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch mentions")
+	}
+
+	notifications := Notifications{}
+	if err := json.NewDecoder(resp.Body).Decode(&notifications); err != nil {
+		return nil, err
+	}
+
+	return &notifications, nil
+}
+
 func UploadBlob(pds string, token string, data []byte, content_type string) (*Blob, error) {
 	url := pds + "/xrpc/com.atproto.repo.uploadBlob"
 

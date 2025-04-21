@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -856,4 +857,148 @@ func TweetInfo(c *fiber.Ctx) error {
 		Retweets:        retweeters,
 		Repliers:        repliers,
 	})
+}
+
+// Mentions timeline, using notifications to make my life hell
+func mentions_timeline(c *fiber.Ctx) error {
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// Handle pagination
+	context := ""
+	max_id := c.Query("max_id")
+	// Handle getting things in the past
+	if max_id != "" {
+		// Get the timeline context from the DB
+		maxIDInt, err := strconv.ParseInt(max_id, 10, 64)
+		fmt.Println("Max ID:", maxIDInt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+		}
+		uri, date, _, err := bridge.TwitterMsgIdToBluesky(&maxIDInt)
+		fmt.Println("Max ID:", uri)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+		}
+		context = date.Format(time.RFC3339)
+	}
+
+	// Handle count
+	count := 20
+	if countStr := c.Query("count"); countStr != "" {
+		if countInt, err := strconv.Atoi(countStr); err == nil {
+			count = countInt
+		}
+	}
+
+	// Get notifications
+	bskyNotifications, err := blueskyapi.GetMentions(*pds, *oauthToken, count, context)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get notifications")
+	}
+
+	// Track unique users and posts
+	uniqueUsers := make(map[string]bool)
+	uniquePosts := make(map[string]bool)
+
+	// First pass: collect unique users and posts
+	for _, notification := range bskyNotifications.Notifications {
+		uniqueUsers[notification.Author.DID] = true
+		uniquePosts[notification.URI] = true
+	}
+
+	// Convert maps to slices
+	usersToLookUp := make([]string, 0, len(uniqueUsers))
+	postsToLookUp := make([]string, 0, len(uniquePosts))
+	for user := range uniqueUsers {
+		usersToLookUp = append(usersToLookUp, user)
+	}
+	for post := range uniquePosts {
+		postsToLookUp = append(postsToLookUp, post)
+	}
+
+	// Create thread-safe maps for results
+	var userCache sync.Map
+	var postCache sync.Map
+
+	// Process in parallel
+	var wg sync.WaitGroup
+
+	// Fetch users in chunks
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersToLookUp, false)
+		if err == nil {
+			for _, user := range users {
+				userCache.Store(user.ScreenName[strings.LastIndex(user.ScreenName, "/")+1:], user)
+			}
+		}
+	}()
+
+	// Fetch posts in parallel chunks
+	postChunks := chunkSlice(postsToLookUp, 10)
+	for _, chunk := range postChunks {
+		wg.Add(1)
+		go func(posts []string) {
+			defer wg.Done()
+			for _, postID := range posts {
+				if err, post := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
+					tweet := TranslatePostToTweet(
+						post.Thread.Post,
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.URI
+							}
+							return ""
+						}(),
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.Author.DID
+							}
+							return ""
+						}(),
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.Author.Handle
+							}
+							return ""
+						}(),
+						func() *time.Time {
+							if post.Thread.Parent != nil {
+								return &post.Thread.Parent.Post.IndexedAt
+							}
+							return nil
+						}(),
+						nil,
+						*oauthToken,
+						*pds,
+					)
+					postCache.Store(postID, &tweet)
+				}
+			}
+		}(chunk)
+	}
+
+	wg.Wait()
+
+	// Convert notifications to tweets timeline
+	tweets := []bridge.Tweet{}
+	for _, notification := range bskyNotifications.Notifications {
+		if post, ok := postCache.Load(notification.URI); ok {
+			tweet := post.(*bridge.Tweet)
+			tweets = append(tweets, *tweet)
+		}
+	}
+
+	if c.Params("filetype") == "xml" {
+		tweetsRoot := TweetsRoot{
+			Statuses: tweets,
+		}
+		return EncodeAndSend(c, tweetsRoot)
+	}
+
+	return EncodeAndSend(c, tweets)
 }
