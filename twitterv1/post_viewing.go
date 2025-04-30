@@ -150,7 +150,7 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
-		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, item.Reply.Parent.Author.Handle, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds))
+		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, item.Reply.Parent.Author.Handle, &item.Reply.Parent.Record.CreatedAt.Time, item.Reason, *oauthToken, *pds))
 	}
 
 	if c.Params("filetype") == "xml" { // i wonder why twitter ditched xml
@@ -217,11 +217,11 @@ func RelatedResults(c *fiber.Ctx) error {
 		Results:     []bridge.Results{},
 	}
 	for _, reply := range *thread.Thread.Replies {
-		reply.Post.Record.CreatedAt = reply.Post.IndexedAt
+		reply.Post.Record.CreatedAt = blueskyapi.FTime{Time: reply.Post.IndexedAt}
 		twitterReplies.Results = append(twitterReplies.Results, bridge.Results{
 			Kind:  "Tweet",
 			Score: 1.0,
-			Value: TranslatePostToTweet(reply.Post, uri, strconv.FormatInt(*postAuthor, 10), reply.Post.Author.Handle, &thread.Thread.Post.Record.CreatedAt, nil, *oauthToken, *pds),
+			Value: TranslatePostToTweet(reply.Post, uri, strconv.FormatInt(*postAuthor, 10), reply.Post.Author.Handle, &thread.Thread.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds),
 			Annotations: []bridge.Annotations{
 				{
 					ConversationRole: "Descendant",
@@ -266,7 +266,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	if thread.Thread.Parent == nil {
 		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, thread.Thread.Parent.Post.Author.Handle, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, thread.Thread.Parent.Post.Author.Handle, &thread.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds))
 	}
 }
 
@@ -639,7 +639,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			if isRetweet {
 				return bridge.TwitterTimeConverter(postReason.IndexedAt)
 			}
-			return bridge.TwitterTimeConverter(tweet.Record.CreatedAt)
+			return bridge.TwitterTimeConverter(tweet.Record.CreatedAt.Time)
 		}(),
 		Truncated:    false,
 		Text:         processedText,
@@ -651,14 +651,14 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			if isRetweet {
 				return *bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
 			}
-			return *bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt, nil)
+			return *bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt.Time, nil)
 		}(),
 		IDStr: func() string {
 			if isRetweet {
 				id := bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
 				return strconv.FormatInt(*id, 10)
 			}
-			id := bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt, nil)
+			id := bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt.Time, nil)
 			return strconv.FormatInt(*id, 10)
 		}(),
 		Geo:               nil,
@@ -731,7 +731,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				}
 
 				_, my_did, _ := blueskyapi.GetURIComponents(*tweet.Viewer.Repost)
-				retweetId := bridge.BskyMsgToTwitterID(tweet.URI, &RepostRecord.Value.CreatedAt, &my_did)
+				retweetId := bridge.BskyMsgToTwitterID(tweet.URI, &RepostRecord.Value.CreatedAt.Time, &my_did)
 				return &bridge.CurrentUserRetweet{
 					ID:    *retweetId,
 					IDStr: strconv.FormatInt(*retweetId, 10),
@@ -756,7 +756,7 @@ func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
 		ProfileSidebarBorderColor: "eeeeee",
 		ProfileBackgroundTile:     false,
 		ProfileSidebarFillColor:   "efefef",
-		CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt),
+		CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt.Time),
 		ProfileImageURL:           configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + ":profile_bigger",
 		ProfileImageURLHttps:      configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + ":profile_bigger",
 		Location:                  "Twitter",
