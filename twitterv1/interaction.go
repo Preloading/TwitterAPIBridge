@@ -63,7 +63,7 @@ func status_update(c *fiber.Ctx) error {
 	if thread.Thread.Parent == nil {
 		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, thread.Thread.Parent.Post.Author.Handle, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, thread.Thread.Parent.Post.Author.Handle, &thread.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds))
 	}
 }
 
@@ -157,7 +157,7 @@ func status_update_with_media(c *fiber.Ctx) error {
 	if thread.Thread.Parent == nil {
 		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, thread.Thread.Parent.Post.Author.Handle, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, thread.Thread.Parent.Post.Author.Handle, &thread.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds))
 	}
 }
 
@@ -192,7 +192,7 @@ func retweet(c *fiber.Ctx) error {
 	if originalPost.Thread.Parent == nil {
 		retweet = TranslatePostToTweet(originalPost.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds)
 	} else {
-		retweet = TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Parent.Post.URI, originalPost.Thread.Parent.Post.Author.DID, originalPost.Thread.Parent.Post.Author.Handle, &originalPost.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
+		retweet = TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Parent.Post.URI, originalPost.Thread.Parent.Post.Author.DID, originalPost.Thread.Parent.Post.Author.Handle, &originalPost.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds)
 	}
 	retweet.Retweeted = true
 	now := time.Now() // pain, also fix this to use the proper timestamp according to the server.
@@ -217,7 +217,7 @@ func retweet(c *fiber.Ctx) error {
 			if originalPost.Thread.Parent == nil {
 				return TranslatePostToTweet(originalPost.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds)
 			} else {
-				return TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Parent.Post.URI, originalPost.Thread.Parent.Post.Author.DID, originalPost.Thread.Parent.Post.Author.Handle, &originalPost.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
+				return TranslatePostToTweet(originalPost.Thread.Post, originalPost.Thread.Parent.Post.URI, originalPost.Thread.Parent.Post.Author.DID, originalPost.Thread.Parent.Post.Author.Handle, &originalPost.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds)
 			}
 		}(),
 	})
@@ -256,7 +256,7 @@ func favourite(c *fiber.Ctx) error {
 	if post.Thread.Parent == nil {
 		newTweet = TranslatePostToTweet(post.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds)
 	} else {
-		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.Post.URI, post.Thread.Parent.Post.Author.DID, post.Thread.Parent.Post.Author.Handle, &post.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
+		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.Post.URI, post.Thread.Parent.Post.Author.DID, post.Thread.Parent.Post.Author.Handle, &post.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds)
 	}
 
 	db_controller.StoreAnalyticData(db_controller.AnalyticData{
@@ -303,7 +303,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	if post.Thread.Parent == nil {
 		newTweet = TranslatePostToTweet(post.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds)
 	} else {
-		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.Post.URI, post.Thread.Parent.Post.Author.DID, post.Thread.Parent.Post.Author.Handle, &post.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
+		newTweet = TranslatePostToTweet(post.Thread.Post, post.Thread.Parent.Post.URI, post.Thread.Parent.Post.Author.DID, post.Thread.Parent.Post.Author.Handle, &post.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds)
 	}
 
 	db_controller.StoreAnalyticData(db_controller.AnalyticData{
@@ -383,7 +383,7 @@ func DeleteTweet(c *fiber.Ctx) error {
 			if postToDelete.Thread.Parent == nil {
 				return TranslatePostToTweet(postToDelete.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds)
 			} else {
-				return TranslatePostToTweet(postToDelete.Thread.Post, postToDelete.Thread.Parent.Post.URI, postToDelete.Thread.Parent.Post.Author.DID, postToDelete.Thread.Parent.Post.Author.Handle, &postToDelete.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
+				return TranslatePostToTweet(postToDelete.Thread.Post, postToDelete.Thread.Parent.Post.URI, postToDelete.Thread.Parent.Post.Author.DID, postToDelete.Thread.Parent.Post.Author.Handle, &postToDelete.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds)
 			}
 		}(),
 	)

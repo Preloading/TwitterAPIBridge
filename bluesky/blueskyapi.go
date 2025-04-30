@@ -40,13 +40,13 @@ type User struct {
 	FollowsCount   int       `json:"followsCount"`
 	PostsCount     int       `json:"postsCount"`
 	IndexedAt      time.Time `json:"indexedAt"`
-	CreatedAt      time.Time `json:"createdAt"`
+	CreatedAt      FTime     `json:"createdAt"`
 	Associated     struct {
-		Lists        int       `json:"lists"`
-		FeedGens     int       `json:"feedgens"`
-		StarterPacks int       `json:"starterPacks"`
-		Labeler      bool      `json:"labeler"`
-		CreatedAt    time.Time `json:"created_at"`
+		Lists        int   `json:"lists"`
+		FeedGens     int   `json:"feedgens"`
+		StarterPacks int   `json:"starterPacks"`
+		Labeler      bool  `json:"labeler"`
+		CreatedAt    FTime `json:"created_at"`
 	} `json:"associated"`
 	Viewer struct {
 		Muted bool `json:"muted"`
@@ -62,7 +62,7 @@ type User struct {
 
 type PostRecord struct {
 	Type      string        `json:"$type"`
-	CreatedAt time.Time     `json:"createdAt"`
+	CreatedAt FTime         `json:"createdAt"`
 	Embed     Embed         `json:"embed,omitempty"`
 	Facets    []Facet       `json:"facets,omitempty"`
 	Langs     []string      `json:"langs,omitempty"`
@@ -218,7 +218,7 @@ type PostInteractionRecord struct {
 type CreatePostRecord struct {
 	Type      string        `json:"$type"`
 	Text      string        `json:"text"`
-	CreatedAt time.Time     `json:"createdAt"`
+	CreatedAt FTime         `json:"createdAt"`
 	Reply     *ReplySubject `json:"reply,omitempty"`
 	Facets    []Facet       `json:"facets,omitempty"`
 	Embed     *Embed        `json:"embed,omitempty"`
@@ -258,7 +258,7 @@ type Likes struct {
 
 type ItemByWithDate struct {
 	IndexedAt time.Time `json:"indexedAt"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt FTime     `json:"createdAt"`
 	Actor     User      `json:"actor"`
 }
 
@@ -284,7 +284,7 @@ type RecordResponse struct {
 
 type RecordValue struct { // TODO: Figure out how to make it get different types of records
 	Reply       *ReplySubject `json:"reply,omitempty"`
-	CreatedAt   time.Time     `json:"createdAt,omitempty"`
+	CreatedAt   FTime         `json:"createdAt,omitempty"`
 	Description string        `json:"description,omitempty"`
 	DisplayName string        `json:"displayName,omitempty"`
 	Avatar      Blob          `json:"avatar,omitempty"`
@@ -358,6 +358,28 @@ type ListDetailed struct {
 	List   ListInfo   `json:"list"`
 	Cursor string     `json:"cursor"`
 	Items  []ListItem `json:"items"`
+}
+
+type FTime struct {
+	time.Time
+}
+
+func (ct *FTime) UnmarshalJSON(b []byte) error {
+	// Remove quotes
+	s := strings.Trim(string(b), `"`)
+	if s == "" || s == "null" {
+		ct.Time = time.Unix(0, 0).UTC()
+		return nil
+	}
+	// Try to parse using RFC3339
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		// Default to 1970-01-01T00:00:00Z
+		ct.Time = time.Unix(0, 0).UTC()
+		return nil
+	}
+	ct.Time = t
+	return nil
 }
 
 var (
@@ -644,7 +666,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		}(),
 		ProfileSidebarBorderColor: "87bc44",
 		ProfileBackgroundTile:     false,
-		CreatedAt:                 bridge.TwitterTimeConverter(author.CreatedAt),
+		CreatedAt:                 bridge.TwitterTimeConverter(author.CreatedAt.Time),
 		ProfileImageURLHttps:      pfp_url,
 		ProfileImageURL:           pfp_url,
 
@@ -1108,7 +1130,7 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 		Record: CreatePostRecord{
 			Type:      "app.bsky.feed.post",
 			Text:      status,
-			CreatedAt: time.Now().UTC(),
+			CreatedAt: FTime{time.Now().UTC()},
 			Reply:     replySubject,
 			Facets:    facets,
 			Embed: func() *Embed {
