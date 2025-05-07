@@ -42,11 +42,12 @@ type User struct {
 	IndexedAt      time.Time `json:"indexedAt"`
 	CreatedAt      FTime     `json:"createdAt"`
 	Associated     struct {
-		Lists        int   `json:"lists"`
-		FeedGens     int   `json:"feedgens"`
-		StarterPacks int   `json:"starterPacks"`
-		Labeler      bool  `json:"labeler"`
-		CreatedAt    FTime `json:"created_at"`
+		Lists        int      `json:"lists"`
+		FeedGens     int      `json:"feedgens"`
+		StarterPacks int      `json:"starterPacks"`
+		Labeler      bool     `json:"labeler"`
+		CreatedAt    FTime    `json:"created_at"`
+		Chat         UserChat `json:"chat"`
 	} `json:"associated"`
 	Viewer struct {
 		Muted bool `json:"muted"`
@@ -58,6 +59,15 @@ type User struct {
 		FollowedBy *string `json:"followedBy,omitempty"`
 		// KnownFollowers
 	} `json:"viewer"`
+	Verification Verification `json:"verification"`
+}
+
+type UserChat struct {
+	AllowIncoming string `json:"allowIncoming"`
+}
+type Verification struct {
+	VerifiedStatus        string `json:"verifiedStatus"`
+	TrustedVerifierStatus string `json:"trustedVerifierStatus"`
 }
 
 type PostRecord struct {
@@ -689,7 +699,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 
 		Lang:                   "en",
 		Notifications:          nil,
-		Verified:               false,
+		Verified:               author.Verification.VerifiedStatus == "valid",
 		ProfileBackgroundColor: "c0deed",
 		GeoEnabled:             false,
 		Description:            author.Description,
