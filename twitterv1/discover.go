@@ -169,87 +169,76 @@ func trends_woeid(c *fiber.Ctx) error {
 }
 
 func discovery(c *fiber.Ctx) error {
-	return c.SendString(`
-{
-  "statuses": [
-    {
-      "user": {
-        "id": 5123166115319017703,
-        "name": "Preloading",
-        "screen_name": "preloading.bsky.social"
-      },
-      "text": "@xsquishh.bsky.social that wasn't it but... ;)",
-      "entities": {
-        "hashtags": [],
-        "urls": []
-      }
-    }
-  ],
-  "stories": [
-    {
-      "type": "news",
-      "score": 0.92,
-      "data": {
-        "title": "Thank you for using A Twitter Bridge!",
-        "articles": [
-          {
-            "title": "Thank you for using A Twitter Bridge!",
-            "url": {
-              "display_url": "twitterbridge.loganserver.net",
-              "expanded_url": "https://twitterbridge.loganserver.net"
-            },
-            "tweet_count": 1500,
-            "media": [
-              {
-                "url": "https://example.com/idk.jpg",
-                "width": 800,
-                "height": 600
-              }
-            ]
-          }
-        ]
-      },
-      "social_proof": {
-        "social_proof_type": "social",
-        "referenced_by": {
-          "global_count": 2500,
-          "statuses": [
-            {
-              "user": {
-                "id": 5123166115319017703,
-                "name": "Preloading",
-                "screen_name": "preloading.bsky.social"
-              },
-              "text": "very cool"
-            }
-          ]
-        }
-      }
-    }
-  ],
-  "related_queries": [
-    {
-      "query": "Bluetweety"
-    },
-    {
-      "query": "A Twitter Bridge"
-    }
-  ],
-  "spelling_corrections": [
-    {
-      "results": [
-        {
-          "value": {
-            "query": "Twiter API",
-            "indices": [
-              [0, 6],
-              [7, 10]
-            ]
-          }
-        }
-      ]
-    }
-  ]
-}
-	`)
+	// auth
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		blankstring := ""
+		oauthToken = &blankstring
+	}
+
+	err, thread := blueskyapi.GetPost(*pds, *oauthToken, "at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.post/3lfgrcq4di22c", 0, 1)
+
+	if err != nil {
+		return err
+	}
+
+	var displayTweet bridge.Tweet
+
+	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
+	if thread.Thread.Parent == nil {
+		displayTweet = TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
+	} else {
+		displayTweet = TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
+	}
+
+	return EncodeAndSend(c, bridge.Discovery{
+		Statuses: []bridge.Tweet{
+			displayTweet,
+		},
+		Stories: []bridge.Story{
+			{
+				Type:  "news",
+				Score: 0.92,
+				Data: bridge.StoryData{
+					Title: "Thank you for using A Twitter Bridge!",
+					Articles: []bridge.NewsArticle{
+						{
+							Title: "Thank you for using A Twitter Bridge!",
+							Url: bridge.StoryURL{
+								DisplayURL:  "twitterbridge.loganserver.net",
+								ExpandedURL: "https://twitterbridge.loganserver.net",
+							},
+							TweetCount: 1500,
+							Media: []bridge.StoryMediaInfo{
+								{
+									Type:     "image", // ?
+									MediaURL: "https://raw.githubusercontent.com/Preloading/TwitterAPIBridge/refs/heads/main/resources/1.png",
+									Width:    1920,
+									Height:   1080,
+								},
+							},
+						},
+					},
+				},
+				SocialProof: bridge.SocialProof{
+					Type: "social",
+					ReferencedBy: bridge.SocialProofedReferencedBy{
+						GlobalCount: 2500,
+						Statuses:    []bridge.Tweet{displayTweet},
+					},
+				},
+			},
+		},
+
+		RelatedQueries: []bridge.RelatedQuery{
+			{
+				Query: "Bluetweety",
+			},
+			{
+				Query: "A Twitter Bridge",
+			},
+		},
+		SpellingCorrections: []bridge.SpellingCorrection{},
+	})
 }

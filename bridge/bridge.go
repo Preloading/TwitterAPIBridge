@@ -352,6 +352,92 @@ type FacetParsing struct {
 	Item  string
 }
 
+type Discovery struct {
+	Statuses            []Tweet              `json:"statuses" xml:"statuses"`
+	Stories             []Story              `json:"stories" xml:"stories"`
+	RelatedQueries      []RelatedQuery       `json:"related_queries" xml:"related_queries"`
+	SpellingCorrections []SpellingCorrection `json:"spelling_corrections" xml:"spelling_corrections"`
+}
+
+type Story struct {
+	Type        string      `json:"type" xml:"type"` // news or topic
+	Score       float32     `json:"score" xml:"score"`
+	Data        StoryData   `json:"data" xml:"data"`
+	SocialProof SocialProof `json:"social_proof" xml:"social_proof"`
+}
+
+type StoryData struct {
+	Title    string        `json:"title" xml:"title"`
+	Articles []NewsArticle `json:"articles" xml:"articles"`
+}
+
+// cringe that i need these multiple
+
+type StoryURL struct {
+	DisplayURL  string `json:"display_url" xml:"display_url"`
+	ExpandedURL string `json:"expanded_url" xml:"expanded_url"`
+}
+
+type StoryMediaInfo struct {
+	MediaURL  string          `json:"media_url" xml:"media_url"`
+	Type      string          `json:"type" xml:"type"`
+	Width     int             `json:"width" xml:"width"`
+	Height    int             `json:"height" xml:"height"`
+	VideoInfo *StoryVideoInfo `json:"video_info,omitempty" xml:"video_info,omitempty"`
+}
+
+// speculating, is this for proper video support?
+type StoryVideoInfo struct {
+	Variants []StoryVideoVariant `json:"variants" xml:"variants"`
+}
+
+type StoryVideoVariant struct {
+	URL         string `json:"url" xml:"url"`
+	ContentType string `json:"content_type" xml:"content_type"`
+}
+
+type NewsArticle struct {
+	Title       string           `json:"title" xml:"title"`
+	Url         StoryURL         `json:"url" xml:"url"`
+	Description string           `json:"description" xml:"description"`
+	TweetCount  int              `json:"tweet_count" xml:"tweet_count"`
+	Attribution string           `json:"attribution" xml:"attribution"`
+	Score       float32          `json:"score" xml:"score"`
+	Query       string           `json:"query" xml:"query"`
+	Name        string           `json:"name" xml:"name"` // no clue what the difference is between name and title. i guess the article's author
+	Media       []StoryMediaInfo `json:"media" xml:"media"`
+}
+
+type SocialProof struct {
+	Type         string                    `json:"social_proof_type" xml:"social_proof_type"` // social or query
+	ReferencedBy SocialProofedReferencedBy `json:"referenced_by" xml:"referenced_by"`
+}
+
+type SocialProofedReferencedBy struct {
+	Statuses    []Tweet `json:"statuses" xml:"statuses"`
+	GlobalCount int     `json:"global_count" xml:"global_count"`
+}
+
+type RelatedQuery struct {
+	Query string `json:"query" xml:"query"`
+}
+type QueryWithIndices struct {
+	Query   string `json:"query" xml:"query"`
+	Indices []int  `json:"indices" xml:"-"`
+	Start   int    `json:"-" xml:"start,attr"`
+	End     int    `json:"-" xml:"end,attr"`
+}
+
+//arrays upon arrays
+
+type SpellingCorrection struct {
+	Results []SpellingCorrectionResults `json:"results" xml:"results"`
+}
+
+type SpellingCorrectionResults struct {
+	Value QueryWithIndices `json:"value" xml:"value"`
+}
+
 func encodeToUint63(input string) *int64 {
 	hasher := fnv.New64a()                  // Create a new FNV-1a 64-bit hash
 	hasher.Write([]byte(input))             // Write the input string as bytes
