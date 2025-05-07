@@ -438,6 +438,7 @@ type SpellingCorrection struct {
 
 type SpellingCorrectionResults struct {
 	Value QueryWithIndices `json:"value" xml:"value"`
+}
 
 type AuthToken struct {
 	*jwt.RegisteredClaims

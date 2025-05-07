@@ -193,9 +193,9 @@ func discovery(c *fiber.Ctx) error {
 
 	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
 	if thread.Thread.Parent == nil {
-		displayTweet = TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
+		displayTweet = TranslatePostToTweet(thread.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds)
 	} else {
-		displayTweet = TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
+		displayTweet = TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, thread.Thread.Parent.Post.Author.Handle, &thread.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds)
 	}
 
 	return EncodeAndSend(c, bridge.Discovery{
@@ -247,7 +247,8 @@ func discovery(c *fiber.Ctx) error {
 		},
 		SpellingCorrections: []bridge.SpellingCorrection{},
 	})
-  
+}
+
 // Topics from bluesky
 var topicLookup = map[string]string{
 	"animals":     "Animals",
