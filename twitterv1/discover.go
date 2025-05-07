@@ -174,6 +174,80 @@ func trends_woeid(c *fiber.Ctx) error {
 	})
 }
 
+func discovery(c *fiber.Ctx) error {
+	// auth
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		blankstring := ""
+		oauthToken = &blankstring
+	}
+
+	err, thread := blueskyapi.GetPost(*pds, *oauthToken, "at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.post/3lfgrcq4di22c", 0, 1)
+
+	if err != nil {
+		return err
+	}
+
+	var displayTweet bridge.Tweet
+
+	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
+	if thread.Thread.Parent == nil {
+		displayTweet = TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds)
+	} else {
+		displayTweet = TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds)
+	}
+
+	return EncodeAndSend(c, bridge.Discovery{
+		Statuses: []bridge.Tweet{
+			displayTweet,
+		},
+		Stories: []bridge.Story{
+			{
+				Type:  "news",
+				Score: 0.92,
+				Data: bridge.StoryData{
+					Title: "Thank you for using A Twitter Bridge!",
+					Articles: []bridge.NewsArticle{
+						{
+							Title: "Thank you for using A Twitter Bridge!",
+							Url: bridge.StoryURL{
+								DisplayURL:  "twitterbridge.loganserver.net",
+								ExpandedURL: "https://twitterbridge.loganserver.net",
+							},
+							TweetCount: 1500,
+							Media: []bridge.StoryMediaInfo{
+								{
+									Type:     "image", // ?
+									MediaURL: "https://raw.githubusercontent.com/Preloading/TwitterAPIBridge/refs/heads/main/resources/1.png",
+									Width:    1920,
+									Height:   1080,
+								},
+							},
+						},
+					},
+				},
+				SocialProof: bridge.SocialProof{
+					Type: "social",
+					ReferencedBy: bridge.SocialProofedReferencedBy{
+						GlobalCount: 2500,
+						Statuses:    []bridge.Tweet{displayTweet},
+					},
+				},
+			},
+		},
+
+		RelatedQueries: []bridge.RelatedQuery{
+			{
+				Query: "Bluetweety",
+			},
+			{
+				Query: "A Twitter Bridge",
+			},
+		},
+		SpellingCorrections: []bridge.SpellingCorrection{},
+	})
+  
 // Topics from bluesky
 var topicLookup = map[string]string{
 	"animals":     "Animals",
