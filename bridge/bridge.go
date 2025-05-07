@@ -500,6 +500,51 @@ type TopicUserSuggestions struct {
 	Users []*TwitterUser `json:"users" xml:"users"`
 }
 
+// Search Ahead
+// https://web.archive.org/web/20220427214446/https://twitter.com/i/search/typeahead.json?count=20&filters=true&result_type=true&src=COMPOSE&q=firat_ber
+type SearchAhead struct {
+	NumberOfResults int              `json:"num_results" xml:"num_results"`
+	Users           []SummarisedUser `json:"users" xml:"users"`
+	Topics          []string         `json:"topics" xml:"topics"`     // unimplemented
+	Events          []string         `json:"events" xml:"events"`     // unimplemented
+	Lists           []string         `json:"lists" xml:"lists"`       // unimplemented, and i don't think you can search lists (least w/o clearsky)
+	Oneclick        []string         `json:"oneclick" xml:"oneclick"` // unimplemented and clueless as to what this is.
+	Hashtags        []string         `json:"hashtags" xml:"hashtags"` // unimplemented
+	CompletedIn     float64          `json:"completed_in" xml:"completed_in"`
+	Query           string           `json:"query" xml:"query"`
+}
+
+type SummarisedUser struct {
+	XMLName              xml.Name      `xml:"user" json:"-"`
+	ID                   int64         `json:"id" xml:"id"`
+	IDStr                string        `json:"id_str" xml:"id_str"`
+	Verified             bool          `json:"verified" xml:"verified"`
+	IsDMAble             bool          `json:"is_dm_able" xml:"is_dm_able"`
+	IsBlocked            bool          `json:"is_blocked" xml:"is_blocked"`
+	Name                 string        `json:"name" xml:"name"`
+	ScreenName           string        `json:"screen_name" xml:"screen_name"`
+	ProfileImageURL      string        `json:"profile_image_url" xml:"profile_image_url"`
+	ProfileImageURLHttps string        `json:"profile_image_url_https" xml:"profile_image_url_https"`
+	Location             string        `json:"location" xml:"location"` // unimplemented
+	IsProtected          bool          `json:"is_protected" xml:"is_protected"`
+	RoundedScore         int           `json:"rounded_score" xml:"rounded_score"`
+	ConnectedUserCount   int           `json:"connected_user_count" xml:"connected_user_count"`
+	ConnectedUserIds     []int64       `json:"connected_user_ids" xml:"connected_user_ids"`
+	SocialProofsOrdered  []string      `json:"social_proofs_ordered" xml:"social_proofs_ordered"` // Unimplemented
+	SocialContext        SocialContext `json:"social_context" xml:"social_context"`
+	Tokens               []Token       `json:"tokens" xml:"tokens"`
+	Inline               bool          `json:"inline" xml:"inline"` // unimplemented
+}
+
+type Token struct {
+	Token string `json:"token" xml:"token"`
+}
+
+type SocialContext struct {
+	Following  bool `json:"following" xml:"following"`
+	FollowedBy bool `json:"followed_by" xml:"followed_by"`
+}
+
 func encodeToUint63(input string) *int64 {
 	hasher := fnv.New64a()                  // Create a new FNV-1a 64-bit hash
 	hasher.Write([]byte(input))             // Write the input string as bytes

@@ -2,6 +2,7 @@ package twitterv1
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,6 +45,99 @@ func UserSearch(c *fiber.Ctx) error {
 	}
 
 	return EncodeAndSend(c, users)
+}
+
+// Something interesting with this endpoint is that the twitter client requested:
+// /i/search/typeahead.json?count=2500&prefetch=true&result_type=users&send_error_codes=1
+// Is this trying to get the first 2500 users for speed reasons?
+// Or is this for some inital search suggestions?
+// It was sent on right after login sooooo idk.
+
+// https://web.archive.org/web/20220427214446/https://twitter.com/i/search/typeahead.json?count=20&filters=true&result_type=true&src=COMPOSE&q=firat_ber
+func SearchAhead(c *fiber.Ctx) error {
+	// for completed in time
+	start := time.Now()
+
+	if strings.Contains(c.Query("result_type"), "users") {
+		// unimplemented, so we'll return it blank.
+		return EncodeAndSend(c, bridge.SearchAhead{
+			NumberOfResults: 0,
+			Query:           c.Query("q"),
+			CompletedIn:     time.Since(start).Seconds(),
+		})
+	}
+
+	searchQuery := c.Query("q")
+	if searchQuery == "" {
+		return c.Status(fiber.StatusBadRequest).SendString("Missing search query (or that we don't support prefetch right now)")
+	}
+
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	limit := c.Query("count")
+	if limit == "" {
+		limit = "10"
+	}
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("Invalid limit parameter")
+	}
+
+	// Search for users
+	bskyUsers, err := blueskyapi.UserSearchAhead(*pds, *oauthToken, searchQuery, limitInt)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to search")
+	}
+
+	if len(bskyUsers) == 0 {
+		return EncodeAndSend(c, bridge.SearchAhead{
+			NumberOfResults: 0,
+			Query:           c.Query("q"),
+			CompletedIn:     time.Since(start).Seconds(),
+		})
+	}
+
+	// Converting into a summarized version of the user
+	users := make([]bridge.SummarisedUser, len(bskyUsers))
+	for i, user := range bskyUsers {
+		userId := bridge.BlueSkyToTwitterID(user.DID)
+		pfp_url := configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(user.Avatar) + ":profile_bigger"
+		users[i] = bridge.SummarisedUser{
+			ID:                   *userId,
+			IDStr:                strconv.FormatInt(*userId, 10),
+			ScreenName:           user.Handle,
+			Name:                 user.DisplayName,
+			IsDMAble:             true,  // take too much effort to figure this out
+			IsBlocked:            false, // same for this
+			ProfileImageURL:      pfp_url,
+			ProfileImageURLHttps: pfp_url,
+			Location:             "",
+			IsProtected:          false,
+			Verified:             false,
+			ConnectedUserCount:   0,
+			ConnectedUserIds:     []int64{},
+			RoundedScore:         69420,
+			SocialProofsOrdered:  []string{},
+			SocialContext: bridge.SocialContext{ // Kinda expensive to get this
+				Following:  false,
+				FollowedBy: false,
+			},
+			Inline: false,
+		}
+	}
+
+	return EncodeAndSend(c, bridge.SearchAhead{
+		NumberOfResults: len(users),
+		Users:           users,
+		Query:           c.Query("q"),
+		CompletedIn:     time.Since(start).Seconds(),
+	})
 }
 
 type TweetWithURI struct {

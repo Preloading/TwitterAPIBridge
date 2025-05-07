@@ -111,6 +111,7 @@ func InitServer(config *config.Config) {
 
 	// Connect
 	app.Get("/1/users/search.:filetype", UserSearch)
+	app.Get("/i/search/typeahead.:filetype", SearchAhead)
 	app.Get("/i/activity/about_me.:filetype", GetMyActivity)
 
 	// Discover

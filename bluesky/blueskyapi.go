@@ -1575,6 +1575,36 @@ func UserSearch(pds string, token string, query string) ([]User, error) {
 	return users.Actors, nil
 }
 
+// exactly the same as usersearch but different i guess idk
+func UserSearchAhead(pds string, token string, query string, limit int) ([]User, error) {
+	url := pds + "/xrpc/app.bsky.actor.searchActorsTypeahead?q=" + url.QueryEscape(query) + "&limit=" + fmt.Sprintf("%d", limit)
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch search results")
+	}
+
+	users := UserSearchResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, err
+	}
+	return users.Actors, nil
+}
+
 func PostSearch(pds string, token string, query string, since *time.Time, until *time.Time) ([]Post, error) {
 	url := pds + "/xrpc/app.bsky.feed.searchPosts?sort=top&q=" + url.QueryEscape(query)
 	if since != nil {
