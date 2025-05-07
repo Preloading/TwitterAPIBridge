@@ -40,13 +40,13 @@ type User struct {
 	FollowsCount   int       `json:"followsCount"`
 	PostsCount     int       `json:"postsCount"`
 	IndexedAt      time.Time `json:"indexedAt"`
-	CreatedAt      time.Time `json:"createdAt"`
+	CreatedAt      FTime     `json:"createdAt"`
 	Associated     struct {
-		Lists        int       `json:"lists"`
-		FeedGens     int       `json:"feedgens"`
-		StarterPacks int       `json:"starterPacks"`
-		Labeler      bool      `json:"labeler"`
-		CreatedAt    time.Time `json:"created_at"`
+		Lists        int   `json:"lists"`
+		FeedGens     int   `json:"feedgens"`
+		StarterPacks int   `json:"starterPacks"`
+		Labeler      bool  `json:"labeler"`
+		CreatedAt    FTime `json:"created_at"`
 	} `json:"associated"`
 	Viewer struct {
 		Muted bool `json:"muted"`
@@ -62,7 +62,7 @@ type User struct {
 
 type PostRecord struct {
 	Type      string        `json:"$type"`
-	CreatedAt time.Time     `json:"createdAt"`
+	CreatedAt FTime         `json:"createdAt"`
 	Embed     Embed         `json:"embed,omitempty"`
 	Facets    []Facet       `json:"facets,omitempty"`
 	Langs     []string      `json:"langs,omitempty"`
@@ -80,7 +80,7 @@ type PostReason struct {
 type Embed struct {
 	Type   string  `json:"$type"`
 	Images []Image `json:"images,omitempty"`
-	//Video  `json:",omitempty"`
+	Video  `json:",omitempty"`
 }
 
 type Image struct {
@@ -92,7 +92,7 @@ type Image struct {
 type Video struct {
 	Alt         string      `json:"alt"`
 	AspectRatio AspectRatio `json:"aspectRatio"`
-	Video       Blob        `json:"video"`
+	Video       *Blob       `json:"video"`
 }
 
 type AspectRatio struct {
@@ -218,7 +218,7 @@ type PostInteractionRecord struct {
 type CreatePostRecord struct {
 	Type      string        `json:"$type"`
 	Text      string        `json:"text"`
-	CreatedAt time.Time     `json:"createdAt"`
+	CreatedAt FTime         `json:"createdAt"`
 	Reply     *ReplySubject `json:"reply,omitempty"`
 	Facets    []Facet       `json:"facets,omitempty"`
 	Embed     *Embed        `json:"embed,omitempty"`
@@ -258,7 +258,7 @@ type Likes struct {
 
 type ItemByWithDate struct {
 	IndexedAt time.Time `json:"indexedAt"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt FTime     `json:"createdAt"`
 	Actor     User      `json:"actor"`
 }
 
@@ -284,7 +284,7 @@ type RecordResponse struct {
 
 type RecordValue struct { // TODO: Figure out how to make it get different types of records
 	Reply       *ReplySubject `json:"reply,omitempty"`
-	CreatedAt   time.Time     `json:"createdAt,omitempty"`
+	CreatedAt   FTime         `json:"createdAt,omitempty"`
 	Description string        `json:"description,omitempty"`
 	DisplayName string        `json:"displayName,omitempty"`
 	Avatar      Blob          `json:"avatar,omitempty"`
@@ -327,6 +327,59 @@ type Notifications struct {
 	Cursor        string         `json:"cursor"`
 	Priority      bool           `json:"priority"`
 	SeenAt        time.Time      `json:"seenAt"`
+}
+
+type ListInfo struct {
+	URI     string `json:"uri"`
+	CID     string `json:"cid"`
+	Creator User   `json:"creator"`
+	Name    string `json:"name"`
+	// ignoring purpose
+
+	Description       string     `json:"description"`
+	DescriptionFacets []Facet    `json:"descriptionFacets"`
+	Avatar            string     `json:"avatar"`
+	ListItemCount     int        `json:"listItemCount"`
+	IndexedAt         time.Time  `json:"indexedAt"`
+	Viewer            PostViewer `json:"viewer"`
+}
+
+type ListItem struct {
+	URI     string `json:"uri"`
+	Subject User   `json:"subject"`
+}
+
+type Lists struct {
+	Lists  []ListInfo `json:"lists"`
+	Cursor string     `json:"cursor"`
+}
+
+type ListDetailed struct {
+	List   ListInfo   `json:"list"`
+	Cursor string     `json:"cursor"`
+	Items  []ListItem `json:"items"`
+}
+
+type FTime struct {
+	time.Time
+}
+
+func (ct *FTime) UnmarshalJSON(b []byte) error {
+	// Remove quotes
+	s := strings.Trim(string(b), `"`)
+	if s == "" || s == "null" {
+		ct.Time = time.Unix(0, 0).UTC()
+		return nil
+	}
+	// Try to parse using RFC3339
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		// Default to 1970-01-01T00:00:00Z
+		ct.Time = time.Unix(0, 0).UTC()
+		return nil
+	}
+	ct.Time = t
+	return nil
 }
 
 var (
@@ -613,7 +666,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 		}(),
 		ProfileSidebarBorderColor: "87bc44",
 		ProfileBackgroundTile:     false,
-		CreatedAt:                 bridge.TwitterTimeConverter(author.CreatedAt),
+		CreatedAt:                 bridge.TwitterTimeConverter(author.CreatedAt.Time),
 		ProfileImageURLHttps:      pfp_url,
 		ProfileImageURL:           pfp_url,
 
@@ -683,11 +736,110 @@ func GetTimeline(pds string, token string, context string, feed string, limit in
 	return nil, &feeds
 }
 
+// https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
+func GetHotPosts(pds string, token string, context string, feed string, limit int) (error, *Timeline) {
+	url := pds + "/xrpc/app.bsky.feed.getFeed?feed=at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot&limit=" + fmt.Sprintf("%d", limit)
+	// Context is removed, since how it gets context is witchcraft.
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch timeline"), nil
+	}
+
+	feeds := Timeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return err, nil
+	}
+
+	return nil, &feeds
+}
+
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-author-feed
 func GetUserTimeline(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
 	apiURL := pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&limit=" + fmt.Sprintf("%d", limit)
 	if context != "" {
 		apiURL = pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch timeline"), nil
+	}
+
+	feeds := Timeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return err, nil
+	}
+
+	return nil, &feeds
+}
+
+func GetMediaTimeline(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
+	apiURL := pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&limit=" + fmt.Sprintf("%d", limit) + "&filter=posts_with_media"
+	if context != "" {
+		apiURL = pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit) + "&filter=posts_with_media"
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return err, nil
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return errors.New("failed to fetch timeline"), nil
+	}
+
+	feeds := Timeline{}
+	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
+		return err, nil
+	}
+
+	return nil, &feeds
+}
+
+// https://docs.bsky.app/docs/api/app-bsky-graph-get-list
+func GetListTimeline(pds string, token string, context string, listURI string, limit int) (error, *Timeline) {
+	apiURL := pds + "/xrpc/app.bsky.feed.getListFeed?list=" + url.QueryEscape(listURI) + "&limit=" + fmt.Sprintf("%d", limit)
+	if context != "" {
+		apiURL = pds + "/xrpc/app.bsky.feed.getListFeed?list=" + url.QueryEscape(listURI) + "&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
@@ -978,7 +1130,7 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 		Record: CreatePostRecord{
 			Type:      "app.bsky.feed.post",
 			Text:      status,
-			CreatedAt: time.Now().UTC(),
+			CreatedAt: FTime{time.Now().UTC()},
 			Reply:     replySubject,
 			Facets:    facets,
 			Embed: func() *Embed {
@@ -1329,12 +1481,12 @@ func GetPostLikes(pds string, token string, uri string, limit int) (*Likes, erro
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-actor-likes
 // Bluesky for SOME REASON limits viewing the likes to your own user. WHy?
-// What is the point of having an "actor" field if you can only use 1 actor?
+// What is the point of having an "actor" field if you can only use 1 actor?"ADD THIS TO LOOKUP TABLE"
 // I'm still gonna implement it, we can hope it will be expanded in the future.
 func GetActorLikes(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
 	url := fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s", limit, actor)
 	if context != "" {
-		url = fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s&context=%s", limit, actor, context)
+		url = fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s&cursor=%s", limit, actor, context)
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
@@ -1597,8 +1749,103 @@ func GetTrends(pds string, token string) (*TrendingTopics, error) {
 	return &trends, nil
 }
 
+func GetUsersLists(pds string, token string, actor string, limit int, cursor string) (*Lists, error) {
+	url := fmt.Sprintf(pds+"/xrpc/app.bsky.graph.getLists?limit=%d&actor=%s", limit, actor)
+	if cursor != "" {
+		url = fmt.Sprintf(pds+"/xrpc/app.bsky.graph.getLists?limit=%d&actor=%s&cursor=%s", limit, actor, cursor)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch a user's lists")
+	}
+
+	lists := Lists{}
+	if err := json.NewDecoder(resp.Body).Decode(&lists); err != nil {
+		return nil, err
+	}
+
+	return &lists, nil
+}
+
+func GetList(pds string, token string, listURI string, limit int, cursor string) (*ListDetailed, error) {
+	url := fmt.Sprintf(pds+"/xrpc/app.bsky.graph.getList?limit=%d&list=%s", limit, listURI)
+	if cursor != "" {
+		url = fmt.Sprintf(pds+"/xrpc/app.bsky.graph.getList?limit=%d&list=%s&cursor=%s", limit, listURI, cursor)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch a user's lists")
+	}
+
+	list := ListDetailed{}
+	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+		return nil, err
+	}
+
+	return &list, nil
+}
+
 func GetMySuggestedUsers(pds string, token string, limit int) ([]User, error) {
 	url := pds + "/xrpc/app.bsky.actor.getSuggestions?limit=" + fmt.Sprintf("%d", limit)
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch suggested users")
+	}
+
+	users := UserSearchResult{}
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, err
+	}
+	return users.Actors, nil
+}
+
+func GetTopicSuggestedUsers(pds string, token string, limit int, category string) ([]User, error) {
+	url := pds + "/xrpc/app.bsky.unspecced.getSuggestedUsers?limit=" + fmt.Sprintf("%d", limit) + "&category=" + category
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
@@ -1678,6 +1925,39 @@ func GetNotifications(pds string, token string, limit int, context string) (*Not
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
 		return nil, errors.New("failed to fetch notifications")
+	}
+
+	notifications := Notifications{}
+	if err := json.NewDecoder(resp.Body).Decode(&notifications); err != nil {
+		return nil, err
+	}
+
+	return &notifications, nil
+}
+
+func GetMentions(pds string, token string, limit int, context string) (*Notifications, error) {
+	url := pds + "/xrpc/app.bsky.notification.listNotifications?reasons=mention&reasons=reply&reasons=quote&limit=" + fmt.Sprintf("%d", limit)
+	if context != "" {
+		url = pds + "/xrpc/app.bsky.notification.listNotifications?reasons=mention&reasons=reply&reasons=quote&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
+	}
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch mentions")
 	}
 
 	notifications := Notifications{}

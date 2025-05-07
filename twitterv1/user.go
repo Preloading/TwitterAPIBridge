@@ -485,7 +485,7 @@ func GetStatusesFollowers(c *fiber.Ctx) error {
 
 func GetFollowers(c *fiber.Ctx) error {
 	// auth
-	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
@@ -495,7 +495,11 @@ func GetFollowers(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.FormValue("screen_name")
 		if actor == "" {
-			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			if userDID != nil {
+				actor = *userDID
+			} else {
+				return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			}
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
@@ -518,7 +522,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	cursorStr := c.FormValue("cursor")
 	if cursorStr != "" {
 		cursorInt, err = strconv.ParseInt(cursorStr, 10, 64)
-		if err != nil || cursorInt < 1 {
+		if err != nil || cursorInt > 1 {
 			cursor, err = bridge.NumToTid(uint64(cursorInt))
 			if err != nil {
 				fmt.Println("Error when converting Followers Cursor:", err)
@@ -529,6 +533,22 @@ func GetFollowers(c *fiber.Ctx) error {
 		}
 	} else {
 		cursor = ""
+	}
+
+	if cursorInt == 0 {
+		return EncodeAndSend(c, struct {
+			Users             []bridge.TwitterUser `json:"users" xml:"users"`
+			NextCursor        uint64               `json:"next_cursor" xml:"next_cursor"`
+			PreviousCursor    uint64               `json:"previous_cursor" xml:"previous_cursor"`
+			NextCursorStr     string               `json:"next_cursor_str" xml:"-"`
+			PreviousCursorStr string               `json:"previous_cursor_str" xml:"-"`
+		}{
+			Users:             []bridge.TwitterUser{},
+			NextCursor:        0,
+			PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
+			NextCursorStr:     "0",
+			PreviousCursorStr: "0",
+		})
 	}
 
 	// fetch followers
@@ -641,7 +661,7 @@ func GetStatusesFollows(c *fiber.Ctx) error {
 
 func GetFollows(c *fiber.Ctx) error {
 	// auth
-	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
 	}
@@ -651,7 +671,11 @@ func GetFollows(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.FormValue("screen_name")
 		if actor == "" {
-			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			if userDID != nil {
+				actor = *userDID
+			} else {
+				return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			}
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
@@ -674,7 +698,7 @@ func GetFollows(c *fiber.Ctx) error {
 	cursorStr := c.FormValue("cursor")
 	if cursorStr != "" {
 		cursorInt, err = strconv.ParseInt(cursorStr, 10, 64)
-		if err != nil || cursorInt == -1 {
+		if err != nil || cursorInt > 1 {
 			cursor, err = bridge.NumToTid(uint64(cursorInt))
 			if err != nil {
 				fmt.Println("Error when converting Followers Cursor:", err)
@@ -685,6 +709,22 @@ func GetFollows(c *fiber.Ctx) error {
 		}
 	} else {
 		cursor = ""
+	}
+
+	if cursorInt == 0 {
+		return EncodeAndSend(c, struct {
+			Users             []bridge.TwitterUser `json:"users" xml:"users"`
+			NextCursor        uint64               `json:"next_cursor" xml:"next_cursor"`
+			PreviousCursor    uint64               `json:"previous_cursor" xml:"previous_cursor"`
+			NextCursorStr     string               `json:"next_cursor_str" xml:"-"`
+			PreviousCursorStr string               `json:"previous_cursor_str" xml:"-"`
+		}{
+			Users:             []bridge.TwitterUser{},
+			NextCursor:        0,
+			PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
+			NextCursorStr:     "0",
+			PreviousCursorStr: "0",
+		})
 	}
 
 	// fetch follows

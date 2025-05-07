@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -22,7 +23,11 @@ type TweetsRoot struct {
 }
 
 func home_timeline(c *fiber.Ctx) error {
-	return convert_timeline(c, "", blueskyapi.GetTimeline)
+	return convert_timeline(c, "", true, blueskyapi.GetTimeline)
+}
+
+func hot_post_timeline(c *fiber.Ctx) error {
+	return convert_timeline(c, "", true, blueskyapi.GetHotPosts)
 }
 
 func user_timeline(c *fiber.Ctx) error {
@@ -42,7 +47,27 @@ func user_timeline(c *fiber.Ctx) error {
 		}
 		actor = *actorPtr
 	}
-	return convert_timeline(c, actor, blueskyapi.GetUserTimeline)
+	return convert_timeline(c, actor, false, blueskyapi.GetUserTimeline)
+}
+
+func media_timeline(c *fiber.Ctx) error {
+	actor := c.Query("screen_name")
+	if actor == "" {
+		actor = c.Query("user_id")
+		if actor == "" {
+			return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+		}
+		actorInt, err := strconv.ParseInt(actor, 10, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		actorPtr, err := bridge.TwitterIDToBlueSky(&actorInt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		}
+		actor = *actorPtr
+	}
+	return convert_timeline(c, actor, false, blueskyapi.GetMediaTimeline)
 }
 
 func likes_timeline(c *fiber.Ctx) error {
@@ -58,11 +83,11 @@ func likes_timeline(c *fiber.Ctx) error {
 	}
 	actor = *actorPtr
 
-	return convert_timeline(c, actor, blueskyapi.GetActorLikes)
+	return convert_timeline(c, actor, false, blueskyapi.GetActorLikes)
 }
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
-func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline)) error {
+func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline)) error {
 	// Get all of our keys, beeps, and bops
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
@@ -125,7 +150,7 @@ func convert_timeline(c *fiber.Ctx, param string, fetcher func(string, string, s
 	tweets := []bridge.Tweet{}
 
 	for _, item := range res.Feed {
-		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, &item.Reply.Parent.Record.CreatedAt, item.Reason, *oauthToken, *pds))
+		tweets = append(tweets, TranslatePostToTweet(item.Post, item.Reply.Parent.URI, item.Reply.Parent.Author.DID, item.Reply.Parent.Author.Handle, &item.Reply.Parent.Record.CreatedAt.Time, item.Reason, *oauthToken, *pds))
 	}
 
 	if c.Params("filetype") == "xml" { // i wonder why twitter ditched xml
@@ -192,11 +217,11 @@ func RelatedResults(c *fiber.Ctx) error {
 		Results:     []bridge.Results{},
 	}
 	for _, reply := range *thread.Thread.Replies {
-		reply.Post.Record.CreatedAt = reply.Post.IndexedAt
+		reply.Post.Record.CreatedAt = blueskyapi.FTime{Time: reply.Post.IndexedAt}
 		twitterReplies.Results = append(twitterReplies.Results, bridge.Results{
 			Kind:  "Tweet",
 			Score: 1.0,
-			Value: TranslatePostToTweet(reply.Post, uri, strconv.FormatInt(*postAuthor, 10), &thread.Thread.Post.Record.CreatedAt, nil, *oauthToken, *pds),
+			Value: TranslatePostToTweet(reply.Post, uri, strconv.FormatInt(*postAuthor, 10), reply.Post.Author.Handle, &thread.Thread.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds),
 			Annotations: []bridge.Annotations{
 				{
 					ConversationRole: "Descendant",
@@ -239,14 +264,16 @@ func GetStatusFromId(c *fiber.Ctx) error {
 
 	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
 	if thread.Thread.Parent == nil {
-		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", nil, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, "", "", "", nil, nil, *oauthToken, *pds))
 	} else {
-		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, &thread.Thread.Parent.Post.Record.CreatedAt, nil, *oauthToken, *pds))
+		return EncodeAndSend(c, TranslatePostToTweet(thread.Thread.Post, thread.Thread.Parent.Post.URI, thread.Thread.Parent.Post.Author.DID, thread.Thread.Parent.Post.Author.Handle, &thread.Thread.Parent.Post.Record.CreatedAt.Time, nil, *oauthToken, *pds))
 	}
 }
 
+// This gigantic function is used to convert the bluesky post format, into a format that is compatible with the twitter API.
 // https://web.archive.org/web/20120506182126/https://dev.twitter.com/docs/platform-objects/tweets
-func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string, pds string) bridge.Tweet {
+func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUserBskyId string, replyUserHandle string, replyTimeStamp *time.Time, postReason *blueskyapi.PostReason, token string, pds string) bridge.Tweet {
+	var err error
 	textOffset := 0
 
 	isRetweet := false
@@ -301,12 +328,22 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 	for _, image := range tweet.Record.Embed.Images {
 		// Add the image "url" to the text
 		startLen, endLen := 0, 0
+		formattedImageURL := configData.ImgURLText
 		displayURL := configData.ImgDisplayText
-		mediaWebURL := ""
+		shortCode := ""
 		if displayURL != "" {
 			displayURL = strings.ReplaceAll(displayURL, "{shortblob}", image.Image.Ref.Link[len(image.Image.Ref.Link)-6:])
 			displayURL = strings.ReplaceAll(displayURL, "{fullblob}", image.Image.Ref.Link)
 			displayURL = strings.ReplaceAll(displayURL, "{user_did}", tweet.Author.DID)
+			if strings.Contains(displayURL, "{shortcode}") {
+				shortCode, err = CreateShortLink("/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg")
+				if err != nil {
+					fmt.Println("Error creating short link:", err)
+					displayURL = strings.ReplaceAll(displayURL, "{shortcode}", "")
+				} else {
+					displayURL = strings.ReplaceAll(displayURL, "{shortcode}", shortCode)
+				}
+			}
 
 			if len(processedText) == 0 {
 				endLen = utf8.RuneCountInString(displayURL)
@@ -316,24 +353,42 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				startLen = utf8.RuneCountInString(processedText) + 1
 				endLen = (utf8.RuneCountInString(processedText) + 1) + utf8.RuneCountInString(displayURL)
 
-				processedText = processedText + " " + displayURL
+				processedText = processedText + "\n" + displayURL
 			}
-			mediaWebURL = configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg"
 		}
+		if formattedImageURL != "" {
+			formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortblob}", image.Image.Ref.Link[len(image.Image.Ref.Link)-6:])
+			formattedImageURL = strings.ReplaceAll(formattedImageURL, "{fullblob}", image.Image.Ref.Link)
+			formattedImageURL = strings.ReplaceAll(formattedImageURL, "{user_did}", tweet.Author.DID)
+			if strings.Contains(formattedImageURL, "{shortcode}") {
+				if shortCode == "" {
+					shortCode, err = CreateShortLink("/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg")
+					if err != nil {
+						fmt.Println("Error creating short link:", err)
+						formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortcode}", "")
+					} else {
+						formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortcode}", shortCode)
+					}
+				} else {
+					formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortcode}", shortCode)
+				}
+
+			}
+		}
+
+		mediaWebURL := configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg"
 
 		// Process each image
 		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
 			Type:          "photo",
 			ID:            int64(id),
 			IDStr:         strconv.Itoa(id),
-			MediaURL:      configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
-			MediaURLHttps: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
+			MediaURL:      mediaWebURL,
+			MediaURLHttps: mediaWebURL,
 
-			DisplayURL: displayURL,
-			//ExpandedURL: displayURL,
-			//URL:         displayURL,
+			DisplayURL:  displayURL,
 			ExpandedURL: mediaWebURL,
-			URL:         mediaWebURL,
+			URL:         formattedImageURL,
 
 			Sizes: bridge.MediaSize{
 				Thumb: func() bridge.Size {
@@ -388,72 +443,6 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				},
 			},
 
-			// XMLFormat: bridge.MediaXML{
-			// 	Type:          "photo",
-			// 	ID:            int64(id),
-			// 	MediaURL:      configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
-			// 	MediaURLHttps: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
-
-			// 	DisplayURL:  displayURL,
-			// 	ExpandedURL: configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
-			// 	URL:         configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + image.Image.Ref.Link + ".jpg",
-
-			// 	Start: startLen,
-			// 	End:   endLen,
-			// 	Sizes: bridge.MediaSize{
-			// 		Thumb: func() bridge.Size {
-			// 			w, h := image.AspectRatio.Width, image.AspectRatio.Height
-			// 			if w > h {
-			// 				return bridge.Size{
-			// 					W:      150,
-			// 					H:      int(150 * float64(h) / float64(w)),
-			// 					Resize: "crop",
-			// 				}
-			// 			}
-			// 			return bridge.Size{
-			// 				W:      int(150 * float64(w) / float64(h)),
-			// 				H:      150,
-			// 				Resize: "crop",
-			// 			}
-			// 		}(),
-			// 		Small: func() bridge.Size {
-			// 			w, h := image.AspectRatio.Width, image.AspectRatio.Height
-			// 			if w > h {
-			// 				return bridge.Size{
-			// 					W:      340,
-			// 					H:      int(340 * float64(h) / float64(w)),
-			// 					Resize: "fit",
-			// 				}
-			// 			}
-			// 			return bridge.Size{
-			// 				W:      int(340 * float64(w) / float64(h)),
-			// 				H:      340,
-			// 				Resize: "fit",
-			// 			}
-			// 		}(),
-			// 		Medium: func() bridge.Size {
-			// 			w, h := image.AspectRatio.Width, image.AspectRatio.Height
-			// 			if w > h {
-			// 				return bridge.Size{
-			// 					W:      600,
-			// 					H:      int(600 * float64(h) / float64(w)),
-			// 					Resize: "fit",
-			// 				}
-			// 			}
-			// 			return bridge.Size{
-			// 				W:      int(600 * float64(w) / float64(h)),
-			// 				H:      600,
-			// 				Resize: "fit",
-			// 			}
-			// 		}(),
-			// 		Large: bridge.Size{
-			// 			W:      image.AspectRatio.Width,
-			// 			H:      image.AspectRatio.Height,
-			// 			Resize: "fit",
-			// 		},
-			// 	},
-			// },
-
 			Indices: []int{
 				startLen,
 				endLen,
@@ -466,9 +455,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		id++
 	}
 
-	// Videos
-	// TODO
-
+	// Faucets, essentially links, mentions, and hashtags
 	for _, faucet := range tweet.Record.Facets {
 		// I haven't seen this exceed 1 element yet
 		// if len(faucet.Features) > 1 {
@@ -526,8 +513,9 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				XMLFormat: bridge.URLXMLFormat{
 					Start:       startIndex,
 					End:         endIndex,
+					DisplayURL:  tweet.Record.Text[faucet.Index.ByteStart:faucet.Index.ByteEnd],
 					URL:         faucet.Features[0].Uri,
-					ExpandedURL: "",
+					ExpandedURL: faucet.Features[0].Uri,
 				},
 			})
 		case "app.bsky.richtext.facet#tag":
@@ -549,7 +537,84 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				End:   endIndex,
 			})
 		}
+	}
 
+	// Videos.
+	// I am 99% sure twitter API 1.0 did not have proper video uploads, so we embed it as a link.
+
+	if tweet.Record.Embed.Video.Video != nil {
+		video := tweet.Record.Embed.Video // i don't want to refrence it forever
+
+		// Adding the URL into the text of the tweet
+		startLen, endLen := 0, 0
+		formattedVideoURL := configData.VidURLText
+		displayURL := configData.VidDisplayText
+		shortCode := ""
+		if displayURL != "" {
+			displayURL = strings.ReplaceAll(displayURL, "{shortblob}", video.Video.Ref.Link[len(video.Video.Ref.Link)-6:])
+			displayURL = strings.ReplaceAll(displayURL, "{fullblob}", video.Video.Ref.Link)
+			displayURL = strings.ReplaceAll(displayURL, "{user_did}", tweet.Author.DID)
+			if strings.Contains(displayURL, "{shortcode}") {
+				shortCode, err = CreateShortLink("/cdn/vid/bsky/" + tweet.Author.DID + "/" + video.Video.Ref.Link + "/")
+				if err != nil {
+					fmt.Println("Error creating short link:", err)
+					displayURL = strings.ReplaceAll(displayURL, "{shortcode}", "")
+				} else {
+					displayURL = strings.ReplaceAll(displayURL, "{shortcode}", shortCode)
+				}
+			}
+
+			if len(processedText) == 0 {
+				endLen = utf8.RuneCountInString(displayURL)
+
+				processedText = displayURL
+			} else {
+				startLen = utf8.RuneCountInString(processedText) + 1
+				endLen = (utf8.RuneCountInString(processedText) + 1) + utf8.RuneCountInString(displayURL)
+
+				processedText = processedText + "\n" + displayURL
+			}
+		}
+		if formattedVideoURL != "" {
+			formattedVideoURL = strings.ReplaceAll(formattedVideoURL, "{shortblob}", video.Video.Ref.Link[len(video.Video.Ref.Link)-6:])
+			formattedVideoURL = strings.ReplaceAll(formattedVideoURL, "{fullblob}", video.Video.Ref.Link)
+			formattedVideoURL = strings.ReplaceAll(formattedVideoURL, "{user_did}", tweet.Author.DID)
+			if strings.Contains(formattedVideoURL, "{shortcode}") {
+				if shortCode == "" {
+					shortCode, err = CreateShortLink("/cdn/vid/bsky/" + tweet.Author.DID + "/" + video.Video.Ref.Link + "/")
+					if err != nil {
+						fmt.Println("Error creating short link:", err)
+						formattedVideoURL = strings.ReplaceAll(formattedVideoURL, "{shortcode}", "")
+					} else {
+						formattedVideoURL = strings.ReplaceAll(formattedVideoURL, "{shortcode}", shortCode)
+					}
+				} else {
+					formattedVideoURL = strings.ReplaceAll(formattedVideoURL, "{shortcode}", shortCode)
+				}
+
+			}
+		}
+
+		// Add the URL in the entities.
+		tweetEntities.Urls = append(tweetEntities.Urls, bridge.URL{
+			ExpandedURL: "https://video.bsky.app/watch/" + tweet.Author.DID + "/" + video.Video.Ref.Link + "/720p/video.m3u8",
+			URL:         formattedVideoURL,
+			DisplayURL:  displayURL,
+			Start:       startLen,
+			End:         endLen,
+			Indices: []int{
+				startLen,
+				endLen,
+			},
+			XMLName: xml.Name{Local: "url"},
+			XMLFormat: bridge.URLXMLFormat{
+				Start:       startLen,
+				End:         endLen,
+				DisplayURL:  displayURL,
+				ExpandedURL: "https://video.bsky.app/watch/" + tweet.Author.DID + "/" + video.Video.Ref.Link + "/720p/video.m3u8",
+				URL:         formattedVideoURL,
+			},
+		})
 	}
 
 	// if isRetweet {
@@ -558,7 +623,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	// Get the user info
 	var author *bridge.TwitterUser
-	author, err := blueskyapi.GetUserInfo(pds, token, tweet.Author.DID, false)
+	author, err = blueskyapi.GetUserInfo(pds, token, tweet.Author.DID, false)
 	if err != nil {
 		fmt.Println("Error:", err)
 		// fallback
@@ -566,6 +631,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		author = &authorPtr
 	}
 
+	// final object conversion.
 	convertedTweet := bridge.Tweet{
 		Coordinates: nil,
 		Favourited:  tweet.Viewer.Like != nil,
@@ -573,7 +639,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			if isRetweet {
 				return bridge.TwitterTimeConverter(postReason.IndexedAt)
 			}
-			return bridge.TwitterTimeConverter(tweet.Record.CreatedAt)
+			return bridge.TwitterTimeConverter(tweet.Record.CreatedAt.Time)
 		}(),
 		Truncated:    false,
 		Text:         processedText,
@@ -585,14 +651,14 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			if isRetweet {
 				return *bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
 			}
-			return *bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt, nil)
+			return *bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt.Time, nil)
 		}(),
 		IDStr: func() string {
 			if isRetweet {
 				id := bridge.BskyMsgToTwitterID(tweet.URI, &postReason.IndexedAt, &postReason.By.DID)
 				return strconv.FormatInt(*id, 10)
 			}
-			id := bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt, nil)
+			id := bridge.BskyMsgToTwitterID(tweet.URI, &tweet.Record.CreatedAt.Time, nil)
 			return strconv.FormatInt(*id, 10)
 		}(),
 		Geo:               nil,
@@ -615,8 +681,16 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 			return &idStr
 		}(),
 		// InReplyToScreenName: &tweet.Author.DisplayName,
-		User:   *author,
-		Source: "Bluesky",
+		User: *author,
+		Source: func() string {
+			// small lil easter egg, if the account is bridged thru bridgy fed, we change the source to mastodon.
+			// We can check this if the account ends with .ap.brid.gy
+			if strings.HasSuffix(tweet.Author.Handle, ".ap.brid.gy") {
+				return "Mastodon"
+			} else {
+				return "Bluesky"
+			}
+		}(),
 		InReplyToStatusID: func() *int64 {
 			if replyMsgBskyURI == "" || replyUserBskyId == "" {
 				return nil
@@ -639,7 +713,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				retweet_bsky := tweet
 				retweet_bsky.Author = bsky_retweet_og_author
 				//retweet_bsky.Viewer.Repost = nil
-				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyTimeStamp, nil, token, pds)
+				translatedTweet := TranslatePostToTweet(retweet_bsky, replyMsgBskyURI, replyUserBskyId, replyUserHandle, replyTimeStamp, nil, token, pds)
 				translatedTweet.CurrentUserRetweet = nil
 				return &bridge.RetweetedTweet{
 					Tweet: translatedTweet, // Oh how i love XML
@@ -657,7 +731,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				}
 
 				_, my_did, _ := blueskyapi.GetURIComponents(*tweet.Viewer.Repost)
-				retweetId := bridge.BskyMsgToTwitterID(tweet.URI, &RepostRecord.Value.CreatedAt, &my_did)
+				retweetId := bridge.BskyMsgToTwitterID(tweet.URI, &RepostRecord.Value.CreatedAt.Time, &my_did)
 				return &bridge.CurrentUserRetweet{
 					ID:    *retweetId,
 					IDStr: strconv.FormatInt(*retweetId, 10),
@@ -682,7 +756,7 @@ func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
 		ProfileSidebarBorderColor: "eeeeee",
 		ProfileBackgroundTile:     false,
 		ProfileSidebarFillColor:   "efefef",
-		CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt),
+		CreatedAt:                 bridge.TwitterTimeConverter(tweet.Author.Associated.CreatedAt.Time),
 		ProfileImageURL:           configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + ":profile_bigger",
 		ProfileImageURLHttps:      configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(tweet.Author.Avatar) + ":profile_bigger",
 		Location:                  "Twitter",
@@ -783,4 +857,148 @@ func TweetInfo(c *fiber.Ctx) error {
 		Retweets:        retweeters,
 		Repliers:        repliers,
 	})
+}
+
+// Mentions timeline, using notifications to make my life hell
+func mentions_timeline(c *fiber.Ctx) error {
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	// Handle pagination
+	context := ""
+	max_id := c.Query("max_id")
+	// Handle getting things in the past
+	if max_id != "" {
+		// Get the timeline context from the DB
+		maxIDInt, err := strconv.ParseInt(max_id, 10, 64)
+		fmt.Println("Max ID:", maxIDInt)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+		}
+		uri, date, _, err := bridge.TwitterMsgIdToBluesky(&maxIDInt)
+		fmt.Println("Max ID:", uri)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+		}
+		context = date.Format(time.RFC3339)
+	}
+
+	// Handle count
+	count := 20
+	if countStr := c.Query("count"); countStr != "" {
+		if countInt, err := strconv.Atoi(countStr); err == nil {
+			count = countInt
+		}
+	}
+
+	// Get notifications
+	bskyNotifications, err := blueskyapi.GetMentions(*pds, *oauthToken, count, context)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get notifications")
+	}
+
+	// Track unique users and posts
+	uniqueUsers := make(map[string]bool)
+	uniquePosts := make(map[string]bool)
+
+	// First pass: collect unique users and posts
+	for _, notification := range bskyNotifications.Notifications {
+		uniqueUsers[notification.Author.DID] = true
+		uniquePosts[notification.URI] = true
+	}
+
+	// Convert maps to slices
+	usersToLookUp := make([]string, 0, len(uniqueUsers))
+	postsToLookUp := make([]string, 0, len(uniquePosts))
+	for user := range uniqueUsers {
+		usersToLookUp = append(usersToLookUp, user)
+	}
+	for post := range uniquePosts {
+		postsToLookUp = append(postsToLookUp, post)
+	}
+
+	// Create thread-safe maps for results
+	var userCache sync.Map
+	var postCache sync.Map
+
+	// Process in parallel
+	var wg sync.WaitGroup
+
+	// Fetch users in chunks
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersToLookUp, false)
+		if err == nil {
+			for _, user := range users {
+				userCache.Store(user.ScreenName[strings.LastIndex(user.ScreenName, "/")+1:], user)
+			}
+		}
+	}()
+
+	// Fetch posts in parallel chunks
+	postChunks := chunkSlice(postsToLookUp, 10)
+	for _, chunk := range postChunks {
+		wg.Add(1)
+		go func(posts []string) {
+			defer wg.Done()
+			for _, postID := range posts {
+				if err, post := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
+					tweet := TranslatePostToTweet(
+						post.Thread.Post,
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.URI
+							}
+							return ""
+						}(),
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.Author.DID
+							}
+							return ""
+						}(),
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.Author.Handle
+							}
+							return ""
+						}(),
+						func() *time.Time {
+							if post.Thread.Parent != nil {
+								return &post.Thread.Parent.Post.IndexedAt
+							}
+							return nil
+						}(),
+						nil,
+						*oauthToken,
+						*pds,
+					)
+					postCache.Store(postID, &tweet)
+				}
+			}
+		}(chunk)
+	}
+
+	wg.Wait()
+
+	// Convert notifications to tweets timeline
+	tweets := []bridge.Tweet{}
+	for _, notification := range bskyNotifications.Notifications {
+		if post, ok := postCache.Load(notification.URI); ok {
+			tweet := post.(*bridge.Tweet)
+			tweets = append(tweets, *tweet)
+		}
+	}
+
+	if c.Params("filetype") == "xml" {
+		tweetsRoot := TweetsRoot{
+			Statuses: tweets,
+		}
+		return EncodeAndSend(c, tweetsRoot)
+	}
+
+	return EncodeAndSend(c, tweets)
 }

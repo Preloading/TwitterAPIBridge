@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Preloading/TwitterAPIBridge/db_controller"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type RelatedResultsQuery struct {
@@ -194,6 +195,7 @@ type URLXMLFormat struct {
 	End         int      `xml:"end,attr"`
 	URL         string   `xml:"url"`
 	ExpandedURL string   `xml:"expanded_url"`
+	DisplayURL  string   `xml:"display_url"`
 }
 
 type Hashtag struct {
@@ -436,6 +438,65 @@ type SpellingCorrection struct {
 
 type SpellingCorrectionResults struct {
 	Value QueryWithIndices `json:"value" xml:"value"`
+
+type AuthToken struct {
+	*jwt.RegisteredClaims
+	Version          int      `json:"version"`           // Version of the token
+	Platform         string   `json:"platform"`          // What platform (bsky, mastodon, etc) was this token made on.
+	CryptoKey        string   `json:"crypto_key"`        // An AES key used to make this mostly stateless.
+	DID              string   `json:"did"`               // Bluesky user did
+	TokenUUID        string   `json:"token_uuid"`        // The UUID of the token used to identify it.
+	ServerIdentifier string   `json:"server_identifier"` // A way to identify the server that issued this token. Useful for any service that wants to use A Twitter Bridge.
+	ServerURLs       []string `json:"server_urls"`       // URLs to access that server
+}
+
+type TwitterLists struct {
+	XMLName xml.Name      `xml:"lists" json:"-"`
+	Lists   []TwitterList `json:"lists" xml:"list"`
+	Cursors
+}
+
+type TwitterListMembers struct {
+	XMLName xml.Name       `xml:"users" json:"-"`
+	Users   []*TwitterUser `json:"users" xml:"users"`
+	Cursors
+}
+
+type Cursors struct {
+	PreviousCursor    int64  `json:"previous_cursor" xml:"previous_cursor"`
+	PreviousCursorStr string `json:"previous_cursor_str" xml:"previous_cursor_str"`
+	NextCursor        uint64 `json:"next_cursor" xml:"next_cursor"`
+	NextCursorStr     string `json:"next_cursor_str" xml:"next_cursor_str"`
+}
+
+type TwitterList struct {
+	XMLName         xml.Name    `xml:"list" json:"-"`
+	Slug            string      `json:"slug" xml:"slug"`
+	Name            string      `json:"name" xml:"name"`
+	URI             string      `json:"uri" xml:"uri"`
+	IDStr           string      `json:"id_str" xml:"id_str"`
+	SubscriberCount int         `json:"subscriber_count" xml:"subscriber_count"`
+	MemberCount     int         `json:"member_count" xml:"member_count"`
+	Mode            string      `json:"mode" xml:"mode"`
+	ID              int64       `json:"id" xml:"id"`
+	FullName        string      `json:"full_name" xml:"full_name"`
+	Description     string      `json:"description" xml:"description"`
+	User            TwitterUser `json:"user" xml:"user"`
+	Following       bool        `json:"following" xml:"following"`
+}
+
+type TopicSuggestion struct {
+	Name string `json:"name" xml:"name"`
+	Slug string `json:"slug" xml:"slug"`
+	Size int    `json:"size" xml:"size"`
+}
+
+// https://web.archive.org/web/20120516160741/https://dev.twitter.com/docs/api/1/get/users/suggestions/%3Aslug
+type TopicUserSuggestions struct {
+	Name  string         `json:"name" xml:"name"`
+	Slug  string         `json:"slug" xml:"slug"`
+	Size  int            `json:"size" xml:"size"`
+	Users []*TwitterUser `json:"users" xml:"users"`
 }
 
 func encodeToUint63(input string) *int64 {

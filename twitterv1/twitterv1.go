@@ -10,6 +10,7 @@ import (
 	"github.com/Preloading/TwitterAPIBridge/config"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/template/html/v2"
 )
 
 var (
@@ -19,6 +20,7 @@ var (
 func InitServer(config *config.Config) {
 	configData = config
 	blueskyapi.InitConfig(configData)
+	engine := html.New("./static", ".html")
 	app := fiber.New(fiber.Config{
 		//DisablePreParseMultipartForm: true,
 		ProxyHeader: func() string {
@@ -27,6 +29,7 @@ func InitServer(config *config.Config) {
 			}
 			return ""
 		}(),
+		Views: engine,
 	})
 
 	// Initialize default config
@@ -47,10 +50,21 @@ func InitServer(config *config.Config) {
 	// app.Get("/", func(c *fiber.Ctx) error {
 	// 	return c.SendString("Hello, World!")
 	// Serve static files from the "static" folder
-	app.Static("/", "./static")
 	app.Static("/favicon.ico", "./static/favicon.ico")
 	app.Static("/robots.txt", "./static/robots.txt")
 	app.Static("/static", "./static")
+
+	// Serve /
+	app.Get("/", func(c *fiber.Ctx) error {
+		// Render index within layouts/nested/main within layouts/nested/base
+		return c.Render("index", fiber.Map{
+			"DeveloperMode": config.DeveloperMode,
+			"NotConfigured": configData.CdnURL == "http://127.0.0.1:3000",
+			"PrefixedURL":   "https://" + c.Hostname(),
+			"UnPrefixedURL": c.Hostname(),
+			"Version":       config.Version,
+		}, "index")
+	})
 
 	// Auth
 	app.Post("/oauth/access_token", access_token)
@@ -70,6 +84,9 @@ func InitServer(config *config.Config) {
 	// Posts
 	app.Get("/1/statuses/home_timeline.:filetype", home_timeline)
 	app.Get("/1/statuses/user_timeline.:filetype", user_timeline)
+	app.Get("/1/statuses/mentions.:filetype", mentions_timeline)
+	app.Get("/1/favorites/toptweets.:filetype", hot_post_timeline)
+	app.Get("/1/statuses/media_timeline.:filetype", media_timeline)
 	app.Get("/1/statuses/show/:id.:filetype", GetStatusFromId)
 	app.Get("/i/statuses/:id/activity/summary.:filetype", TweetInfo)
 	app.Get("/1/related_results/show/:id.:filetype", RelatedResults)
@@ -99,8 +116,21 @@ func InitServer(config *config.Config) {
 	// Discover
 	app.Get("/1/trends/:woeid.:filetype", trends_woeid)
 	app.Get("/1/trends/current.:filetype", trends_woeid)
+	app.Get("/1/users/suggestions.:filetype", SuggestedTopics)
+	app.Get("/1/users/suggestions/:slug.:filetype", GetTopicSuggestedUsers)
 	app.Get("/i/search.:filetype", InternalSearch)
 	app.Get("/i/discovery.:filetype", discovery)
+
+	// Lists
+	app.Get("/1/lists.:filetype", GetUsersLists)
+	app.Get("/1/:user/lists.:filetype", GetUsersLists)
+	app.Get("/1/lists/statuses.:filetype", list_timeline)
+	app.Get("/1/:user/lists/:slug/statuses.:filetype", list_timeline)
+	app.Get("/1/lists/members.:filetype", GetListMembers)
+	app.Get("/1/:user/:list/members.:filetype", GetListMembers)
+
+	app.Get("/1/lists/subscriptions.:filetype", GetUsersLists)       // This doesn't actually exist on bluesky, but here's something similar enough. Lists made by you.
+	app.Get("/1/:user/lists/subscriptions.:filetype", GetUsersLists) // Well, if i'm to get technical, you can subscribe to moderation lists, but not the lists this expects.
 
 	// Account / Settings
 	app.Post("/1/account/update_profile.:filetype", UpdateProfile)
@@ -115,7 +145,12 @@ func InitServer(config *config.Config) {
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)
 	app.Get("/cdn/img/bsky/:did/:link", CDNDownscaler)
-	app.Get("/cdn/img/bsky/:did/:link/:size", CDNDownscaler) // Add this new route
+	app.Get("/cdn/img/bsky/:did/:link.:filetype", CDNDownscaler)
+	app.Get("/cdn/vid/bsky/:did/:link", CDNVideoProxy)
+	app.Get("/cdn/img/bsky/:did/:link/:size", CDNDownscaler)
+
+	// Shortcut
+	app.Get("/img/:ref", RedirectToLink)
 
 	// misc
 	app.Get("/mobile_client_api/decider/:path", MobileClientApiDecider)

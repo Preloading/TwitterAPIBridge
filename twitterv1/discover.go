@@ -87,9 +87,11 @@ func InternalSearch(c *fiber.Ctx) error {
 	// Create a map for quick lookup of reply dates and user IDs
 	replyDateMap := make(map[string]time.Time)
 	replyUserIdMap := make(map[string]string)
+	replyHandleMap := make(map[string]string)
 	for _, post := range replyToPostData {
 		replyDateMap[post.URI] = post.IndexedAt
 		replyUserIdMap[post.URI] = post.Author.DID
+		replyHandleMap[post.URI] = post.Author.Handle
 	}
 
 	// Translate to twitter
@@ -97,6 +99,7 @@ func InternalSearch(c *fiber.Ctx) error {
 	for _, search := range bskySearch {
 		var replyDate *time.Time
 		var replyUserId *string
+		var replyUserHandle *string
 		if search.Record.Reply != nil {
 			if date, exists := replyDateMap[search.Record.Reply.Parent.URI]; exists {
 				replyDate = &date
@@ -104,12 +107,15 @@ func InternalSearch(c *fiber.Ctx) error {
 			if userId, exists := replyUserIdMap[search.Record.Reply.Parent.URI]; exists {
 				replyUserId = &userId
 			}
+			if handle, exists := replyHandleMap[search.Record.Reply.Parent.URI]; exists {
+				replyUserHandle = &handle
+			}
 		}
 
 		if replyDate == nil {
-			tweets = append(tweets, TranslatePostToTweet(search, "", "", nil, nil, *oauthToken, *pds))
+			tweets = append(tweets, TranslatePostToTweet(search, "", "", "", nil, nil, *oauthToken, *pds))
 		} else {
-			tweets = append(tweets, TranslatePostToTweet(search, search.Record.Reply.Parent.URI, *replyUserId, replyDate, nil, *oauthToken, *pds))
+			tweets = append(tweets, TranslatePostToTweet(search, search.Record.Reply.Parent.URI, *replyUserId, *replyUserHandle, replyDate, nil, *oauthToken, *pds))
 		}
 
 	}
@@ -241,4 +247,104 @@ func discovery(c *fiber.Ctx) error {
 		},
 		SpellingCorrections: []bridge.SpellingCorrection{},
 	})
+  
+// Topics from bluesky
+var topicLookup = map[string]string{
+	"animals":     "Animals",
+	"art":         "Art",
+	"books":       "Books",
+	"comedy":      "Comedy",
+	"comics":      "Comics",
+	"culture":     "Culture",
+	"dev":         "Software Dev",
+	"education":   "Education",
+	"food":        "Food",
+	"gaming":      "Video Games",
+	"journalism":  "Journalism",
+	"movies":      "Movies",
+	"music":       "Music",
+	"nature":      "Nature",
+	"news":        "News",
+	"pets":        "Pets",
+	"photography": "Photography",
+	"politics":    "Politics",
+	"science":     "Science",
+	"sports":      "Sports",
+	"tech":        "Tech",
+	"tv":          "TV",
+	"writers":     "Writers",
+}
+
+// https://web.archive.org/web/20120516160451/https://dev.twitter.com/docs/api/1/get/users/suggestions
+func SuggestedTopics(c *fiber.Ctx) error {
+	// I think this is hard coded in?
+	// It expects a size, but uhhh, it can be unlimited on bsky sooooo...
+	// It might be worth it later to get the config for this
+	// Also localization
+	suggestions := []bridge.TopicSuggestion{}
+
+	for slug, name := range topicLookup {
+		suggestions = append(suggestions, bridge.TopicSuggestion{
+			Name: name,
+			Slug: slug,
+			Size: 20,
+		})
+	}
+	return EncodeAndSend(c, suggestions)
+}
+
+// https://web.archive.org/web/20120516160741/https://dev.twitter.com/docs/api/1/get/users/suggestions/%3Aslug
+func GetTopicSuggestedUsers(c *fiber.Ctx) error {
+	var err error
+	// limits
+	limit := 20
+	if c.Query("limit") != "" {
+		limit, err = strconv.Atoi(c.Query("limit"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid limit value")
+		}
+	}
+
+	// auth
+	_, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	slug := c.Params("slug")
+	if slug == "" {
+		return c.Status(fiber.StatusInternalServerError).SendString("Missing Slug")
+	}
+
+	name, exists := topicLookup[slug]
+	if !exists {
+		return c.Status(fiber.StatusNotFound).SendString("Invalid topic slug")
+	}
+
+	recommendedUsers, err := blueskyapi.GetTopicSuggestedUsers(*pds, *oauthToken, limit, slug)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch suggested users")
+	}
+
+	usersDID := []string{}
+	for _, user := range recommendedUsers {
+		usersDID = append(usersDID, user.DID)
+	}
+
+	usersInfo, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersDID, false)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+	}
+
+	topic := bridge.TopicUserSuggestions{
+		Name:  name,
+		Slug:  slug,
+		Size:  len(usersInfo),
+		Users: usersInfo,
+	}
+
+	return EncodeAndSend(c, topic)
 }

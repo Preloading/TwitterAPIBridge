@@ -54,7 +54,7 @@ type TweetWithURI struct {
 // /i/activity/about_me.json?contributor_details=1&include_entities=true&include_my_retweet=true&send_error_codes=true
 func GetMyActivity(c *fiber.Ctx) error {
 	// Thank you so much @Savefade for what this returns for follows.
-	// This function very opimized because before it would take 7 seconds lmao
+	// This function very optimized because before it would take 7 seconds lmao
 	// we thank our AI overloads.
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
@@ -152,6 +152,12 @@ func GetMyActivity(c *fiber.Ctx) error {
 						func() string {
 							if post.Thread.Parent != nil {
 								return post.Thread.Parent.Post.Author.DID
+							}
+							return ""
+						}(),
+						func() string {
+							if post.Thread.Parent != nil {
+								return post.Thread.Parent.Post.Author.Handle
 							}
 							return ""
 						}(),
@@ -276,7 +282,7 @@ func processNotificationGroup(group notificationGroup, userCache *sync.Map, post
 		}
 	} else {
 		switch group.reason {
-		case "mention":
+		case "mention", "quote":
 			if post, ok := postCache.Load(group.notifications[0].URI); ok {
 				tweet := post.(*bridge.Tweet)
 				activity.Sources = []bridge.TwitterUser{}
@@ -297,6 +303,8 @@ func getActionType(reason string) string {
 	case "repost":
 		return "retweet"
 	case "mention":
+		return "mention"
+	case "quote":
 		return "mention"
 	case "reply":
 		return "reply"

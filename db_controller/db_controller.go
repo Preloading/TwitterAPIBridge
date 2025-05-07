@@ -59,6 +59,7 @@ type Token struct {
 	AccessExpiry          float64 `gorm:"type:float;not null"`
 	RefreshExpiry         float64 `gorm:"type:float;not null"`
 	BasicAuthSalt         string  `gorm:"type:string"`
+	TokenVersion          int     `gorm:"type:int;default:1"`
 }
 
 type TwitterIDs struct {
@@ -87,8 +88,17 @@ type AnalyticData struct {
 	Timestamp            time.Time `gorm:"type:timestamp"`
 }
 
-var db *gorm.DB
-var cfg config.Config
+// ShortLink represents the schema for the short_links table
+type ShortLink struct {
+	ShortCode   string `gorm:"type:string;primaryKey;not null"`
+	OriginalURL string `gorm:"type:string;uniqueIndex;not null"` // Add unique index
+}
+
+var (
+	db          *gorm.DB
+	cfg         config.Config
+	base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+)
 
 func InitDB(_cfg config.Config) {
 	cfg = _cfg
@@ -122,6 +132,7 @@ func InitDB(_cfg config.Config) {
 	db.AutoMigrate(&MessageContext{})
 	db.AutoMigrate(&TwitterIDs{})
 	db.AutoMigrate(&AnalyticData{})
+	db.AutoMigrate(&ShortLink{}) // Add this line
 }
 
 // StoreToken stores an encrypted access token and refresh token in the database.
@@ -147,7 +158,7 @@ func StoreToken(did string, pds string, accessToken string, refreshToken string,
 	}
 
 	// Update or create token
-	finalUUID, err := UpdateToken(uuid.String(), did, pds, accessToken, refreshToken, encryptionKey, accessExpiry, refreshExpiry)
+	finalUUID, err := UpdateToken(uuid.String(), did, pds, accessToken, refreshToken, encryptionKey, accessExpiry, refreshExpiry, 2)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +166,7 @@ func StoreToken(did string, pds string, accessToken string, refreshToken string,
 	return finalUUID, nil
 }
 
-func UpdateToken(uuid string, did string, pds string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64) (*string, error) {
+func UpdateToken(uuid string, did string, pds string, accessToken string, refreshToken string, encryptionKey string, accessExpiry float64, refreshExpiry float64, tokenVersion int) (*string, error) {
 	encryptedAccess, err := authcrypt.Encrypt(accessToken, encryptionKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt access token: %v", err)
@@ -174,6 +185,7 @@ func UpdateToken(uuid string, did string, pds string, accessToken string, refres
 		EncryptedRefreshToken: encryptedRefresh,
 		AccessExpiry:          accessExpiry,
 		RefreshExpiry:         refreshExpiry,
+		TokenVersion:          tokenVersion,
 	}
 
 	result := db.Clauses(clause.OnConflict{
@@ -243,9 +255,9 @@ func UpdateTokenBasic(did string, pds string, accessToken string, refreshToken s
 // GetToken retrieves account data from the database
 // @results: accessToken, refreshToken, accessExpiry, refreshExpiry, pds, error
 
-func GetToken(did string, tokenUUID string, encryptionKey string) (*string, *string, *float64, *float64, *string, error) {
+func GetToken(did string, tokenUUID string, encryptionKey string, tokenVersion int) (*string, *string, *float64, *float64, *string, error) {
 	var token Token
-	if err := db.Where("user_did = ? AND token_uuid = ?", did, tokenUUID).First(&token).Error; err != nil {
+	if err := db.Where("user_did = ? AND token_uuid = ? AND token_version = ?", did, tokenUUID, tokenVersion).First(&token).Error; err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
 
@@ -411,4 +423,66 @@ func StoreAnalyticData(data AnalyticData) {
 	if result.Error != nil {
 		fmt.Println("Failed to store analytic data:", result.Error)
 	}
+}
+
+// StoreShortLink stores a short link in the database with optimized collision handling
+func StoreShortLink(shortCode string, originalURL string) error {
+	shortLink := ShortLink{
+		ShortCode:   shortCode,
+		OriginalURL: originalURL,
+	}
+
+	// Try direct insert first with DO NOTHING on conflict
+	result := db.Clauses(clause.OnConflict{
+		DoNothing: true,
+	}).Create(&shortLink)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	// If no rows were affected, either there was a shortCode collision or the URL exists
+	if result.RowsAffected == 0 {
+		// Check if URL already exists
+		var existing ShortLink
+		if err := db.Where("original_url = ?", originalURL).First(&existing).Error; err == nil {
+			return nil // URL exists, reuse existing shortcode
+		}
+
+		// Handle collision with simple numeric suffixes
+		for i := 0; i < 10; i++ {
+			newCode := fmt.Sprintf("%s%d", shortCode[:7], i)
+			shortLink.ShortCode = newCode
+			result = db.Clauses(clause.OnConflict{
+				DoNothing: true,
+			}).Create(&shortLink)
+
+			if result.Error == nil && result.RowsAffected > 0 {
+				return nil
+			}
+		}
+
+		// If simple attempts failed, try timestamp-based suffix
+		newCode := fmt.Sprintf("%s%x", shortCode[:7], time.Now().UnixNano()%16)
+		shortLink.ShortCode = newCode
+		result = db.Clauses(clause.OnConflict{
+			DoNothing: true,
+		}).Create(&shortLink)
+
+		if result.Error == nil && result.RowsAffected > 0 {
+			return nil
+		}
+	}
+
+	return nil
+}
+
+// GetOriginalURL retrieves the original URL from the database using the short code
+func GetOriginalURL(shortCode string) (string, error) {
+	var shortLink ShortLink
+	if err := db.Where("short_code = ?", shortCode).First(&shortLink).Error; err != nil {
+		return "", err
+	}
+
+	return shortLink.OriginalURL, nil
 }
