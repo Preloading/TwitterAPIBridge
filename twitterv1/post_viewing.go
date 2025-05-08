@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	"github.com/Preloading/TwitterAPIBridge/db_controller"
 	"github.com/gofiber/fiber/v2"
 )
+
+var mastodonRegex, _ = regexp.Compile("\n\\[bridged from .* on the fediverse by fed\\.brid\\.gy \\]$")
 
 type TweetsRoot struct {
 	XMLName  xml.Name `xml:"statuses"`
@@ -684,8 +687,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		User: *author,
 		Source: func() string {
 			// small lil easter egg, if the account is bridged thru bridgy fed, we change the source to mastodon.
-			// We can check this if the account ends with .ap.brid.gy
-			if strings.HasSuffix(tweet.Author.Handle, ".ap.brid.gy") {
+			if mastodonRegex.MatchString(tweet.Author.Description) {
 				return "Mastodon"
 			} else {
 				return "Bluesky"
