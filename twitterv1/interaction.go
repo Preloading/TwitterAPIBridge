@@ -22,7 +22,7 @@ func status_update(c *fiber.Ctx) error {
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	status := c.FormValue("status")
@@ -72,7 +72,7 @@ func status_update_with_media(c *fiber.Ctx) error {
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	status := c.FormValue("status")
@@ -167,7 +167,7 @@ func retweet(c *fiber.Ctx) error {
 	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Get our IDs
@@ -229,7 +229,7 @@ func favourite(c *fiber.Ctx) error {
 	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Fetch ID
@@ -278,7 +278,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Fetch ID
@@ -325,7 +325,7 @@ func DeleteTweet(c *fiber.Ctx) error {
 	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Fetch ID

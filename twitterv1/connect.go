@@ -18,7 +18,7 @@ func UserSearch(c *fiber.Ctx) error {
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 	// Search for users
 	bskyUsers, err := blueskyapi.UserSearch(*pds, *oauthToken, searchQuery)
@@ -75,7 +75,7 @@ func SearchAhead(c *fiber.Ctx) error {
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	limit := c.Query("count")
@@ -152,7 +152,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 	// we thank our AI overloads.
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Handle pagination

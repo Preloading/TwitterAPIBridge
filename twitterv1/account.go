@@ -103,7 +103,7 @@ func UpdateProfile(c *fiber.Ctx) error {
 	// auth
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Lock the mutex for this user
@@ -150,7 +150,7 @@ func UpdateProfilePicture(c *fiber.Ctx) error {
 	// auth
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Lock the mutex for this user

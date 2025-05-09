@@ -95,7 +95,7 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Limits
@@ -865,7 +865,7 @@ func TweetInfo(c *fiber.Ctx) error {
 func mentions_timeline(c *fiber.Ctx) error {
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Handle pagination

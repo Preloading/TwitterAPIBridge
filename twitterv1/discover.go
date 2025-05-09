@@ -25,7 +25,7 @@ func InternalSearch(c *fiber.Ctx) error {
 
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// Pagination
@@ -309,7 +309,7 @@ func GetTopicSuggestedUsers(c *fiber.Ctx) error {
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	slug := c.Params("slug")

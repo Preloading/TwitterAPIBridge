@@ -120,7 +120,7 @@ func UserRelationships(c *fiber.Ctx) error {
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	actorsArray := strings.Split(actors, ",")
@@ -309,7 +309,7 @@ func FollowUser(c *fiber.Ctx) error {
 	// auth
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// lets get the user params
@@ -356,7 +356,7 @@ func UnfollowUser(c *fiber.Ctx, actor string) error {
 	// auth
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// follow
@@ -426,7 +426,7 @@ func GetStatusesFollowers(c *fiber.Ctx) error {
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// lets go get our user data
@@ -487,7 +487,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	// auth
 	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// lets go get our user data
@@ -602,7 +602,7 @@ func GetStatusesFollows(c *fiber.Ctx) error {
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// lets go get our user data
@@ -663,7 +663,7 @@ func GetFollows(c *fiber.Ctx) error {
 	// auth
 	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	// lets go get our user data
@@ -787,7 +787,7 @@ func GetSuggestedUsers(c *fiber.Ctx) error {
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	var recommendedUsers []blueskyapi.User

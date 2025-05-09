@@ -120,7 +120,7 @@ func VerifyCredentials(c *fiber.Ctx) error {
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c)
 	}
 
 	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *my_did, false)
