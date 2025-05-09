@@ -412,7 +412,7 @@ func SendRequest(token *string, method string, url string, body io.Reader) (*htt
 		req.Header.Set("Authorization", "Bearer "+*token)
 	}
 	req.Header.Set("Content-Type", "application/json") // 99% sure all bluesky requests are json.
-	req.Header.Set("UserAgent", "ATwitterAPIBridge/1.0")
+	req.Header.Set("UserAgent", "ATwitterBridge/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -460,7 +460,7 @@ func GetUserInfo(pds string, token string, screen_name string, nocache bool) (*b
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch user info")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	author := User{}
@@ -488,7 +488,7 @@ func GetUserInfoRaw(pds string, token string, screen_name string) (*User, error)
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch user info")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	author := User{}
@@ -642,7 +642,7 @@ func GetRelationships(pds string, token string, source string, others []string) 
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch relationships")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	feeds := RelationshipsRes{}
@@ -713,7 +713,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
-func GetTimeline(pds string, token string, context string, feed string, limit int) (error, *Timeline) {
+func GetTimeline(pds string, token string, context string, feed string, limit int) (*Timeline, error) {
 	url := pds + "/xrpc/app.bsky.feed.getTimeline?limit=" + fmt.Sprintf("%d", limit)
 	if context != "" {
 		url = pds + "/xrpc/app.bsky.feed.getTimeline?cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
@@ -721,7 +721,7 @@ func GetTimeline(pds string, token string, context string, feed string, limit in
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -735,25 +735,25 @@ func GetTimeline(pds string, token string, context string, feed string, limit in
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to fetch timeline"), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	feeds := Timeline{}
 	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, &feeds
+	return &feeds, nil
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-feed
-func GetHotPosts(pds string, token string, context string, feed string, limit int) (error, *Timeline) {
+func GetHotPosts(pds string, token string, context string, feed string, limit int) (*Timeline, error) {
 	url := pds + "/xrpc/app.bsky.feed.getFeed?feed=at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot&limit=" + fmt.Sprintf("%d", limit)
 	// Context is removed, since how it gets context is witchcraft.
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -767,19 +767,19 @@ func GetHotPosts(pds string, token string, context string, feed string, limit in
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to fetch timeline"), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	feeds := Timeline{}
 	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, &feeds
+	return &feeds, nil
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-author-feed
-func GetUserTimeline(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
+func GetUserTimeline(pds string, token string, context string, actor string, limit int) (*Timeline, error) {
 	apiURL := pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&limit=" + fmt.Sprintf("%d", limit)
 	if context != "" {
 		apiURL = pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
@@ -787,7 +787,7 @@ func GetUserTimeline(pds string, token string, context string, actor string, lim
 
 	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -801,18 +801,18 @@ func GetUserTimeline(pds string, token string, context string, actor string, lim
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to fetch timeline"), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	feeds := Timeline{}
 	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, &feeds
+	return &feeds, err
 }
 
-func GetMediaTimeline(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
+func GetMediaTimeline(pds string, token string, context string, actor string, limit int) (*Timeline, error) {
 	apiURL := pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&limit=" + fmt.Sprintf("%d", limit) + "&filter=posts_with_media"
 	if context != "" {
 		apiURL = pds + "/xrpc/app.bsky.feed.getAuthorFeed?actor=" + url.QueryEscape(actor) + "&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit) + "&filter=posts_with_media"
@@ -820,7 +820,7 @@ func GetMediaTimeline(pds string, token string, context string, actor string, li
 
 	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -834,19 +834,19 @@ func GetMediaTimeline(pds string, token string, context string, actor string, li
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to fetch timeline"), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	feeds := Timeline{}
 	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, &feeds
+	return &feeds, nil
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-graph-get-list
-func GetListTimeline(pds string, token string, context string, listURI string, limit int) (error, *Timeline) {
+func GetListTimeline(pds string, token string, context string, listURI string, limit int) (*Timeline, error) {
 	apiURL := pds + "/xrpc/app.bsky.feed.getListFeed?list=" + url.QueryEscape(listURI) + "&limit=" + fmt.Sprintf("%d", limit)
 	if context != "" {
 		apiURL = pds + "/xrpc/app.bsky.feed.getListFeed?list=" + url.QueryEscape(listURI) + "&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
@@ -854,7 +854,7 @@ func GetListTimeline(pds string, token string, context string, listURI string, l
 
 	resp, err := SendRequest(&token, http.MethodGet, apiURL, nil)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -868,25 +868,25 @@ func GetListTimeline(pds string, token string, context string, listURI string, l
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to fetch timeline"), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	feeds := Timeline{}
 	if err := json.NewDecoder(resp.Body).Decode(&feeds); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, &feeds
+	return &feeds, nil
 }
 
-func GetPost(pds string, token string, uri string, depth int, parentHeight int) (error, *ThreadRoot) {
+func GetPost(pds string, token string, uri string, depth int, parentHeight int) (*ThreadRoot, error) {
 	// Example URL at://did:plc:dqibjxtqfn6hydazpetzr2w4/app.bsky.feed.post/3lchbospvbc2j
 
 	url := pds + "/xrpc/app.bsky.feed.getPostThread?depth=" + fmt.Sprintf("%d", depth) + "&parentHeight=" + fmt.Sprintf("%d", parentHeight) + "&uri=" + uri
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -900,15 +900,15 @@ func GetPost(pds string, token string, uri string, depth int, parentHeight int) 
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to fetch timeline"), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	thread := ThreadRoot{}
 	if err := json.NewDecoder(resp.Body).Decode(&thread); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, &thread
+	return &thread, nil
 }
 
 // https://docs.bsky.app/docs/api/app-bsky-feed-get-posts
@@ -985,7 +985,7 @@ func GetFollowers(pds string, token string, context string, actor string) (*Foll
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch followers")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	feeds := FollowersTimeline{}
@@ -1019,7 +1019,7 @@ func GetFollows(pds string, token string, context string, actor string) (*Follow
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch followers")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	feeds := FollowsTimeline{}
@@ -1169,7 +1169,7 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to update status")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	postData := CreateRecordResult{}
@@ -1179,9 +1179,9 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 
 	time.Sleep(100 * time.Millisecond) // Bluesky doesn't update instantly, so we wait a bit before fetching the post
 
-	err, thread := GetPost(pds, token, postData.URI, 0, 1)
+	thread, err := GetPost(pds, token, postData.URI, 0, 1)
 	if err != nil {
-		return nil, errors.New("failed to fetch made post")
+		return nil, err // posibbly figure out how to add "metadata" to this?
 	}
 
 	return thread, nil
@@ -1212,17 +1212,17 @@ func DeleteRecord(pds string, token string, id string, my_did string, collection
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to retweet: " + bodyString)
+		return errors.New(bodyString) // return response
 	}
 	return nil
 }
 
-func ReTweet(pds string, token string, id string, my_did string) (error, *ThreadRoot, *string) {
+func ReTweet(pds string, token string, id string, my_did string) (*ThreadRoot, *string, error) {
 	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
-	err, thread := GetPost(pds, token, id, 0, 1)
+	thread, err := GetPost(pds, token, id, 0, 1)
 	if err != nil {
-		return errors.New("failed to fetch post"), nil, nil
+		return nil, nil, err
 	}
 
 	payload := CreateRecordPayload{
@@ -1240,12 +1240,12 @@ func ReTweet(pds string, token string, id string, my_did string) (error, *Thread
 
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
-		return errors.New("failed to marshal payload"), nil, nil
+		return nil, nil, errors.New("failed to marshal payload")
 	}
 
 	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
-		return err, nil, nil
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 
@@ -1254,23 +1254,23 @@ func ReTweet(pds string, token string, id string, my_did string) (error, *Thread
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to retweet: " + bodyString), nil, nil
+		return nil, nil, errors.New(bodyString) // return response
 	}
 
 	repost := CreateRecordResult{}
 	if err := json.NewDecoder(resp.Body).Decode(&repost); err != nil {
-		return err, nil, nil
+		return nil, nil, err
 	}
 
-	return nil, thread, &repost.URI
+	return thread, &repost.URI, nil
 }
 
-func LikePost(pds string, token string, id string, my_did string) (error, *ThreadRoot) {
+func LikePost(pds string, token string, id string, my_did string) (*ThreadRoot, error) {
 	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
-	err, thread := GetPost(pds, token, id, 0, 1)
+	thread, err := GetPost(pds, token, id, 0, 1)
 	if err != nil {
-		return errors.New("failed to fetch post"), nil
+		return nil, errors.New("failed to fetch post")
 	}
 
 	payload := CreateRecordPayload{
@@ -1288,12 +1288,12 @@ func LikePost(pds string, token string, id string, my_did string) (error, *Threa
 
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
-		return errors.New("failed to marshal payload"), nil
+		return nil, errors.New("failed to marshal payload")
 	}
 
 	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -1302,25 +1302,25 @@ func LikePost(pds string, token string, id string, my_did string) (error, *Threa
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to like: " + bodyString), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	likeRes := CreateRecordResult{}
 	if err := json.NewDecoder(resp.Body).Decode(&likeRes); err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	thread.Thread.Post.Viewer.Like = &strings.Split(likeRes.URI, "/app.bsky.feed.like/")[1]
 
-	return nil, thread
+	return thread, nil
 }
 
-func UnlikePost(pds string, token string, id string, my_did string) (error, *ThreadRoot) {
+func UnlikePost(pds string, token string, id string, my_did string) (*ThreadRoot, error) {
 	url := pds + "/xrpc/com.atproto.repo.deleteRecord"
 
-	err, thread := GetPost(pds, token, id, 0, 1)
+	thread, err := GetPost(pds, token, id, 0, 1)
 	if err != nil {
-		return errors.New("failed to fetch post"), nil
+		return nil, errors.New("failed to fetch post")
 	}
 
 	payload := DeleteRecordPayload{
@@ -1331,12 +1331,12 @@ func UnlikePost(pds string, token string, id string, my_did string) (error, *Thr
 
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
-		return errors.New("failed to marshal payload"), nil
+		return nil, errors.New("failed to marshal payload")
 	}
 
 	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -1345,30 +1345,30 @@ func UnlikePost(pds string, token string, id string, my_did string) (error, *Thr
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to unlike: " + bodyString), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	likeRes := CreateRecordResult{}
 	if err := json.NewDecoder(resp.Body).Decode(&likeRes); err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	emptyString := ""
 	thread.Thread.Post.Viewer.Like = &emptyString
 
-	return nil, thread
+	return thread, nil
 }
 
-func FollowUser(pds string, token string, targetActor string, my_did string) (error, *User) {
+func FollowUser(pds string, token string, targetActor string, my_did string) (*User, error) {
 	url := pds + "/xrpc/com.atproto.repo.createRecord"
 
 	targetUser, err := GetUserInfoRaw(pds, token, targetActor)
 	if err != nil {
-		return errors.New("failed to fetch post"), nil
+		return nil, errors.New("failed to fetch post")
 	}
 
 	if targetUser.Viewer.Following != nil {
-		return errors.New("already following user"), nil
+		return nil, errors.New("already following user")
 	}
 
 	payload := CreateRecordPayload{
@@ -1383,12 +1383,12 @@ func FollowUser(pds string, token string, targetActor string, my_did string) (er
 
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
-		return errors.New("failed to marshal payload"), nil
+		return nil, errors.New("failed to marshal payload")
 	}
 
 	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -1397,30 +1397,30 @@ func FollowUser(pds string, token string, targetActor string, my_did string) (er
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to retweet: " + bodyString), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	followRes := CreateRecordResult{}
 	if err := json.NewDecoder(resp.Body).Decode(&followRes); err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	targetUser.Viewer.Following = &strings.Split(followRes.URI, "/app.bsky.graph.follow/")[1]
 	targetUser.FollowersCount++
 
-	return nil, targetUser
+	return targetUser, nil
 }
 
-func UnfollowUser(pds string, token string, targetActor string, my_did string) (error, *User) {
+func UnfollowUser(pds string, token string, targetActor string, my_did string) (*User, error) {
 	url := pds + "/xrpc/com.atproto.repo.deleteRecord"
 
 	targetUser, err := GetUserInfoRaw(pds, token, targetActor)
 	if err != nil {
-		return errors.New("failed to fetch post"), nil
+		return nil, errors.New("failed to fetch post")
 	}
 
 	if targetUser.Viewer.Following == nil {
-		return errors.New("not following user"), nil
+		return nil, errors.New("not following user")
 	}
 
 	payload := DeleteRecordPayload{
@@ -1431,12 +1431,12 @@ func UnfollowUser(pds string, token string, targetActor string, my_did string) (
 
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
-		return errors.New("failed to marshal payload"), nil
+		return nil, errors.New("failed to marshal payload")
 	}
 
 	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -1445,18 +1445,18 @@ func UnfollowUser(pds string, token string, targetActor string, my_did string) (
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to unfollow: " + bodyString), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	unfollowRes := CreateRecordResult{}
 	if err := json.NewDecoder(resp.Body).Decode(&unfollowRes); err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	emptyString := ""
 	targetUser.Viewer.Following = &emptyString
 
-	return nil, targetUser
+	return targetUser, nil
 }
 
 func GetPostLikes(pds string, token string, uri string, limit int) (*Likes, error) {
@@ -1478,7 +1478,7 @@ func GetPostLikes(pds string, token string, uri string, limit int) (*Likes, erro
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch likes")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	likes := Likes{}
@@ -1493,7 +1493,7 @@ func GetPostLikes(pds string, token string, uri string, limit int) (*Likes, erro
 // Bluesky for SOME REASON limits viewing the likes to your own user. WHy?
 // What is the point of having an "actor" field if you can only use 1 actor?"ADD THIS TO LOOKUP TABLE"
 // I'm still gonna implement it, we can hope it will be expanded in the future.
-func GetActorLikes(pds string, token string, context string, actor string, limit int) (error, *Timeline) {
+func GetActorLikes(pds string, token string, context string, actor string, limit int) (*Timeline, error) {
 	url := fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s", limit, actor)
 	if context != "" {
 		url = fmt.Sprintf(pds+"/xrpc/app.bsky.feed.getActorLikes?limit=%d&actor=%s&cursor=%s", limit, actor, context)
@@ -1501,7 +1501,7 @@ func GetActorLikes(pds string, token string, context string, actor string, limit
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -1515,15 +1515,15 @@ func GetActorLikes(pds string, token string, context string, actor string, limit
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return errors.New("failed to fetch likes"), nil
+		return nil, errors.New(bodyString) // return response
 	}
 
 	likes := Timeline{}
 	if err := json.NewDecoder(resp.Body).Decode(&likes); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, &likes
+	return &likes, nil
 }
 
 func GetRetweetAuthors(pds string, token string, uri string, limit int) (*RepostedBy, error) {
@@ -1575,7 +1575,7 @@ func UserSearch(pds string, token string, query string) ([]User, error) {
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch search results")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	users := UserSearchResult{}
@@ -1605,7 +1605,7 @@ func UserSearchAhead(pds string, token string, query string, limit int) ([]User,
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch search results")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	users := UserSearchResult{}
@@ -1653,7 +1653,7 @@ func PostSearch(pds string, token string, query string, since *time.Time, until 
 // thank you https://docs.bsky.app/blog/create-post#replies
 func GetReplyRefs(pds string, token string, parentURI string) (*ReplySubject, error) {
 	// Get the parent post
-	err, parentThread := GetPost(pds, token, parentURI, 0, 1)
+	parentThread, err := GetPost(pds, token, parentURI, 0, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch parent post: %w", err)
 	}
@@ -1665,7 +1665,7 @@ func GetReplyRefs(pds string, token string, parentURI string) (*ReplySubject, er
 	if parentThread.Thread.Post.Record.Reply != nil {
 		// Get the root post
 		rootURI = parentThread.Thread.Post.Record.Reply.Root.URI
-		err, rootThread := GetPost(pds, token, rootURI, 0, 1)
+		rootThread, err := GetPost(pds, token, rootURI, 0, 1)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch root post: %w", err)
 		}
@@ -1713,7 +1713,7 @@ func GetRecord(pds string, collection string, repo string, rkey string) (*Record
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch record")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	record := RecordResponse{}
@@ -1778,7 +1778,7 @@ func GetTrends(pds string, token string) (*TrendingTopics, error) {
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch trends")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	trends := TrendingTopics{}
@@ -1811,7 +1811,7 @@ func GetUsersLists(pds string, token string, actor string, limit int, cursor str
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch a user's lists")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	lists := Lists{}
@@ -1844,7 +1844,7 @@ func GetList(pds string, token string, listURI string, limit int, cursor string)
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch a user's lists")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	list := ListDetailed{}
@@ -1874,7 +1874,7 @@ func GetMySuggestedUsers(pds string, token string, limit int) ([]User, error) {
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch suggested users")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	users := UserSearchResult{}
@@ -1903,7 +1903,7 @@ func GetTopicSuggestedUsers(pds string, token string, limit int, category string
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch suggested users")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	users := UserSearchResult{}
@@ -1932,7 +1932,7 @@ func GetOthersSuggestedUsers(pds string, token string, limit int, actor string) 
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch suggested users")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	users := OtherActorSuggestions{}
@@ -1964,7 +1964,7 @@ func GetNotifications(pds string, token string, limit int, context string) (*Not
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch notifications")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	notifications := Notifications{}
@@ -1997,7 +1997,7 @@ func GetMentions(pds string, token string, limit int, context string) (*Notifica
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to fetch mentions")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	notifications := Notifications{}
@@ -2022,7 +2022,7 @@ func UploadBlob(pds string, token string, data []byte, content_type string) (*Bl
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("failed to upload blob")
+		return nil, errors.New(bodyString) // return response
 	}
 
 	blob := struct {

@@ -181,7 +181,7 @@ func retweet(c *fiber.Ctx) error {
 	}
 	postId = *postIdPtr
 
-	err, originalPost, blueskyRepostURI := blueskyapi.ReTweet(*pds, *oauthToken, postId, *user_did)
+	originalPost, blueskyRepostURI, err := blueskyapi.ReTweet(*pds, *oauthToken, postId, *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -245,7 +245,7 @@ func favourite(c *fiber.Ctx) error {
 
 	fmt.Println("Post ID:", postId)
 
-	err, post := blueskyapi.LikePost(*pds, *oauthToken, postId, *user_did)
+	post, err := blueskyapi.LikePost(*pds, *oauthToken, postId, *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -292,7 +292,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	}
 	postId = *postIdPtr
 
-	err, post := blueskyapi.UnlikePost(*pds, *oauthToken, postId, *user_did)
+	post, err := blueskyapi.UnlikePost(*pds, *oauthToken, postId, *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -339,7 +339,7 @@ func DeleteTweet(c *fiber.Ctx) error {
 	}
 	postId = *postIdPtr
 
-	err, postToDelete := blueskyapi.GetPost(*pds, *oauthToken, postId, 0, 0)
+	postToDelete, err := blueskyapi.GetPost(*pds, *oauthToken, postId, 0, 0)
 
 	if err != nil {
 		fmt.Println("Error:", err)

@@ -234,7 +234,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 		go func(posts []string) {
 			defer wg.Done()
 			for _, postID := range posts {
-				if err, post := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
+				if post, err := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
 					tweet := TranslatePostToTweet(
 						post.Thread.Post,
 						func() string {

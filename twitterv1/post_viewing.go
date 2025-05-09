@@ -90,7 +90,7 @@ func likes_timeline(c *fiber.Ctx) error {
 }
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
-func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline)) error {
+func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func(string, string, string, string, int) (*blueskyapi.Timeline, error)) error {
 	// Get all of our keys, beeps, and bops
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
@@ -132,7 +132,7 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 	}
 
 	fmt.Println("Context:", context)
-	err, res := fetcher(*pds, *oauthToken, context, param, limit)
+	res, err := fetcher(*pds, *oauthToken, context, param, limit)
 	if err != nil {
 		fmt.Println("Error:", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
@@ -189,7 +189,7 @@ func RelatedResults(c *fiber.Ctx) error {
 		oauthToken = &blankstring
 	}
 
-	err, thread := blueskyapi.GetPost(*pds, *oauthToken, uri, 1, 0)
+	thread, err := blueskyapi.GetPost(*pds, *oauthToken, uri, 1, 0)
 
 	if err != nil {
 		return err
@@ -259,7 +259,7 @@ func GetStatusFromId(c *fiber.Ctx) error {
 		oauthToken = &emptyString
 	}
 
-	err, thread := blueskyapi.GetPost(*pds, *oauthToken, uri, 0, 1)
+	thread, err := blueskyapi.GetPost(*pds, *oauthToken, uri, 0, 1)
 
 	if err != nil {
 		return err
@@ -819,7 +819,7 @@ func TweetInfo(c *fiber.Ctx) error {
 	}
 	id := *idPtr
 
-	err, thread := blueskyapi.GetPost(*pds, *oauthToken, id, 1, 0)
+	thread, err := blueskyapi.GetPost(*pds, *oauthToken, id, 1, 0)
 
 	if err != nil {
 		return err
@@ -947,7 +947,7 @@ func mentions_timeline(c *fiber.Ctx) error {
 		go func(posts []string) {
 			defer wg.Done()
 			for _, postID := range posts {
-				if err, post := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
+				if post, err := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
 					tweet := TranslatePostToTweet(
 						post.Thread.Post,
 						func() string {

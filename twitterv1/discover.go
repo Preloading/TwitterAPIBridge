@@ -183,7 +183,7 @@ func discovery(c *fiber.Ctx) error {
 		oauthToken = &blankstring
 	}
 
-	err, thread := blueskyapi.GetPost(*pds, *oauthToken, "at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.post/3lfgrcq4di22c", 0, 1)
+	thread, err := blueskyapi.GetPost(*pds, *oauthToken, "at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.post/3lfgrcq4di22c", 0, 1)
 
 	if err != nil {
 		return err

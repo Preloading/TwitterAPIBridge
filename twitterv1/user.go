@@ -335,7 +335,7 @@ func FollowUser(c *fiber.Ctx) error {
 	}
 
 	// follow
-	err, user := blueskyapi.FollowUser(*pds, *oauthToken, actor, *my_did)
+	user, err := blueskyapi.FollowUser(*pds, *oauthToken, actor, *my_did)
 
 	if err != nil {
 		if err.Error() == "already following user" {
@@ -360,7 +360,7 @@ func UnfollowUser(c *fiber.Ctx, actor string) error {
 	}
 
 	// follow
-	err, user := blueskyapi.UnfollowUser(*pds, *oauthToken, actor, *my_did)
+	user, err := blueskyapi.UnfollowUser(*pds, *oauthToken, actor, *my_did)
 
 	if err != nil {
 		if err.Error() == "not following user" {
