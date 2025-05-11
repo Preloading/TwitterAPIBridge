@@ -40,7 +40,7 @@ func ReturnError(c *fiber.Ctx, message string, error_code int, http_error int) e
 	return EncodeAndSend(c, err)
 }
 
-func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string) error {
+func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string, function func(c *fiber.Ctx) error) error {
 	// json decode responce
 	res := BlueskyError{}
 	if err := json.Unmarshal([]byte(responseJson), &res); err != nil {
@@ -90,6 +90,20 @@ func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string) error
 	return ReturnError(c, "An unknown error occured: "+res.Message, 0, fiber.StatusInternalServerError)
 }
 
-func MissingAuth(c *fiber.Ctx) error {
+func MissingAuth(c *fiber.Ctx, err error) error {
+	if err != nil {
+		switch err.Error() {
+		case "oauth token not found":
+			return ReturnError(c, "Missing authentication token.", 215, 400)
+		case "invalid token":
+			return ReturnError(c, "Invalid authentication token.", 89, 403)
+		case "refresh token has expired":
+			return ReturnError(c, "Authentication token has expired.", 89, 403)
+		case "incorrect server":
+			return ReturnError(c, "Wrong server for your login. Please verify your URLs match between applications.", 89, 403)
+		case "invalid app password":
+			return ReturnError(c, "App passwords required on this app", 215, 400)
+		}
+	}
 	return ReturnError(c, "Missing authentication token.", 215, 400)
 }

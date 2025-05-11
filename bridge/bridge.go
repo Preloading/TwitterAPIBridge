@@ -569,7 +569,7 @@ func BlueSkyToTwitterID(letterID string) *int64 {
 	return twitterId
 }
 
-// TwitterIDToBlueSky converts a numeric ID to a letter ID representation using Base37
+// TwitterIDToBlueSky converts a numeric ID to a letter ID
 func TwitterIDToBlueSky(numericID *int64) (*string, error) {
 	// Get the letter ID from the database
 	letterID, _, _, err := db_controller.GetTwitterIDFromDatabase(numericID)

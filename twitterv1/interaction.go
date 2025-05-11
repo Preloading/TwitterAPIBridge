@@ -22,7 +22,7 @@ func status_update(c *fiber.Ctx) error {
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return MissingAuth(c)
+		return MissingAuth(c, err)
 	}
 
 	status := c.FormValue("status")
@@ -39,7 +39,7 @@ func status_update(c *fiber.Ctx) error {
 	if err == nil {
 		in_reply_to_status_id, _, _, err = bridge.TwitterMsgIdToBluesky(&encoded_in_reply_to_status_id_int)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
+			return ReturnError(c, "The in_reply_to_status_id was not found", 144, fiber.StatusNotFound)
 		}
 	}
 
@@ -47,7 +47,7 @@ func status_update(c *fiber.Ctx) error {
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.createRecord", status_update)
 	}
 
 	db_controller.StoreAnalyticData(db_controller.AnalyticData{
@@ -72,7 +72,7 @@ func status_update_with_media(c *fiber.Ctx) error {
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return MissingAuth(c)
+		return MissingAuth(c, err)
 	}
 
 	status := c.FormValue("status")
@@ -81,35 +81,35 @@ func status_update_with_media(c *fiber.Ctx) error {
 	imageData, err := c.FormFile("media")
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusBadRequest).SendString("Please upload an image")
+		return ReturnError(c, "Please upload an image", 195, fiber.StatusForbidden)
 	}
 
 	// read the image file content
 	file, err := imageData.Open()
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to open image file")
+		return ReturnError(c, "An invalid image was uploaded", 195, fiber.StatusForbidden)
 	}
 	defer file.Close()
 
 	imageBytes, err := io.ReadAll(file)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to read image file")
+		return ReturnError(c, "Failed to process image", 131, fiber.StatusInternalServerError)
 	}
 
 	// Get image resolution
 	imageConfig, _, err := image.DecodeConfig(bytes.NewReader(imageBytes))
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to decode image")
+		return ReturnError(c, "Failed to process image", 131, fiber.StatusInternalServerError)
 	}
 
 	// upload our new profile picture
 	imageBlob, err := blueskyapi.UploadBlob(*pds, *oauthToken, imageBytes, c.Get("Content-Type"))
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to upload image")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.uploadBlob", status_update_with_media)
 	}
 
 	// Status parsing!
@@ -124,7 +124,7 @@ func status_update_with_media(c *fiber.Ctx) error {
 	if err == nil {
 		in_reply_to_status_id, _, _, err = bridge.TwitterMsgIdToBluesky(&encoded_in_reply_to_status_id_int)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid in_reply_to_status_id format")
+			return ReturnError(c, "The in_reply_to_status_id was not found", 144, fiber.StatusNotFound)
 		}
 	}
 
@@ -141,7 +141,7 @@ func status_update_with_media(c *fiber.Ctx) error {
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.createRecord", status_update_with_media)
 	}
 
 	db_controller.StoreAnalyticData(db_controller.AnalyticData{
@@ -167,17 +167,17 @@ func retweet(c *fiber.Ctx) error {
 	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return MissingAuth(c)
+		return MissingAuth(c, err)
 	}
 
 	// Get our IDs
 	idBigInt, err := strconv.ParseInt(postId, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Invalid ID format", 195, 403)
 	}
 	postIdPtr, _, _, err := bridge.TwitterMsgIdToBluesky(&idBigInt)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Id not found.", 144, fiber.StatusNotFound)
 	}
 	postId = *postIdPtr
 
@@ -185,7 +185,7 @@ func retweet(c *fiber.Ctx) error {
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update status")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.createRecord", retweet)
 	}
 
 	var retweet bridge.Tweet
@@ -229,27 +229,25 @@ func favourite(c *fiber.Ctx) error {
 	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return MissingAuth(c)
+		return MissingAuth(c, err)
 	}
 
 	// Fetch ID
 	idBigInt, err := strconv.ParseInt(postId, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Invalid ID format", 195, 403)
 	}
 	postIdPtr, _, _, err := bridge.TwitterMsgIdToBluesky(&idBigInt)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Id not found.", 144, fiber.StatusNotFound)
 	}
 	postId = *postIdPtr
-
-	fmt.Println("Post ID:", postId)
 
 	post, err := blueskyapi.LikePost(*pds, *oauthToken, postId, *user_did)
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to like post")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.createRecord", favourite)
 	}
 
 	var newTweet bridge.Tweet
@@ -278,17 +276,17 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return MissingAuth(c)
+		return MissingAuth(c, err)
 	}
 
 	// Fetch ID
 	idBigInt, err := strconv.ParseInt(postId, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Invalid ID format", 195, 403)
 	}
 	postIdPtr, _, _, err := bridge.TwitterMsgIdToBluesky(&idBigInt)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 	}
 	postId = *postIdPtr
 
@@ -296,7 +294,7 @@ func Unfavourite(c *fiber.Ctx) error { // yes i am canadian
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to unlike post")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.deleteRecord", Unfavourite)
 	}
 
 	var newTweet bridge.Tweet
@@ -325,17 +323,17 @@ func DeleteTweet(c *fiber.Ctx) error {
 	user_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return MissingAuth(c)
+		return MissingAuth(c, err)
 	}
 
 	// Fetch ID
 	idBigInt, err := strconv.ParseInt(postId, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Invalid ID format", 195, 403)
 	}
 	postIdPtr, _, repostUser, err := bridge.TwitterMsgIdToBluesky(&idBigInt)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Id not found.", 144, fiber.StatusNotFound)
 	}
 	postId = *postIdPtr
 
@@ -343,26 +341,26 @@ func DeleteTweet(c *fiber.Ctx) error {
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get post to delete")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.deleteRecord", DeleteTweet)
 	}
 
 	collection := "app.bsky.feed.post"
 	// Check if the post is a retweet
 	if repostUser != nil && *repostUser != "" {
 		if *repostUser != *user_did {
-			return c.Status(fiber.StatusUnauthorized).SendString("You can only delete your own posts")
+			return ReturnError(c, "You can only delete your own retweets", 195, fiber.StatusForbidden)
 		}
 		collection = "app.bsky.feed.repost"
 		postId = *postToDelete.Thread.Post.Viewer.Repost
 	} else {
 		if postToDelete.Thread.Post.Author.DID != *user_did {
-			return c.Status(fiber.StatusUnauthorized).SendString("You can only delete your own posts")
+			return ReturnError(c, "You can only delete your own tweets", 195, fiber.StatusForbidden)
 		}
 	}
 
 	if err := blueskyapi.DeleteRecord(*pds, *oauthToken, postId, *user_did, collection); err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to delete post")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.deleteRecord", DeleteTweet)
 	}
 
 	db_controller.StoreAnalyticData(db_controller.AnalyticData{

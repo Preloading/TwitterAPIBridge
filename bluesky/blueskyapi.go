@@ -571,9 +571,7 @@ func GetUsersInfo(pds string, token string, items []string, ignoreCache bool) ([
 // TODO: Combine this with GetUsersInfo... somehow
 func GetUsersInfoRaw(pds string, token string, items []string, ignoreCache bool) ([]*User, error) {
 	var results []*User
-	var missing []string
-
-	missing = items // hack
+	missing := items // hack
 
 	// Parallel fetching for chunks of up to 25 at a time
 	var wg sync.WaitGroup

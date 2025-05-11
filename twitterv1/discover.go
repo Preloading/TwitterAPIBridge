@@ -25,7 +25,7 @@ func InternalSearch(c *fiber.Ctx) error {
 
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return MissingAuth(c)
+		return MissingAuth(c, err)
 	}
 
 	// Pagination
@@ -34,11 +34,11 @@ func InternalSearch(c *fiber.Ctx) error {
 	if max_id != "" {
 		maxIDInt, err := strconv.ParseInt(max_id, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
+			return ReturnError(c, "An invalid max_id has been specified", 195, fiber.StatusBadRequest)
 		}
 		_, until, _, err = bridge.TwitterMsgIdToBluesky(&maxIDInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
+			return ReturnError(c, "An invalid max_id has been specified", 195, fiber.StatusBadRequest)
 		}
 	}
 
@@ -47,11 +47,11 @@ func InternalSearch(c *fiber.Ctx) error {
 	if since_id != "" {
 		sinceIDInt, err := strconv.ParseInt(since_id, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid since_id")
+			return ReturnError(c, "An invalid since_id has been specified", 195, fiber.StatusBadRequest)
 		}
 		_, until, _, err = bridge.TwitterMsgIdToBluesky(&sinceIDInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid since_id")
+			return ReturnError(c, "An invalid since_id has been specified", 195, fiber.StatusBadRequest)
 		}
 	}
 
@@ -59,7 +59,7 @@ func InternalSearch(c *fiber.Ctx) error {
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to search")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.feed.searchPosts", InternalSearch)
 	}
 
 	// Optimization: Get all users at once so we don't have to do it in chunks
@@ -67,7 +67,7 @@ func InternalSearch(c *fiber.Ctx) error {
 	for _, search := range bskySearch {
 		dids = append(dids, search.Author.DID)
 	}
-	blueskyapi.GetUsersInfo(*pds, *oauthToken, dids, false)
+	blueskyapi.GetUsersInfo(*pds, *oauthToken, dids, false) // add to cache
 
 	replyUrls := []string{}
 
@@ -81,7 +81,7 @@ func InternalSearch(c *fiber.Ctx) error {
 	replyToPostData, err := blueskyapi.GetPosts(*pds, *oauthToken, replyUrls)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get reply to data")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.feed.getPosts", InternalSearch)
 	}
 
 	// Create a map for quick lookup of reply dates and user IDs
@@ -143,7 +143,7 @@ func trends_woeid(c *fiber.Ctx) error {
 	bsky_trends, err := blueskyapi.GetTrends(*pds, *oauthToken)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch trends")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.unspecced.getTrendingTopics", trends_woeid)
 	}
 
 	trends := []bridge.Trend{}
@@ -186,7 +186,7 @@ func discovery(c *fiber.Ctx) error {
 	thread, err := blueskyapi.GetPost(*pds, *oauthToken, "at://did:plc:khcyntihpu7snjszuojjgjc4/app.bsky.feed.post/3lfgrcq4di22c", 0, 1)
 
 	if err != nil {
-		return err
+		return HandleBlueskyError(c, err.Error(), "app.bsky.feed.getPostThread", discovery)
 	}
 
 	var displayTweet bridge.Tweet
@@ -302,31 +302,31 @@ func GetTopicSuggestedUsers(c *fiber.Ctx) error {
 	if c.Query("limit") != "" {
 		limit, err = strconv.Atoi(c.Query("limit"))
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid limit value")
+			return ReturnError(c, "Invalid limit", 195, fiber.StatusBadRequest)
 		}
 	}
 
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return MissingAuth(c)
+		return MissingAuth(c, err)
 	}
 
 	slug := c.Params("slug")
 	if slug == "" {
-		return c.Status(fiber.StatusInternalServerError).SendString("Missing Slug")
+		return ReturnError(c, "Missing slug", 195, fiber.StatusBadRequest)
 	}
 
 	name, exists := topicLookup[slug]
 	if !exists {
-		return c.Status(fiber.StatusNotFound).SendString("Invalid topic slug")
+		return ReturnError(c, "Invalid slug", 195, fiber.StatusBadRequest)
 	}
 
 	recommendedUsers, err := blueskyapi.GetTopicSuggestedUsers(*pds, *oauthToken, limit, slug)
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch suggested users")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.unspecced.getSuggestedUsers", GetTopicSuggestedUsers)
 	}
 
 	usersDID := []string{}
@@ -337,7 +337,7 @@ func GetTopicSuggestedUsers(c *fiber.Ctx) error {
 	usersInfo, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersDID, false)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", GetTopicSuggestedUsers)
 	}
 
 	topic := bridge.TopicUserSuggestions{

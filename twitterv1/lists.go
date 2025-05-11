@@ -20,14 +20,14 @@ func GetUsersLists(c *fiber.Ctx) error {
 		userIDStr := c.Query("user_id")
 		userID, err := strconv.ParseInt(userIDStr, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
 		}
 		screen_namePtr, err := bridge.TwitterIDToBlueSky(&userID) // yup
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "Failed to find ID pointer (post does not exist or this tweet has never been seen on this server)", 195, fiber.StatusForbidden)
 		}
 		if screen_namePtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "Failed to find ID pointer (post does not exist or this tweet has never been seen on this server)", 195, fiber.StatusForbidden)
 		}
 		screen_name = *screen_namePtr
 	}
@@ -41,7 +41,7 @@ func GetUsersLists(c *fiber.Ctx) error {
 
 	if screen_name == "" {
 		if userDID == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
 		}
 		screen_name = *userDID
 	}
@@ -50,12 +50,12 @@ func GetUsersLists(c *fiber.Ctx) error {
 
 	lists, err := blueskyapi.GetUsersLists(*pds, *oauthToken, screen_name, 20, cursor)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get lists")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.getLists", GetUsersLists)
 	}
 
 	listsOwner, err := blueskyapi.GetUserInfo(*pds, *oauthToken, screen_name, false)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfile", GetUsersLists)
 	}
 
 	twitterLists := []bridge.TwitterList{}
@@ -106,15 +106,15 @@ func list_timeline(c *fiber.Ctx) error {
 		if list == "" {
 			list = c.Query("list_id")
 			if list == "" {
-				return c.Status(fiber.StatusBadRequest).SendString("No List Provided")
+				return ReturnError(c, "No List Provided", 195, fiber.StatusForbidden)
 			}
 			listIdInt, err := strconv.ParseInt(list, 10, 64)
 			if err != nil {
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+				return ReturnError(c, "Invalid list id provided", 195, fiber.StatusForbidden)
 			}
 			listPtr, err := bridge.TwitterIDToBlueSky(&listIdInt)
 			if err != nil {
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+				return ReturnError(c, "Invalid list id provided", 195, fiber.StatusForbidden)
 			}
 			list = *listPtr
 		} else {
@@ -122,21 +122,21 @@ func list_timeline(c *fiber.Ctx) error {
 			if owner == "" {
 				owner = c.Query("owner_id")
 				if owner == "" {
-					return c.Status(fiber.StatusBadRequest).SendString("No Owner Provided")
+					return ReturnError(c, "No Owner Provided", 195, fiber.StatusForbidden)
 				}
 				ownerIdInt, err := strconv.ParseInt(list, 10, 64)
 				if err != nil {
-					return c.Status(fiber.StatusBadRequest).SendString("Invalid owner id provided")
+					return ReturnError(c, "Invalid owner id provided", 195, fiber.StatusForbidden)
 				}
 				ownerPtr, err := bridge.TwitterIDToBlueSky(&ownerIdInt)
 				if err != nil {
-					return c.Status(fiber.StatusBadRequest).SendString("Invalid owner id provided")
+					return ReturnError(c, "Invalid owner id provided", 195, fiber.StatusForbidden)
 				}
 				owner = *ownerPtr
 			} else {
 				ownerDID, err := blueskyapi.ResolveDIDFromHandle(owner)
 				if err != nil {
-					return c.Status(fiber.StatusBadRequest).SendString("Invalid owner handle provided")
+					return ReturnError(c, "Invalid owner handle provided", 195, fiber.StatusForbidden)
 				}
 				owner = *ownerDID
 			}
@@ -146,11 +146,11 @@ func list_timeline(c *fiber.Ctx) error {
 	} else {
 		listIdInt, err := strconv.ParseInt(list, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+			return ReturnError(c, "Invalid list id provided", 195, fiber.StatusForbidden)
 		}
 		listPtr, err := bridge.TwitterIDToBlueSky(&listIdInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+			return ReturnError(c, "Invalid list id provided", 195, fiber.StatusForbidden)
 		}
 		list = *listPtr
 	}
@@ -166,15 +166,15 @@ func GetListMembers(c *fiber.Ctx) error {
 		if list == "" {
 			list = c.Query("list_id")
 			if list == "" {
-				return c.Status(fiber.StatusBadRequest).SendString("No List Provided")
+				return ReturnError(c, "No List Provided", 195, fiber.StatusForbidden)
 			}
 			listIdInt, err := strconv.ParseInt(list, 10, 64)
 			if err != nil {
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+				return ReturnError(c, "Invalid list id provided", 195, fiber.StatusForbidden)
 			}
 			listPtr, err := bridge.TwitterIDToBlueSky(&listIdInt)
 			if err != nil {
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+				return ReturnError(c, "Invalid list id provided", 195, fiber.StatusForbidden)
 			}
 			list = *listPtr
 		} else {
@@ -182,21 +182,21 @@ func GetListMembers(c *fiber.Ctx) error {
 			if owner == "" {
 				owner = c.Query("owner_id")
 				if owner == "" {
-					return c.Status(fiber.StatusBadRequest).SendString("No Owner Provided")
+					return ReturnError(c, "No Owner Provided", 195, fiber.StatusForbidden)
 				}
 				ownerIdInt, err := strconv.ParseInt(list, 10, 64)
 				if err != nil {
-					return c.Status(fiber.StatusBadRequest).SendString("Invalid owner id provided")
+					return ReturnError(c, "Invalid owner id provided", 195, fiber.StatusForbidden)
 				}
 				ownerPtr, err := bridge.TwitterIDToBlueSky(&ownerIdInt)
 				if err != nil {
-					return c.Status(fiber.StatusBadRequest).SendString("Invalid owner id provided")
+					return ReturnError(c, "Invalid owner id provided", 195, fiber.StatusForbidden)
 				}
 				owner = *ownerPtr
 			} else {
 				ownerDID, err := blueskyapi.ResolveDIDFromHandle(owner)
 				if err != nil {
-					return c.Status(fiber.StatusBadRequest).SendString("Invalid owner handle provided")
+					return ReturnError(c, "Invalid owner handle provided", 195, fiber.StatusForbidden)
 				}
 				owner = *ownerDID
 			}
@@ -206,11 +206,11 @@ func GetListMembers(c *fiber.Ctx) error {
 	} else {
 		listIdInt, err := strconv.ParseInt(list, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+			return ReturnError(c, "Invalid list id provided", 195, fiber.StatusForbidden)
 		}
 		listPtr, err := bridge.TwitterIDToBlueSky(&listIdInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid list id provided")
+			return ReturnError(c, "Invalid list id provided", 195, fiber.StatusForbidden)
 		}
 		list = *listPtr
 	}
@@ -231,7 +231,7 @@ func GetListMembers(c *fiber.Ctx) error {
 	// Get our list
 	listInfo, err := blueskyapi.GetList(*pds, *oauthToken, list, 20, cursor) // No clue what the limit was on actual twitter.
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get list")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.getList", GetListMembers)
 	}
 
 	// Get the full user info on the members of the list.
@@ -244,7 +244,7 @@ func GetListMembers(c *fiber.Ctx) error {
 	members, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, membersDID, false)
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get list member's info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", GetListMembers)
 	}
 
 	// Next Cursor
