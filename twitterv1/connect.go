@@ -18,14 +18,14 @@ func UserSearch(c *fiber.Ctx) error {
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 	// Search for users
 	bskyUsers, err := blueskyapi.UserSearch(*pds, *oauthToken, searchQuery)
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to search")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.searchActors", UserSearch)
 	}
 	// Get complete user info.
 	// We must do this as the search API only returns a subset of the user info, and twitter wants all of it.
@@ -41,7 +41,7 @@ func UserSearch(c *fiber.Ctx) error {
 	users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, dids, false)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", UserSearch)
 	}
 
 	return EncodeAndSend(c, users)
@@ -69,13 +69,13 @@ func SearchAhead(c *fiber.Ctx) error {
 
 	searchQuery := c.Query("q")
 	if searchQuery == "" {
-		return c.Status(fiber.StatusBadRequest).SendString("Missing search query (or that we don't support prefetch right now)")
+		return ReturnError(c, "Missing search query (or that we don't support prefetch right now)", 195, fiber.StatusBadRequest)
 	}
 
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	limit := c.Query("count")
@@ -84,7 +84,7 @@ func SearchAhead(c *fiber.Ctx) error {
 	}
 	limitInt, err := strconv.Atoi(limit)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid limit parameter")
+		return ReturnError(c, "An invalid post count was specified", 195, fiber.StatusBadRequest)
 	}
 
 	// Search for users
@@ -92,7 +92,7 @@ func SearchAhead(c *fiber.Ctx) error {
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to search")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.searchActorsTypeahead", SearchAhead)
 	}
 
 	if len(bskyUsers) == 0 {
@@ -152,7 +152,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 	// we thank our AI overloads.
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// Handle pagination
@@ -161,7 +161,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 	if maxID != "" {
 		maxIDInt, err := strconv.ParseInt(maxID, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id")
+			return ReturnError(c, "An invalid max_id was specified", 195, fiber.StatusBadRequest)
 		}
 		maxIDInt--
 		max_time := time.UnixMilli(maxIDInt)
@@ -179,7 +179,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 	// Get notifications
 	bskyNotifications, err := blueskyapi.GetNotifications(*pds, *oauthToken, count, context)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get notifications")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.notification.listNotifications", GetMyActivity)
 	}
 
 	// Track unique users and posts
@@ -234,7 +234,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 		go func(posts []string) {
 			defer wg.Done()
 			for _, postID := range posts {
-				if err, post := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
+				if post, err := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
 					tweet := TranslatePostToTweet(
 						post.Thread.Post,
 						func() string {

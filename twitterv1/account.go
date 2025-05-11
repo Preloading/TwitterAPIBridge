@@ -103,7 +103,7 @@ func UpdateProfile(c *fiber.Ctx) error {
 	// auth
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// Lock the mutex for this user
@@ -122,22 +122,20 @@ func UpdateProfile(c *fiber.Ctx) error {
 
 	oldProfile, err := blueskyapi.GetRecord(*pds, "app.bsky.actor.profile", *my_did, "self")
 	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get profile")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.getRecord", UpdateProfile)
 	}
 
 	oldProfile.Value.DisplayName = name
 	oldProfile.Value.Description = description
 
 	if err := blueskyapi.UpdateRecord(*pds, *oauthToken, "app.bsky.actor.profile", *my_did, "self", oldProfile.CID, oldProfile.Value); err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update profile")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.putRecord", UpdateProfile)
 	}
 
 	user, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *my_did, true)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfile", UpdateProfile)
 	}
 
 	user.Description = description
@@ -150,7 +148,7 @@ func UpdateProfilePicture(c *fiber.Ctx) error {
 	// auth
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// Lock the mutex for this user
@@ -162,35 +160,35 @@ func UpdateProfilePicture(c *fiber.Ctx) error {
 	oldProfile, err := blueskyapi.GetRecord(*pds, "app.bsky.actor.profile", *my_did, "self")
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get profile")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.getRecord", UpdateProfilePicture)
 	}
 
 	// get our new image
 	image, err := c.FormFile("image")
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusBadRequest).SendString("Please upload an image")
+		return ReturnError(c, "Please upload an image", 195, 403) // idk about this error code, since it's for url params instead of post data.
 	}
 
 	// read the image file content
 	file, err := image.Open()
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to open image file")
+		return ReturnError(c, "Uploaded image is invalid.", 195, 403)
 	}
 	defer file.Close()
 
 	imageData, err := io.ReadAll(file)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to read image file")
+		return ReturnError(c, "Uploaded image is invalid.", 195, 403)
 	}
 
 	// upload our new profile picture
 	profilePictureBlob, err := blueskyapi.UploadBlob(*pds, *oauthToken, imageData, c.Get("Content-Type"))
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to upload profile picture")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.uploadBlob", UpdateProfilePicture)
 	}
 
 	// change our thing
@@ -198,13 +196,13 @@ func UpdateProfilePicture(c *fiber.Ctx) error {
 
 	if err := blueskyapi.UpdateRecord(*pds, *oauthToken, "app.bsky.actor.profile", *my_did, "self", oldProfile.CID, oldProfile.Value); err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to update profile")
+		return HandleBlueskyError(c, err.Error(), "com.atproto.repo.putRecord", UpdateProfilePicture)
 	}
 
 	user, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *my_did, true)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfile", UpdateProfile)
 	}
 
 	return EncodeAndSend(c, user)

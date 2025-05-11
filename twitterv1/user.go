@@ -12,24 +12,24 @@ import (
 
 // https://web.archive.org/web/20120508075505/https://dev.twitter.com/docs/api/1/get/users/show
 func user_info(c *fiber.Ctx) error {
-	screen_name := c.Query("screen_name")
+	actor := c.Query("screen_name")
 
-	if screen_name == "" {
+	if actor == "" {
 		userIDStr := c.Query("user_id")
 		userID, err := strconv.ParseInt(userIDStr, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid ID format", 195, 403)
 		}
-		screen_namePtr, err := bridge.TwitterIDToBlueSky(&userID) // yup
+		actorPtr, err := bridge.TwitterIDToBlueSky(&userID) // yup
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
-		if screen_namePtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+		if actorPtr == nil {
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
-		screen_name = *screen_namePtr
-		if screen_name == "" {
-			return c.Status(fiber.StatusBadRequest).SendString("No screen_name or user_id provided")
+		actor = *actorPtr
+		if actor == "" {
+			return ReturnError(c, "No user was specified", 195, 403)
 
 		}
 
@@ -42,11 +42,11 @@ func user_info(c *fiber.Ctx) error {
 		oauthToken = &blankstring
 	}
 
-	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, screen_name, false)
+	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, actor, false)
 
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfile", user_info)
 	}
 
 	return EncodeAndSend(c, userinfo)
@@ -65,22 +65,22 @@ func UsersLookup(c *fiber.Ctx) error {
 		for _, idStr := range userIDs {
 			userID, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil {
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+				return ReturnError(c, "Invalid ID format ("+idStr+")", 195, 403)
 			}
-			handle, err := bridge.TwitterIDToBlueSky(&userID)
+			actor, err := bridge.TwitterIDToBlueSky(&userID)
 			if err != nil {
-				return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+				return ReturnError(c, "ID not found. ("+strconv.FormatInt(userID, 10)+")", 144, fiber.StatusNotFound)
 			}
-			if *handle != "" {
-				usersToLookUp = append(usersToLookUp, *handle)
+			if *actor != "" {
+				usersToLookUp = append(usersToLookUp, *actor)
 			}
 		}
 	} else {
-		return c.Status(fiber.StatusBadRequest).SendString("No screen_name or user_id provided")
+		return ReturnError(c, "No user was specified", 195, 403)
 	}
 
 	if len(usersToLookUp) > 100 {
-		return c.Status(fiber.StatusBadRequest).SendString("Too many users to look up")
+		return ReturnError(c, "Max number of times to look up reached (100)", 195, 403)
 	}
 
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
@@ -96,7 +96,7 @@ func UsersLookup(c *fiber.Ctx) error {
 	users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersToLookUp, false)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", UsersLookup)
 	}
 	return EncodeAndSend(c, users)
 }
@@ -113,44 +113,44 @@ func UserRelationships(c *fiber.Ctx) error {
 		actors = c.Query("screen_name")
 		isID = false
 		if actors == "" {
-			return c.Status(fiber.StatusBadRequest).SendString("No user_id provided")
+			return ReturnError(c, "No user was specified", 195, 403)
 		}
 	}
 
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	actorsArray := strings.Split(actors, ",")
 	if len(actorsArray) > 100 {
-		return c.Status(fiber.StatusBadRequest).SendString("Too many users to look up")
+		return ReturnError(c, "Max number of times to look up reached (100)", 195, 403)
 	}
 	if isID {
 		for i, actor := range actorsArray {
 			actorID, err := strconv.ParseInt(actor, 10, 64)
 			if err != nil {
-				return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+				return ReturnError(c, "Invalid ID format ("+actor+")", 195, 403)
 			}
-			handlePtr, err := bridge.TwitterIDToBlueSky(&actorID)
+			actorPtr, err := bridge.TwitterIDToBlueSky(&actorID)
 			if err != nil {
-				return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+				return ReturnError(c, "ID not found. ("+strconv.FormatInt(actorID, 10)+")", 144, fiber.StatusNotFound)
 			}
-			if handlePtr != nil {
-				actorsArray[i] = *handlePtr
+			if actorPtr != nil {
+				actorsArray[i] = *actorPtr
 			}
 		}
 	}
 
 	relationships := []bridge.UsersRelationship{}
 	users, err := blueskyapi.GetUsersInfoRaw(*pds, *oauthToken, actorsArray, false)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", UserRelationships)
+	}
 	for _, user := range users {
 		encodedUserId := bridge.BlueSkyToTwitterID(user.DID)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode user id")
-		}
 
 		connections := bridge.Connections{}
 		connectionJSON := []string{}
@@ -206,19 +206,19 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 	if sourceActor == "" {
 		sourceActor = c.Query("source_screen_name")
 		if sourceActor == "" {
-			return c.Status(fiber.StatusBadRequest).SendString("No source_id provided")
+			return ReturnError(c, "No source user was specified", 195, 403)
 		}
 	} else {
 		sourceIDInt, err := strconv.ParseInt(sourceActor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid source_id provided")
+			return ReturnError(c, "Invalid source ID format", 195, 403)
 		}
 		sourceActorPtr, err := bridge.TwitterIDToBlueSky(&sourceIDInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert source_id to screen_name")
+			return ReturnError(c, "Source ID not found.", 144, fiber.StatusNotFound)
 		}
 		if sourceActorPtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert source_id to screen_name")
+			return ReturnError(c, "Source ID not found.", 144, fiber.StatusNotFound)
 		}
 		sourceActor = *sourceActorPtr
 	}
@@ -227,19 +227,19 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 	if targetActor == "" {
 		targetActor = c.Query("target_screen_name")
 		if targetActor == "" {
-			return c.Status(fiber.StatusBadRequest).SendString("No source_id provided")
+			return ReturnError(c, "No target user was specified", 195, 403)
 		}
 	} else {
 		targetIDInt, err := strconv.ParseInt(targetActor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid source_id provided")
+			return ReturnError(c, "Invalid target ID format", 195, 403)
 		}
 		targetActorPtr, err := bridge.TwitterIDToBlueSky(&targetIDInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert source_id to screen_name")
+			return ReturnError(c, "Target ID not found.", 144, fiber.StatusNotFound)
 		}
 		if targetActorPtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert source_id to screen_name")
+			return ReturnError(c, "Target ID not found.", 144, fiber.StatusNotFound)
 		}
 		targetActor = *targetActorPtr
 	}
@@ -255,27 +255,27 @@ func GetUsersRelationship(c *fiber.Ctx) error {
 
 	targetUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, targetActor, false)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch target user")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfile", GetUsersRelationship)
 	}
 	// Possible optimization: if the source user is us, we can skip the api call, and just use viewer info
 	sourceUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, sourceActor, false)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Failed to fetch source user")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfile", GetUsersRelationship)
 	}
 
 	targetDID, err := bridge.TwitterIDToBlueSky(&targetUser.ID) // not the most efficient way to do this, but it works
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to convert target user ID to BlueSky ID")
+		return ReturnError(c, "Some wonky stuff happened. (Failed to convert target user ID to BlueSky ID)", 131, 500)
 	}
 	sourceDID, err := bridge.TwitterIDToBlueSky(&sourceUser.ID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to convert source user ID to BlueSky ID")
+		return ReturnError(c, "Some wonky stuff happened. (Failed to convert target user ID to BlueSky ID)", 131, 500)
 	}
 
 	relationship, err := blueskyapi.GetRelationships(*pds, *oauthToken, *sourceDID, []string{*targetDID})
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch relationship")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.getRelationships", GetUsersRelationship)
 	}
 	defaultTrue := true // holy fuck i hate this
 
@@ -309,7 +309,7 @@ func FollowUser(c *fiber.Ctx) error {
 	// auth
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// lets get the user params
@@ -317,32 +317,28 @@ func FollowUser(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.FormValue("screen_name")
 		if actor == "" {
-			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			return ReturnError(c, "No user was specified", 195, 403)
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid ID format", 195, 403)
 		}
 		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		if actorPtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		actor = *actorPtr
 	}
 
 	// follow
-	err, user := blueskyapi.FollowUser(*pds, *oauthToken, actor, *my_did)
+	user, err := blueskyapi.FollowUser(*pds, *oauthToken, actor, *my_did)
 
 	if err != nil {
-		if err.Error() == "already following user" {
-			return c.Status(403).SendString("already following user")
-		}
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to follow user")
+		HandleBlueskyError(c, err.Error(), "app.bsky.graph.follow", FollowUser) // lexicon isnt tecnically right, but its fine idc
 	}
 
 	// convert user into twitter format
@@ -356,18 +352,17 @@ func UnfollowUser(c *fiber.Ctx, actor string) error {
 	// auth
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// follow
-	err, user := blueskyapi.UnfollowUser(*pds, *oauthToken, actor, *my_did)
+	user, err := blueskyapi.UnfollowUser(*pds, *oauthToken, actor, *my_did)
 
 	if err != nil {
-		if err.Error() == "not following user" {
-			return c.Status(403).SendString("not following user")
-		}
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to unfollow user")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.unfollow", func(c *fiber.Ctx) error {
+			return UnfollowUser(c, actor)
+		})
 	}
 
 	// convert user into twitter format
@@ -382,19 +377,19 @@ func UnfollowUserForm(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.FormValue("screen_name")
 		if actor == "" {
-			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			return ReturnError(c, "No user was specified", 195, 403)
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid ID format", 195, 403)
 		}
 		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		if actorPtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		actor = *actorPtr
 	}
@@ -406,14 +401,14 @@ func UnfollowUserParams(c *fiber.Ctx) error {
 	actor := c.Params("id")
 	actorID, err := strconv.ParseInt(actor, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		return ReturnError(c, "Invalid ID format", 195, 403)
 	}
 	actorPtr, err := bridge.TwitterIDToBlueSky(&actorID)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+		return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 	}
 	if actorPtr == nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+		return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 	}
 	actor = *actorPtr
 
@@ -426,7 +421,7 @@ func GetStatusesFollowers(c *fiber.Ctx) error {
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// lets go get our user data
@@ -435,19 +430,19 @@ func GetStatusesFollowers(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.FormValue("screen_name")
 		if actor == "" {
-			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			return ReturnError(c, "No user was specified", 195, 403)
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid ID format", 195, 403)
 		}
 		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		if actorPtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		actor = *actorPtr
 	}
@@ -456,7 +451,7 @@ func GetStatusesFollowers(c *fiber.Ctx) error {
 	followers, err := blueskyapi.GetFollowers(*pds, *oauthToken, "", actor)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch followers")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.getFollowers", GetStatusesFollowers)
 	}
 
 	// convert users into twitter format
@@ -469,7 +464,7 @@ func GetStatusesFollowers(c *fiber.Ctx) error {
 	twitterUsers, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, actorsToLookUp, false)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", GetStatusesFollowers)
 	}
 
 	// Convert []*bridge.TwitterUser to []bridge.TwitterUser
@@ -487,7 +482,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	// auth
 	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// lets go get our user data
@@ -498,20 +493,20 @@ func GetFollowers(c *fiber.Ctx) error {
 			if userDID != nil {
 				actor = *userDID
 			} else {
-				return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+				return ReturnError(c, "No user was specified", 195, 403)
 			}
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid ID format", 195, 403)
 		}
 		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		if actorPtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		actor = *actorPtr
 	}
@@ -555,7 +550,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	followers, err := blueskyapi.GetFollowers(*pds, *oauthToken, cursor, actor)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch followers")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.getFollowers", GetFollowers)
 	}
 
 	// convert users into twitter format
@@ -568,7 +563,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	twitterUsers, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, actorsToLookUp, false)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", GetFollowers)
 	}
 
 	// Convert []*bridge.TwitterUser to []bridge.TwitterUser
@@ -602,7 +597,7 @@ func GetStatusesFollows(c *fiber.Ctx) error {
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// lets go get our user data
@@ -611,19 +606,19 @@ func GetStatusesFollows(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.FormValue("screen_name")
 		if actor == "" {
-			c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			return ReturnError(c, "No user was specified", 195, 403)
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid ID format", 195, 403)
 		}
 		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		if actorPtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		actor = *actorPtr
 	}
@@ -632,7 +627,7 @@ func GetStatusesFollows(c *fiber.Ctx) error {
 	followers, err := blueskyapi.GetFollows(*pds, *oauthToken, "", actor)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch followers")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.getFollows", GetStatusesFollows)
 	}
 
 	// convert users into twitter format
@@ -645,7 +640,7 @@ func GetStatusesFollows(c *fiber.Ctx) error {
 	twitterUsers, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, actorsToLookUp, false)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", GetStatusesFollows)
 	}
 
 	// Convert []*bridge.TwitterUser to []bridge.TwitterUser
@@ -663,7 +658,7 @@ func GetFollows(c *fiber.Ctx) error {
 	// auth
 	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// lets go get our user data
@@ -674,20 +669,20 @@ func GetFollows(c *fiber.Ctx) error {
 			if userDID != nil {
 				actor = *userDID
 			} else {
-				return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+				return ReturnError(c, "No user was specified", 195, 403)
 			}
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid ID format", 195, 403)
 		}
 		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		if actorPtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		actor = *actorPtr
 	}
@@ -731,7 +726,7 @@ func GetFollows(c *fiber.Ctx) error {
 	followers, err := blueskyapi.GetFollows(*pds, *oauthToken, cursor, actor)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch followers")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.getFollows", GetFollows)
 	}
 
 	// convert users into twitter format
@@ -744,7 +739,7 @@ func GetFollows(c *fiber.Ctx) error {
 	twitterUsers, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, actorsToLookUp, false)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", GetFollows)
 	}
 
 	// Convert []*bridge.TwitterUser to []bridge.TwitterUser
@@ -780,14 +775,14 @@ func GetSuggestedUsers(c *fiber.Ctx) error {
 	if c.Query("limit") != "" {
 		limit, err = strconv.Atoi(c.Query("limit"))
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid limit value")
+			return ReturnError(c, "Invalid limit", 195, 403)
 		}
 	}
 
 	// auth
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	var recommendedUsers []blueskyapi.User
@@ -797,28 +792,27 @@ func GetSuggestedUsers(c *fiber.Ctx) error {
 	if userID != "" {
 		userIDInt, err := strconv.ParseInt(userID, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid ID format", 195, 403)
 		}
 		userIDPtr, err := bridge.TwitterIDToBlueSky(&userIDInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		if userIDPtr == nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Failed to convert user_id to screen_name")
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 		}
 		userID = *userIDPtr
 
 		recommendedUsers, err = blueskyapi.GetOthersSuggestedUsers(*pds, *oauthToken, limit, userID)
 		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch suggested users")
+			return HandleBlueskyError(c, err.Error(), "app.bsky.graph.getSuggestedFollowsByActor", GetSuggestedUsers)
 		}
 	} else {
 		recommendedUsers, err = blueskyapi.GetMySuggestedUsers(*pds, *oauthToken, limit)
-	}
-
-	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch suggested users")
+		if err != nil {
+			fmt.Println("Error:", err)
+			return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getSuggestions", GetSuggestedUsers)
+		}
 	}
 
 	usersDID := []string{}
@@ -829,7 +823,7 @@ func GetSuggestedUsers(c *fiber.Ctx) error {
 	usersInfo, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersDID, false)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch user info")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.actor.getProfiles", GetSuggestedUsers)
 	}
 
 	recommended := []bridge.TwitterRecommendation{}

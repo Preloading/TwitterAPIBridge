@@ -38,15 +38,15 @@ func user_timeline(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.Query("user_id")
 		if actor == "" {
-			return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			return ReturnError(c, "No user provided", 195, fiber.StatusForbidden)
 		}
 		actorInt, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
 		}
 		actorPtr, err := bridge.TwitterIDToBlueSky(&actorInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
 		}
 		actor = *actorPtr
 	}
@@ -58,15 +58,15 @@ func media_timeline(c *fiber.Ctx) error {
 	if actor == "" {
 		actor = c.Query("user_id")
 		if actor == "" {
-			return c.Status(fiber.StatusBadRequest).SendString("No user provided")
+			return ReturnError(c, "No user provided", 195, fiber.StatusForbidden)
 		}
 		actorInt, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
 		}
 		actorPtr, err := bridge.TwitterIDToBlueSky(&actorInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
 		}
 		actor = *actorPtr
 	}
@@ -78,11 +78,11 @@ func likes_timeline(c *fiber.Ctx) error {
 	actor := c.Params("id")
 	actorInt, err := strconv.ParseInt(actor, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
 	}
 	actorPtr, err := bridge.TwitterIDToBlueSky(&actorInt)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid user_id provided")
+		return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
 	}
 	actor = *actorPtr
 
@@ -90,12 +90,12 @@ func likes_timeline(c *fiber.Ctx) error {
 }
 
 // https://web.archive.org/web/20120508224719/https://dev.twitter.com/docs/api/1/get/statuses/home_timeline
-func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func(string, string, string, string, int) (error, *blueskyapi.Timeline)) error {
+func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func(string, string, string, string, int) (*blueskyapi.Timeline, error)) error {
 	// Get all of our keys, beeps, and bops
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	if err != nil && requireAuth {
+		return MissingAuth(c, err)
 	}
 
 	// Limits
@@ -105,7 +105,7 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 	}
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid count format")
+		return ReturnError(c, "Invalid count provided", 195, fiber.StatusForbidden)
 	}
 	if limit > 100 {
 		limit = 100
@@ -121,21 +121,22 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 		maxIDInt, err := strconv.ParseInt(max_id, 10, 64)
 		fmt.Println("Max ID:", maxIDInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+			return ReturnError(c, "Invalid max_id format", 195, fiber.StatusForbidden)
 		}
 		uri, date, _, err := bridge.TwitterMsgIdToBluesky(&maxIDInt)
 		fmt.Println("Max ID:", uri)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+			return ReturnError(c, "max_id was not found", 144, fiber.StatusForbidden)
 		}
 		context = date.Format(time.RFC3339)
 	}
 
 	fmt.Println("Context:", context)
-	err, res := fetcher(*pds, *oauthToken, context, param, limit)
+	res, err := fetcher(*pds, *oauthToken, context, param, limit)
 	if err != nil {
-		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch timeline")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.feed.defs#timeline", func(c *fiber.Ctx) error { // dislike the "lexicon", but its fine.
+			return convert_timeline(c, param, requireAuth, fetcher)
+		})
 	}
 
 	// Caching the user DIDs efficiently
@@ -147,7 +148,7 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 		}
 	}
 
-	blueskyapi.GetUsersInfo(*pds, *oauthToken, userDIDs, false)
+	blueskyapi.GetUsersInfo(*pds, *oauthToken, userDIDs, false) // fill cache
 
 	// Translate the posts to tweets
 	tweets := []bridge.Tweet{}
@@ -173,12 +174,12 @@ func RelatedResults(c *fiber.Ctx) error {
 	encodedId := c.Params("id")
 	idInt, err := strconv.ParseInt(encodedId, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Invalid ID format", 195, 403)
 	}
 	// Fetch ID
 	uriPtr, _, _, err := bridge.TwitterMsgIdToBluesky(&idInt)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 	}
 	uri := *uriPtr
 
@@ -189,10 +190,10 @@ func RelatedResults(c *fiber.Ctx) error {
 		oauthToken = &blankstring
 	}
 
-	err, thread := blueskyapi.GetPost(*pds, *oauthToken, uri, 1, 0)
+	thread, err := blueskyapi.GetPost(*pds, *oauthToken, uri, 1, 0)
 
 	if err != nil {
-		return err
+		return HandleBlueskyError(c, err.Error(), "app.bsky.feed.getPostThread", RelatedResults)
 	}
 
 	if thread.Thread.Replies == nil {
@@ -241,13 +242,13 @@ func GetStatusFromId(c *fiber.Ctx) error {
 	encodedId := c.Params("id")
 	idInt, err := strconv.ParseInt(encodedId, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Invalid ID format", 195, 403)
 	}
 	// Fetch ID
 	uriPtr, _, _, err := bridge.TwitterMsgIdToBluesky(&idInt)
 	if err != nil {
 		fmt.Println("Error:", err)
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 	}
 	uri := *uriPtr
 
@@ -259,10 +260,10 @@ func GetStatusFromId(c *fiber.Ctx) error {
 		oauthToken = &emptyString
 	}
 
-	err, thread := blueskyapi.GetPost(*pds, *oauthToken, uri, 0, 1)
+	thread, err := blueskyapi.GetPost(*pds, *oauthToken, uri, 0, 1)
 
 	if err != nil {
-		return err
+		return HandleBlueskyError(c, err.Error(), "app.bsky.feed.getPostThread", GetStatusFromId)
 	}
 
 	// TODO: Some things may be needed for reposts to show up correctly. thats a later problem :)
@@ -804,37 +805,37 @@ func GetUserInfoFromTweetData(tweet blueskyapi.Post) bridge.TwitterUser {
 func TweetInfo(c *fiber.Ctx) error {
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header (yes i know this isn't complient with the twitter api)")
+		return MissingAuth(c, err)
 	}
 
 	encodedId := c.Params("id")
 	idBigInt, err := strconv.ParseInt(encodedId, 10, 64)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "Invalid ID format", 195, 403)
 	}
 	// Fetch ID
 	idPtr, _, _, err := bridge.TwitterMsgIdToBluesky(&idBigInt)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid ID format")
+		return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
 	}
 	id := *idPtr
 
-	err, thread := blueskyapi.GetPost(*pds, *oauthToken, id, 1, 0)
+	thread, err := blueskyapi.GetPost(*pds, *oauthToken, id, 1, 0)
 
 	if err != nil {
-		return err
+		return HandleBlueskyError(c, err.Error(), "app.bsky.feed.getPostThread", TweetInfo)
 	}
 
 	likes, err := blueskyapi.GetPostLikes(*pds, *oauthToken, id, 100)
 
 	if err != nil {
-		return err
+		return HandleBlueskyError(c, err.Error(), "app.bsky.feed.getLikes", TweetInfo)
 	}
 
 	reposters, err := blueskyapi.GetRetweetAuthors(*pds, *oauthToken, id, 100)
 
 	if err != nil {
-		return err
+		return HandleBlueskyError(c, err.Error(), "app.bsky.feed.getRepostedBy", TweetInfo)
 	}
 
 	repliers := []int64{}
@@ -865,7 +866,7 @@ func TweetInfo(c *fiber.Ctx) error {
 func mentions_timeline(c *fiber.Ctx) error {
 	_, pds, _, oauthToken, err := GetAuthFromReq(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	// Handle pagination
@@ -877,12 +878,11 @@ func mentions_timeline(c *fiber.Ctx) error {
 		maxIDInt, err := strconv.ParseInt(max_id, 10, 64)
 		fmt.Println("Max ID:", maxIDInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+			return ReturnError(c, "Invalid max_id format", 195, fiber.StatusForbidden)
 		}
-		uri, date, _, err := bridge.TwitterMsgIdToBluesky(&maxIDInt)
-		fmt.Println("Max ID:", uri)
+		_, date, _, err := bridge.TwitterMsgIdToBluesky(&maxIDInt)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString("Invalid max_id format")
+			return ReturnError(c, "max_id was not found", 144, fiber.StatusForbidden)
 		}
 		context = date.Format(time.RFC3339)
 	}
@@ -898,7 +898,7 @@ func mentions_timeline(c *fiber.Ctx) error {
 	// Get notifications
 	bskyNotifications, err := blueskyapi.GetMentions(*pds, *oauthToken, count, context)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get notifications")
+		return HandleBlueskyError(c, err.Error(), "app.bsky.notification.listNotifications", mentions_timeline)
 	}
 
 	// Track unique users and posts
@@ -947,7 +947,7 @@ func mentions_timeline(c *fiber.Ctx) error {
 		go func(posts []string) {
 			defer wg.Done()
 			for _, postID := range posts {
-				if err, post := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
+				if post, err := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
 					tweet := TranslatePostToTweet(
 						post.Thread.Post,
 						func() string {

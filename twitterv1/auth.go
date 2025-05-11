@@ -31,33 +31,32 @@ func access_token(c *fiber.Ctx) error {
 	if authMode == "client_auth" {
 		res, pds, err := blueskyapi.Authenticate(authUsername, authPassword)
 		if err != nil {
-			fmt.Println("Error:", err)
-			return c.SendStatus(401)
+			return HandleBlueskyError(c, err.Error(), "com.atproto.server.createSession", access_token)
 		}
 
 		// Our bluesky authentication was sucessful! Now we should store the auth info, encryted, in the DB
 		encryptionkey, err := cryption.GenerateKey()
 		if err != nil {
 			fmt.Println("Error:", err)
-			return c.SendStatus(500)
+			return ReturnError(c, "Failed to generate encryption key", 131, fiber.StatusInternalServerError)
 		}
 
 		access_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.AccessJwt)
 		if err != nil {
 			fmt.Println("Error:", err)
-			return c.SendStatus(500)
+			return ReturnError(c, "Failed to get token expiration.", 131, fiber.StatusInternalServerError)
 		}
 		refresh_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.RefreshJwt)
 		if err != nil {
 			fmt.Println("Error:", err)
-			return c.SendStatus(500)
+			return ReturnError(c, "Failed to get token expiration.", 131, fiber.StatusInternalServerError)
 		}
 
 		uuid, err := db_controller.StoreToken(res.DID, *pds, res.AccessJwt, res.RefreshJwt, encryptionkey, *access_token_expiry, *refresh_token_expiry)
 
 		if err != nil {
 			fmt.Println("Error:", err)
-			return c.SendStatus(500)
+			return ReturnError(c, "Failed to store token, if this persists contact instance operator.", 131, fiber.StatusInternalServerError)
 		}
 		encryptionkey = strings.ReplaceAll(encryptionkey, "+", "-")
 		encryptionkey = strings.ReplaceAll(encryptionkey, "/", "_")
@@ -82,7 +81,7 @@ func access_token(c *fiber.Ctx) error {
 
 		oauth_token, err := token.SignedString(configData.SecretKeyBytes)
 		if err != nil {
-			return c.SendStatus(500)
+			return ReturnError(c, "Failed to sign token, if this persists contact instance operator.", 131, fiber.StatusInternalServerError)
 		}
 
 		db_controller.StoreAnalyticData(db_controller.AnalyticData{
@@ -120,7 +119,7 @@ func VerifyCredentials(c *fiber.Ctx) error {
 	my_did, pds, _, oauthToken, err := GetAuthFromReq(c)
 
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+		return MissingAuth(c, err)
 	}
 
 	userinfo, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *my_did, false)
