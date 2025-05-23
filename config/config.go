@@ -58,7 +58,7 @@ func LoadConfig() (*Config, error) {
     viper.SetEnvPrefix("TWITTER_BRIDGE")
 
     // Set default values
-    viper.SetDefault("VERSION", "1.0.5.1") // wait till i forget to update this
+    viper.SetDefault("VERSION", "1.0.6") // wait till i forget to update this
     viper.SetDefault("SERVER_PORT", "3000")
     viper.SetDefault("DEVELOPER_MODE", false)
     viper.SetDefault("DATABASE_TYPE", "sqlite")
