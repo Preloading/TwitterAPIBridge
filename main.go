@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	_ "net/http/pprof"
 
 	"github.com/Preloading/TwitterAPIBridge/config"
 	"github.com/Preloading/TwitterAPIBridge/db_controller"
@@ -13,6 +14,11 @@ var (
 )
 
 func main() {
+	// Enable pprof for debugging purposes
+	// go func() {
+	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
+
 	var err error
 	configData, err = config.LoadConfig()
 	if err != nil {
