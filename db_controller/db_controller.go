@@ -95,9 +95,8 @@ type ShortLink struct {
 }
 
 var (
-	db          *gorm.DB
-	cfg         config.Config
-	base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	db  *gorm.DB
+	cfg config.Config
 )
 
 func InitDB(_cfg config.Config) {
@@ -132,7 +131,9 @@ func InitDB(_cfg config.Config) {
 	db.AutoMigrate(&MessageContext{})
 	db.AutoMigrate(&TwitterIDs{})
 	db.AutoMigrate(&AnalyticData{})
-	db.AutoMigrate(&ShortLink{}) // Add this line
+	db.AutoMigrate(&ShortLink{})
+
+	StartPeriodicAnalyticsWriter(time.Minute)
 }
 
 // StoreToken stores an encrypted access token and refresh token in the database.
@@ -407,22 +408,6 @@ func GetTwitterIDFromDatabase(twitterID *int64) (*string, *time.Time, *string, e
 	}
 
 	return &blueskyID.BlueskyID, blueskyID.DateCreated, blueskyID.ReposterDid, nil
-}
-
-// Stores analytic data (if enabled)
-// -- TYPES --
-// 1. "login"
-// 2. "tweets viewed"
-// 3. "tweets posted"
-func StoreAnalyticData(data AnalyticData) {
-	if !cfg.TrackAnalytics {
-		return
-	}
-
-	result := db.Create(&data)
-	if result.Error != nil {
-		fmt.Println("Failed to store analytic data:", result.Error)
-	}
 }
 
 // StoreShortLink stores a short link in the database with optimized collision handling

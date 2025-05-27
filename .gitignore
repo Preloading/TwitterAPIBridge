@@ -32,3 +32,6 @@ __debug_bin*
 # I promise i'll fix the name later
 MastodonTwitterAPI*
 TwitterAPIBridge*
+
+# golang profiling
+profile*.pdf
