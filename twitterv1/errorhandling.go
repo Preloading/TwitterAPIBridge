@@ -81,6 +81,8 @@ func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string, funct
 		return ReturnError(c, "Two-factor authentication is required, use an app password.", 32, fiber.StatusUnauthorized) // Unsure about this error code.
 	case "AuthMissing":
 		return ReturnError(c, "Incorrect username/password.", 32, fiber.StatusUnauthorized)
+	case "RateLimitExceeded":
+		return ReturnError(c, "Rate limit exceeded contacting Bluesky. Please try again later.", 88, fiber.StatusTooManyRequests)
 
 	default:
 		// Handle other errors
