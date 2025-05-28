@@ -1,8 +1,7 @@
 package twitterv1
 
 import (
-	"crypto/sha256"
-	"math/big"
+	"hash/fnv"
 	"sync"
 
 	"github.com/Preloading/TwitterAPIBridge/db_controller"
@@ -37,43 +36,45 @@ func (c *urlCache) Set(url, code string) {
 	c.cache[url] = code
 }
 
-func toBase62(num *big.Int) string {
-	base := big.NewInt(62)
-	zero := big.NewInt(0)
-	result := make([]byte, 7) // Changed to 7 to leave room for collision handling
-	idx := 6
+func toBase62(num uint64) string {
+	if num == 0 {
+		return "0"
+	}
 
-	temp := new(big.Int).Set(num)
-	for idx >= 0 {
-		mod := new(big.Int)
-		temp.DivMod(temp, base, mod)
-		result[idx] = base62Chars[mod.Int64()]
-		idx--
-		if temp.Cmp(zero) == 0 {
-			break
-		}
+	// Pre-allocate result with max possible length for uint64
+	result := make([]byte, 11) // uint64 in base62 needs max 11 chars
+	i := len(result) - 1
+
+	for num > 0 && i >= 0 {
+		result[i] = base62Chars[num%62]
+		num /= 62
+		i--
 	}
-	// Pad with '0' if necessary
-	for i := idx; i >= 0; i-- {
-		result[i] = base62Chars[0]
-	}
-	return string(result)
+
+	return string(result[i+1:])
 }
 
-func CreateShortLink(originalPath string) (string, error) {
+func CreateShortLink(originalPath string, prefix string) (string, error) {
 	// Check cache first
 	if code, ok := cache.Get(originalPath); ok {
 		return code, nil
 	}
 
-	// Generate SHA-256 hash of the URL
-	hash := sha256.New()
-	hash.Write([]byte(originalPath))
-	hashBytes := hash.Sum(nil)
+	// Create the URL somewhat predictably
+	h := fnv.New64a()
+	h.Write([]byte(originalPath))
+	hash := h.Sum64()
 
-	// Convert first 8 bytes of hash to a big.Int
-	num := new(big.Int).SetBytes(hashBytes[:8])
-	shortCode := toBase62(num)
+	// Convert hash to base62
+	shortCode := toBase62(hash)
+
+	if len(shortCode) < 6 {
+		shortCode = string(base62Chars[0]) + shortCode
+	} else if len(shortCode) > 6 {
+		shortCode = shortCode[:6]
+	}
+
+	shortCode = prefix + shortCode
 
 	err := db_controller.StoreShortLink(shortCode, originalPath)
 	if err != nil {

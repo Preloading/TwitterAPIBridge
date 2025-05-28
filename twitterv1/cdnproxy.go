@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
 	"github.com/gofiber/fiber/v2"
@@ -154,8 +153,7 @@ func CDNDownscaler(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode image")
 	}
-	// cache for 30 minutes
-	c.Response().Header.Set("Cache-Control", "public, max-age="+strconv.Itoa(int(30*time.Minute.Seconds())))
+	c.Response().Header.Set("Cache-Control", "public, max-age=1209600")
 	return nil
 }
 
@@ -191,6 +189,7 @@ func UserProfileImage(c *fiber.Ctx) error {
 	}
 
 	//c.Redirect("https://cdn.bsky.app/img/" + screen_name + ":profile_bigger")
+	c.Set("Cache-Control", "public, max-age=900") // 15 minutes
 	return c.Redirect(userinfo.ProfileImageURL)
 }
 
@@ -202,11 +201,9 @@ func CDNVideoProxy(c *fiber.Ctx) error {
 
 	c.Context().SetContentType("text/html")
 
-	// Is the below minified? yup!
-	// tbh, you could pretty easily just run it thru a prettier and it would make sense, but i'll explain it here:
-	// It's a basic html page that includes the hls.js library, a video element, and a script that checks if the browser supports hls, and if it doesn't, it uses hls.js to play the video
-	// why u hef to be mad golang warning thingy?
-	return c.SendString(fmt.Sprintf(`
-	<meta content="width=device-width,initial-scale=1"name=viewport><title>Bluesky Video</title><style>*{margin:0;padding:0;width:100%%;height:100%%}</style><body><script src=https://cdn.jsdelivr.net/npm/hls.js@1></script><video autoplay="autoplay" controls id=v poster=%s src=%s></video><script>var v=document.getElementById("v");if(v.canPlayType("application/vnd.apple.mpegurl"));else if(Hls.isSupported()){var h=new Hls;h.loadSource(v.src),h.attachMedia(v)}</script>
-	`, thumbnail_url, video_url))
+	c.Set("Cache-Control", "public, max-age=604800")
+
+	return c.SendString(fmt.Sprintf(videoTemplate, thumbnail_url, video_url))
 }
+
+var videoTemplate = `<meta content="width=device-width,initial-scale=1"name=viewport><title>Bluesky Video</title><style>*{margin:0;padding:0;width:100%%;height:100%%}</style><body><script src=https://cdn.jsdelivr.net/npm/hls.js@1></script><video autoplay="autoplay" controls id=v poster=%s src=%s></video><script>var v=document.getElementById("v");if(v.canPlayType("application/vnd.apple.mpegurl"));else if(Hls.isSupported()){var h=new Hls;h.loadSource(v.src),h.attachMedia(v)}</script>`

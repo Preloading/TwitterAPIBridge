@@ -91,7 +91,7 @@ type AnalyticData struct {
 // ShortLink represents the schema for the short_links table
 type ShortLink struct {
 	ShortCode   string `gorm:"type:string;primaryKey;not null"`
-	OriginalURL string `gorm:"type:string;uniqueIndex;not null"` // Add unique index
+	OriginalURL string `gorm:"type:string;not null"`
 }
 
 var (
@@ -465,7 +465,7 @@ func StoreShortLink(shortCode string, originalURL string) error {
 // GetOriginalURL retrieves the original URL from the database using the short code
 func GetOriginalURL(shortCode string) (string, error) {
 	var shortLink ShortLink
-	if err := db.Where("short_code = ?", shortCode).First(&shortLink).Error; err != nil {
+	if err := db.First(&shortLink, shortCode).Error; err != nil {
 		return "", err
 	}
 
