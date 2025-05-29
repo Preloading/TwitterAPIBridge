@@ -149,6 +149,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 
 	isBasic := false
 	nodid := ""
+	notoken := ""
 	var username string
 
 	// Define a regular expression to match the oauth_token
@@ -161,7 +162,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 		var did *string
 		basicAuthUsernamePassword, err = cryption.Base64URLDecode(base64pass)
 		if err != nil {
-			return &nodid, &fallbackRoute, nil, nil, err
+			return &nodid, &fallbackRoute, nil, &notoken, err
 		}
 
 		// separate the username and password
@@ -175,32 +176,32 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 			if err.Error() == "invalid credentials" {
 				// test if password is an app password thru regex
 				if !regexp.MustCompile(`^[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}$`).MatchString(authPassword) {
-					return &nodid, &fallbackRoute, nil, nil, errors.New("invalid app password")
+					return &nodid, &fallbackRoute, nil, &notoken, errors.New("invalid app password")
 				}
 
 				res, pds, err := blueskyapi.Authenticate(username, authPassword)
 				if err != nil {
-					return &nodid, &fallbackRoute, nil, nil, err
+					return &nodid, &fallbackRoute, nil, &notoken, err
 				}
 
 				access_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.AccessJwt)
 				if err != nil {
-					return &nodid, &fallbackRoute, nil, nil, errors.New("failed to get access token expiry")
+					return &nodid, &fallbackRoute, nil, &notoken, errors.New("failed to get access token expiry")
 				}
 				refresh_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.RefreshJwt)
 				if err != nil {
-					return &nodid, &fallbackRoute, nil, nil, errors.New("failed to get refresh token expiry")
+					return &nodid, &fallbackRoute, nil, &notoken, errors.New("failed to get refresh token expiry")
 				}
 
 				_, err = db_controller.StoreTokenBasic(res.DID, *pds, res.AccessJwt, res.RefreshJwt, username, authPassword, *access_token_expiry, *refresh_token_expiry)
 
 				if err != nil {
-					return &nodid, &fallbackRoute, nil, nil, err
+					return &nodid, &fallbackRoute, nil, &notoken, err
 				}
 
 				return &res.DID, pds, nil, &res.AccessJwt, nil // TODO: Maybe change the uuid to something for here?
 			} else {
-				return &nodid, &fallbackRoute, nil, nil, err
+				return &nodid, &fallbackRoute, nil, &notoken, err
 			}
 		}
 
@@ -209,7 +210,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 		re := regexp.MustCompile(`oauth_token="([^"]+)"`)
 		matches := re.FindStringSubmatch(authHeader)
 		if len(matches) < 2 {
-			return &nodid, &fallbackRoute, nil, nil, errors.New("oauth token not found")
+			return &nodid, &fallbackRoute, nil, &notoken, errors.New("oauth token not found")
 		}
 
 		oauthToken := matches[1]
@@ -221,7 +222,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 			tokenData, err = ConvertV1TokenToV2(oauthToken)
 
 			if err != nil {
-				return &nodid, &fallbackRoute, nil, nil, err
+				return &nodid, &fallbackRoute, nil, &notoken, err
 			}
 
 		} else {
@@ -230,18 +231,18 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 			})
 
 			if err != nil {
-				return &nodid, &fallbackRoute, nil, nil, errors.New("invalid token")
+				return &nodid, &fallbackRoute, nil, &notoken, errors.New("invalid token")
 			}
 
 			if !token.Valid {
 				if tokenData.ServerIdentifier == "" {
-					return &nodid, &fallbackRoute, nil, nil, errors.New("invalid token")
+					return &nodid, &fallbackRoute, nil, &notoken, errors.New("invalid token")
 				} else if tokenData.ServerIdentifier != configData.ServerIdentifier {
-					return &nodid, &fallbackRoute, nil, nil, errors.New("incorrect server")
+					return &nodid, &fallbackRoute, nil, &notoken, errors.New("incorrect server")
 
 				}
 
-				return &nodid, &fallbackRoute, nil, nil, errors.New("invalid token")
+				return &nodid, &fallbackRoute, nil, &notoken, errors.New("invalid token")
 			}
 		}
 
@@ -258,7 +259,7 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 		accessJwt, refreshJwt, access_expiry, refresh_expiry, userPDS, err = db_controller.GetToken(string(userDID), string(tokenUUID), encryptionKey, tokenType) // Use token version 2 for OAuth
 
 		if err != nil {
-			return &nodid, &fallbackRoute, nil, nil, err
+			return &nodid, &fallbackRoute, nil, &notoken, err
 		}
 	}
 
@@ -294,25 +295,25 @@ func GetAuthFromReq(c *fiber.Ctx) (*string, *string, *string, *string, error) {
 			} else {
 				db_controller.DeleteToken(string(userDID), string(tokenUUID))
 			}
-			return &nodid, &fallbackRoute, nil, nil, errors.New("refresh token has expired")
+			return &nodid, &fallbackRoute, nil, &notoken, errors.New("refresh token has expired")
 		}
 
 		// Our refresh token is still valid. Lets refresh our access token.
 		new_auth, err := blueskyapi.RefreshToken(*userPDS, *refreshJwt)
 
 		if err != nil {
-			return &nodid, &fallbackRoute, nil, nil, err
+			return &nodid, &fallbackRoute, nil, &notoken, err
 		}
 
 		accessJwt = &new_auth.AccessJwt
 
 		access_token_expiry, err := cryption.GetJWTTokenExpirationUnix(new_auth.AccessJwt)
 		if err != nil {
-			return &nodid, &fallbackRoute, nil, nil, errors.New("failed to get access token expiry")
+			return &nodid, &fallbackRoute, nil, &notoken, errors.New("failed to get access token expiry")
 		}
 		refresh_token_expiry, err := cryption.GetJWTTokenExpirationUnix(new_auth.RefreshJwt)
 		if err != nil {
-			return &nodid, &fallbackRoute, nil, nil, errors.New("failed to get refresh token expiry")
+			return &nodid, &fallbackRoute, nil, &notoken, errors.New("failed to get refresh token expiry")
 		}
 
 		// TODO: Recheck if the user id is still bound to that PDS
