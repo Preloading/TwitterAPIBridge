@@ -64,7 +64,7 @@ func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string, funct
 	case "InvalidFeed":
 		return ReturnError(c, "The feed specified was invalid", 0, fiber.StatusBadRequest) // unknown
 	case "NotFound": // could probably be
-		ReturnError(c, "Post not found.", 144, fiber.StatusNotFound)
+		return ReturnError(c, "Post was not found. (or was deleted)", 144, fiber.StatusNotFound)
 
 	// Search
 	case "BadQueryString":
@@ -89,7 +89,6 @@ func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string, funct
 		fmt.Println("An unknown error occured! Error: " + res.Error + ". Message: " + res.Message)
 		return ReturnError(c, "An unknown error occured: "+res.Message, 0, fiber.StatusInternalServerError)
 	}
-	return ReturnError(c, "An unknown error occured: "+res.Message, 0, fiber.StatusInternalServerError)
 }
 
 func MissingAuth(c *fiber.Ctx, err error) error {
