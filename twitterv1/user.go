@@ -338,7 +338,7 @@ func FollowUser(c *fiber.Ctx) error {
 	user, err := blueskyapi.FollowUser(*pds, *oauthToken, actor, *my_did)
 
 	if err != nil {
-		HandleBlueskyError(c, err.Error(), "app.bsky.graph.follow", FollowUser) // lexicon isnt tecnically right, but its fine idc
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.follow", FollowUser) // lexicon isnt tecnically right, but its fine idc
 	}
 
 	// convert user into twitter format
