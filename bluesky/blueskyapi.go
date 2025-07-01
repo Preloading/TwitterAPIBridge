@@ -432,11 +432,22 @@ type DirectMessage struct {
 	Rev    string  `json:"rev"`
 	Text   string  `json:"text"`
 	Facets []Facet `json:"facets"`
-	Embed  Embed   `json:"embed"`
+	Embed  *Embed  `json:"embed"`
 	Sender struct {
 		Did string `json:"did"`
 	} `json:"sender"`
 	SentAt time.Time `json:"sentAt"`
+}
+
+type SendingDirectMessage struct {
+	Text   string  `json:"text"`
+	Facets []Facet `json:"facets,omitempty"`
+	Embed  *Embed  `json:"embed,omitempty"`
+}
+
+type SendDMRequest struct {
+	ConvoId string               `json:"convoId"`
+	Message SendingDirectMessage `json:"message"`
 }
 
 type ConvoInfo struct {
@@ -1227,7 +1238,6 @@ func UpdateStatus(pds string, token string, my_did string, status string, in_rep
 	if err != nil {
 		return nil, errors.New("failed to marshal payload")
 	}
-	fmt.Println(string(reqBody))
 	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, errors.New("failed to post")
@@ -2109,6 +2119,118 @@ func GetMentions(pds string, token string, limit int, context string) (*Notifica
 	return &notifications, nil
 }
 
+func SendDM(pds string, token string, my_did string, convoId string, status string, mentions []bridge.FacetParsing, urls []bridge.FacetParsing, tags []bridge.FacetParsing) (*DirectMessage, error) {
+	url := "https://api.bsky.chat/xrpc/chat.bsky.convo.sendMessage"
+
+	var err error
+	facets := []Facet{}
+
+	// find mention's DID
+	handles := []string{}
+	for _, mention := range mentions {
+		handles = append(handles, mention.Item)
+	}
+	mentionedUsers, err := GetUsersInfo(pds, token, handles, false)
+
+	// add mentions to the facets
+	if err == nil {
+		for _, mention := range mentions {
+			var mentionDID *string
+			for _, user := range mentionedUsers {
+				if user.ScreenName == mention.Item {
+					mentionDID, _ = bridge.TwitterIDToBlueSky(&user.ID) // efficency is poor
+					break
+				}
+			}
+
+			if mentionDID == nil {
+				continue
+			}
+
+			facets = append(facets, Facet{
+				Index: Index{
+					ByteStart: mention.Start,
+					ByteEnd:   mention.End,
+				},
+				Features: []Feature{
+					{
+						Type: "app.bsky.richtext.facet#mention",
+						Did:  *mentionDID,
+					},
+				},
+			})
+		}
+	}
+
+	// add URLs to the facets
+	for _, url := range urls {
+		facets = append(facets, Facet{
+			Index: Index{
+				ByteStart: url.Start,
+				ByteEnd:   url.End,
+			},
+			Features: []Feature{
+				{
+					Type: "app.bsky.richtext.facet#link",
+					Uri:  url.Item,
+				},
+			},
+		})
+	}
+
+	// add tags (#something) to the facets
+	for _, tag := range tags {
+		facets = append(facets, Facet{
+			Index: Index{
+				ByteStart: tag.Start,
+				ByteEnd:   tag.End,
+			},
+			Features: []Feature{
+				{
+					Type: "app.bsky.richtext.facet#tag",
+					Tag:  tag.Item,
+				},
+			},
+		})
+	}
+
+	payload := SendDMRequest{
+		ConvoId: convoId,
+		Message: SendingDirectMessage{
+			Text:   status,
+			Facets: facets,
+			Embed:  nil,
+		},
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return nil, errors.New("failed to marshal payload")
+	}
+	fmt.Println(string(reqBody))
+	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, errors.New("failed to post")
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New(bodyString) // return response
+	}
+
+	postData := DirectMessage{}
+	if err := json.NewDecoder(resp.Body).Decode(&postData); err != nil {
+		return nil, err
+	}
+
+	return &postData, nil
+}
+
 func GetDMLogs(token string, limit int, context string) (*DirectMessageLogs, error) {
 	url := "https://api.bsky.chat/xrpc/chat.bsky.convo.getLog?limit=" + fmt.Sprintf("%d", limit)
 	if context != "" {
@@ -2144,6 +2266,40 @@ func GetDMLogs(token string, limit int, context string) (*DirectMessageLogs, err
 
 func GetConvoInfo(token string, convoId string) (*ConvoInfo, error) {
 	url := "https://api.bsky.chat/xrpc/chat.bsky.convo.getConvo?convoId=" + convoId
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New("failed to fetch dms")
+	}
+
+	convoInfo := ConvoInfoContainer{}
+	if err := json.NewDecoder(resp.Body).Decode(&convoInfo); err != nil {
+		return nil, err
+	}
+
+	return &convoInfo.Convo, nil
+}
+
+// The members includes yourself!!!
+func GetConvoInfoFromMemebers(token string, memberDIDs []string) (*ConvoInfo, error) {
+	url := "https://api.bsky.chat/xrpc/chat.bsky.convo.getConvoForMembers?"
+	for _, member := range memberDIDs {
+		url += "members=" + member + "&"
+	}
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)
 	if err != nil {

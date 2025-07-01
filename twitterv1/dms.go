@@ -1,6 +1,8 @@
 package twitterv1
 
 import (
+	"strconv"
+
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
 	"github.com/Preloading/TwitterAPIBridge/bridge"
 	"github.com/gofiber/fiber/v2"
@@ -123,4 +125,81 @@ func GetSentDMs(c *fiber.Ctx) error {
 	}
 
 	return EncodeAndSend(c, twitter_dms)
+}
+
+func SendDM(c *fiber.Ctx) error {
+	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).SendString("OAuth token not found in Authorization header")
+	}
+
+	actor := c.FormValue("screen_name")
+	if actor == "" {
+		actor = c.FormValue("user_id")
+		if actor == "" {
+			return ReturnError(c, "No user provided", 195, fiber.StatusForbidden)
+		}
+		actorInt, err := strconv.ParseInt(actor, 10, 64)
+		if err != nil {
+			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
+		}
+		actorPtr, err := bridge.TwitterIDToBlueSky(&actorInt)
+		if err != nil {
+			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
+		}
+		actor = *actorPtr
+	} else {
+		actorPtr, err := blueskyapi.ResolveDIDFromHandle(actor)
+		if err != nil {
+			return ReturnError(c, "Invalid handle provided", 195, fiber.StatusForbidden)
+		}
+		actor = *actorPtr
+	}
+
+	dmText := c.FormValue("text")
+
+	// Get the DM group ID, since we only have the other user
+	convoInfo, err := blueskyapi.GetConvoInfoFromMemebers(*oauthToken, []string{*userDID, actor})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get convo info")
+	}
+
+	// Message parsing direct from tweeting
+	mentions := findHandleInstances(dmText)
+	links := findUrlInstances(dmText)
+	tags := findTagInstances(dmText)
+
+	bsky_dm, err := blueskyapi.SendDM(*pds, *oauthToken, *userDID, convoInfo.Id, dmText, mentions, links, tags)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get DMs")
+	}
+
+	messageId, err := bridge.TidToNum(bsky_dm.Id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to convert TID to number")
+	}
+
+	// get other user
+	recipientUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, actor, false)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get recipient user info")
+	}
+
+	// get ourselves
+	senderUser, err := blueskyapi.GetUserInfo(*pds, *oauthToken, *userDID, false)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to get sender user info")
+	}
+
+	return EncodeAndSend(c, bridge.DirectMessage{
+		Id:                  int64(messageId),
+		Text:                bsky_dm.Text,
+		CreatedAt:           bridge.TwitterTimeConverter(bsky_dm.SentAt),
+		Recipient:           *recipientUser,
+		RecipientScreenName: recipientUser.ScreenName,
+		RecipientId:         recipientUser.ID,
+		Sender:              *senderUser,
+		SenderScreenName:    senderUser.ScreenName,
+		SenderId:            senderUser.ID,
+	})
 }
