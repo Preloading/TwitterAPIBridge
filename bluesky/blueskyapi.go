@@ -2207,7 +2207,6 @@ func SendDM(pds string, token string, my_did string, convoId string, status stri
 	if err != nil {
 		return nil, errors.New("failed to marshal payload")
 	}
-	fmt.Println(string(reqBody))
 	resp, err := SendRequest(&token, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, errors.New("failed to post")
