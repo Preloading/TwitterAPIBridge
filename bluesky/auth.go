@@ -50,7 +50,7 @@ func Authenticate(username, password string) (*AuthResponse, *string, error) {
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, nil, errors.New("authentication failed")
+		return nil, nil, errors.New(bodyString)
 	}
 
 	var authResp AuthResponse
@@ -75,7 +75,7 @@ func RefreshToken(pds string, refreshToken string) (*AuthResponse, error) {
 		bodyString := string(bodyBytes)
 		fmt.Println("Response Status:", resp.StatusCode)
 		fmt.Println("Response Body:", bodyString)
-		return nil, errors.New("reauth failed")
+		return nil, errors.New(bodyString)
 	}
 
 	var authResp AuthResponse

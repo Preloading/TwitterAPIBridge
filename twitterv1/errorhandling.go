@@ -44,6 +44,11 @@ func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string, funct
 	// json decode responce
 	res := BlueskyError{}
 	if err := json.Unmarshal([]byte(responseJson), &res); err != nil {
+		fmt.Println(string(responseJson))
+		switch responseJson {
+		case "invalid handle", "user does not exist":
+			return ReturnError(c, "Incorrect username", 32, fiber.StatusUnauthorized)
+		}
 		return ReturnError(c, "An unknown error occured.", 0, fiber.StatusInternalServerError)
 	}
 
@@ -81,6 +86,8 @@ func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string, funct
 		return ReturnError(c, "Two-factor authentication is required, use an app password.", 32, fiber.StatusUnauthorized) // Unsure about this error code.
 	case "AuthMissing":
 		return ReturnError(c, "Incorrect username/password.", 32, fiber.StatusUnauthorized)
+	case "AuthenticationRequired":
+		return ReturnError(c, "Incorrect username/password.", 32, fiber.StatusUnauthorized)
 	case "RateLimitExceeded":
 		return ReturnError(c, "Rate limit exceeded contacting Bluesky. Please try again later.", 88, fiber.StatusTooManyRequests)
 
@@ -105,6 +112,7 @@ func MissingAuth(c *fiber.Ctx, err error) error {
 		case "invalid app password":
 			return ReturnError(c, "App passwords required on this app", 215, 400)
 		}
+
 	}
 	return ReturnError(c, "Missing authentication token.", 215, 400)
 }

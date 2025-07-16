@@ -183,7 +183,7 @@ func EncodeAndSend(c *fiber.Ctx, data interface{}) error {
 		xmlContent = append(customHeader, xmlContent...)
 
 		return c.SendString(string(xmlContent))
-	case "json":
+	case "json", "":
 		encoded, err := json.Marshal(data)
 		if err != nil {
 			fmt.Println("Error:", err)
