@@ -60,9 +60,25 @@ func InitServer(config *config.Config) {
 		return c.Render("index", fiber.Map{
 			"DeveloperMode": config.DeveloperMode,
 			"NotConfigured": configData.CdnURL == "http://127.0.0.1:3000",
-			"PrefixedURL":   "https://" + c.Hostname(),
-			"UnPrefixedURL": c.Hostname(),
-			"Version":       config.Version,
+			"PrefixedURL": func() string {
+				if c.Hostname() == "twitterbridge.loganserver.net" {
+					return "https://twb.preloading.dev"
+				}
+				if c.Hostname() == "testtwitterbridge.loganserver.net" {
+					return "https://ttwb.preloading.dev"
+				}
+				return "https://" + c.Hostname()
+			},
+			"UnPrefixedURL": func() string {
+				if c.Hostname() == "twitterbridge.loganserver.net" {
+					return "twb.preloading.dev"
+				}
+				if c.Hostname() == "testtwitterbridge.loganserver.net" {
+					return "ttwb.preloading.dev"
+				}
+				return c.Hostname()
+			},
+			"Version": config.Version,
 		}, "index")
 	})
 
