@@ -955,6 +955,9 @@ func mentions_timeline(c *fiber.Ctx) error {
 			count = countInt
 		}
 	}
+	if count > 100 {
+		count = 100
+	}
 
 	// Get notifications
 	bskyNotifications, err := blueskyapi.GetMentions(*pds, *oauthToken, count, context)
