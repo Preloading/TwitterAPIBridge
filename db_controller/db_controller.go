@@ -465,7 +465,7 @@ func StoreShortLink(shortCode string, originalURL string) error {
 // GetOriginalURL retrieves the original URL from the database using the short code
 func GetOriginalURL(shortCode string) (string, error) {
 	var shortLink ShortLink
-	if err := db.First(&shortLink, shortCode).Error; err != nil {
+	if err := db.First(&shortLink, "short_code = ?", shortCode).Error; err != nil {
 		return "", err
 	}
 
