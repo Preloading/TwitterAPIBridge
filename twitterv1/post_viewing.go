@@ -384,6 +384,71 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 		// Process each image
 		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
+			XMLFormat: bridge.MediaXML{
+				Start:         startLen,
+				End:           endLen,
+				Type:          "photo",
+				ID:            int64(id),
+				MediaURL:      mediaWebURL,
+				MediaURLHttps: mediaWebURL,
+
+				DisplayURL:  displayURL,
+				ExpandedURL: mediaWebURL,
+				URL:         formattedImageURL,
+
+				Sizes: bridge.MediaSize{
+					Thumb: func() bridge.Size {
+						w, h := image.AspectRatio.Width, image.AspectRatio.Height
+						if w > h {
+							return bridge.Size{
+								W:      150,
+								H:      int(150 * float64(h) / float64(w)),
+								Resize: "crop",
+							}
+						}
+						return bridge.Size{
+							W:      int(150 * float64(w) / float64(h)),
+							H:      150,
+							Resize: "crop",
+						}
+					}(),
+					Small: func() bridge.Size {
+						w, h := image.AspectRatio.Width, image.AspectRatio.Height
+						if w > h {
+							return bridge.Size{
+								W:      340,
+								H:      int(340 * float64(h) / float64(w)),
+								Resize: "fit",
+							}
+						}
+						return bridge.Size{
+							W:      int(340 * float64(w) / float64(h)),
+							H:      340,
+							Resize: "fit",
+						}
+					}(),
+					Medium: func() bridge.Size {
+						w, h := image.AspectRatio.Width, image.AspectRatio.Height
+						if w > h {
+							return bridge.Size{
+								W:      600,
+								H:      int(600 * float64(h) / float64(w)),
+								Resize: "fit",
+							}
+						}
+						return bridge.Size{
+							W:      int(600 * float64(w) / float64(h)),
+							H:      600,
+							Resize: "fit",
+						}
+					}(),
+					Large: bridge.Size{
+						W:      image.AspectRatio.Width,
+						H:      image.AspectRatio.Height,
+						Resize: "fit",
+					},
+				},
+			},
 			Type:          "photo",
 			ID:            int64(id),
 			IDStr:         strconv.Itoa(id),
@@ -451,10 +516,6 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				startLen,
 				endLen,
 			},
-			Start:     startLen,
-			End:       endLen,
-			StartAttr: startLen,
-			EndAttr:   endLen,
 		})
 		id++
 	}

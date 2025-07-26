@@ -151,24 +151,34 @@ type MediaSize struct {
 	Large  Size `json:"large" xml:"large"`
 }
 
+type MediaXML struct {
+	XMLName       xml.Name  `xml:"creative" json:"-"`
+	ID            int64     `xml:"id"`
+	MediaURL      string    `xml:"media_url"`
+	MediaURLHttps string    `xml:"media_url_https"`
+	URL           string    `xml:"url"`
+	DisplayURL    string    `xml:"display_url"`
+	ExpandedURL   string    `xml:"expanded_url"`
+	Sizes         MediaSize `xml:"sizes"`
+	Type          string    `xml:"type"`
+	Start         int       `xml:"start,attr"`
+	End           int       `xml:"end,attr"`
+}
+
 type Media struct {
-	XMLName xml.Name `xml:"media" json:"-"`
-	// XMLFormat     MediaXML  `xml:",innerxml" json:"-"`
+	XMLName       xml.Name  `xml:"media" json:"-"`
+	XMLFormat     MediaXML  `xml:",innerxml" json:"-"`
 	ID            int64     `json:"id" xml:"id"`
 	IDStr         string    `json:"id_str" xml:"-"`
-	MediaURL      string    `json:"media_url" xml:"media_url"`
-	MediaURLHttps string    `json:"media_url_https" xml:"media_url_https"`
-	URL           string    `json:"url,omitempty" xml:"url"`
-	DisplayURL    string    `json:"display_url,omitempty" xml:"display_url"`
-	ExpandedURL   string    `json:"expanded_url,omitempty" xml:"expanded_url"`
-	Sizes         MediaSize `json:"sizes" xml:"sizes"`
+	MediaURL      string    `json:"media_url" xml:"-"`
+	MediaURLHttps string    `json:"media_url_https" xml:"-"`
+	URL           string    `json:"url,omitempty" xml:"-"`
+	DisplayURL    string    `json:"display_url,omitempty" xml:"-"`
+	ExpandedURL   string    `json:"expanded_url,omitempty" xml:"-"`
+	Sizes         MediaSize `json:"sizes" xml:"-"`
 	// Sizes         map[string]MediaSize `json:"sizes"`
-	Type      string `json:"type" xml:"type"`
-	Indices   []int  `json:"indices,omitempty" xml:"-"`
-	Start     int    `xml:"start" json:"-"`
-	End       int    `xml:"end" json:"-"`
-	StartAttr int    `xml:"start,attr" json:"-"`
-	EndAttr   int    `xml:"end,attr" json:"-"`
+	Type    string `json:"type" xml:"-"`
+	Indices []int  `json:"indices,omitempty" xml:"-"`
 }
 
 type Entities struct {

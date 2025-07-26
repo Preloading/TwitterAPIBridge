@@ -212,8 +212,8 @@ func discovery(c *fiber.Ctx) error {
 						{
 							Title: "Thank you for using A Twitter Bridge!",
 							Url: bridge.StoryURL{
-								DisplayURL:  "twitterbridge.loganserver.net",
-								ExpandedURL: "https://twitterbridge.loganserver.net",
+								DisplayURL:  "twb.preloading.dev",
+								ExpandedURL: "https://twb.preloading.dev",
 							},
 							TweetCount: 1500,
 							Media: []bridge.StoryMediaInfo{
