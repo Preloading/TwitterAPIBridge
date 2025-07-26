@@ -13,6 +13,9 @@ import (
 // https://web.archive.org/web/20120508075505/https://dev.twitter.com/docs/api/1/get/users/show
 func user_info(c *fiber.Ctx) error {
 	actor := c.Query("screen_name")
+	if ac := c.Locals("handle"); ac != nil {
+		actor = ac.(string)
+	}
 
 	if actor == "" {
 		userIDStr := c.Query("user_id")

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"strings"
 
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
 	"github.com/Preloading/TwitterAPIBridge/config"
@@ -109,6 +110,21 @@ func InitServer(config *config.Config) {
 
 	// Users
 	app.Get("/1/users/show.:filetype", user_info)
+	app.Get("/1/users/show/*", func(c *fiber.Ctx) error {
+		path := c.Params("*")
+		lastDotIndex := strings.LastIndex(path, ".")
+
+		if lastDotIndex == -1 {
+			// No file extension found
+			c.Locals("handle", path)
+			c.Locals("filetype", "json") // Default to JSON
+		} else {
+			c.Locals("handle", path[:lastDotIndex])
+			c.Locals("filetype", path[lastDotIndex+1:])
+		}
+
+		return user_info(c)
+	})
 	app.Get("/1/users/lookup.:filetype", UsersLookup)
 	app.Post("/1/users/lookup.:filetype", UsersLookup)
 	app.Get("/1/friendships/lookup.:filetype", UserRelationships)
@@ -182,6 +198,9 @@ func MobileClientApiDecider(c *fiber.Ctx) error {
 
 func EncodeAndSend(c *fiber.Ctx, data interface{}) error {
 	encodeType := c.Params("filetype")
+	if encodeType == "" {
+		encodeType = c.Locals("filetype").(string)
+	}
 	switch encodeType {
 	case "xml":
 		// Encode the data to XML
