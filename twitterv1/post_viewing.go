@@ -123,12 +123,30 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 		if err != nil {
 			return ReturnError(c, "Invalid max_id format", 195, fiber.StatusForbidden)
 		}
-		uri, date, _, err := bridge.TwitterMsgIdToBluesky(&maxIDInt)
-		fmt.Println("Max ID:", uri)
+		_, date, _, err := bridge.TwitterMsgIdToBluesky(&maxIDInt)
 		if err != nil {
 			return ReturnError(c, "max_id was not found", 144, fiber.StatusForbidden)
 		}
 		context = date.Format(time.RFC3339)
+	}
+
+	since_id := c.Query("since_id")
+	since_date := time.Time{}
+	hasSinceDate := false
+
+	// Handle getting things in the past
+	if since_id != "" {
+		// Get the timeline context from the DB
+		sinceIdInt, err := strconv.ParseInt(since_id, 10, 64)
+		if err != nil {
+			return ReturnError(c, "Invalid since_id format", 195, fiber.StatusForbidden)
+		}
+		_, tempDate, _, err := bridge.TwitterMsgIdToBluesky(&sinceIdInt)
+		if err != nil {
+			return ReturnError(c, "since_id was not found", 144, fiber.StatusForbidden)
+		}
+		since_date = *tempDate
+		hasSinceDate = true
 	}
 
 	fmt.Println("Context:", context)
@@ -138,6 +156,19 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 			return convert_timeline(c, param, requireAuth, fetcher)
 		})
 	}
+
+	if hasSinceDate {
+		filteredFeed := []blueskyapi.Feed{}
+		for _, item := range res.Feed {
+			postTime := item.Post.IndexedAt
+			if postTime.After(since_date) {
+				filteredFeed = append(filteredFeed, item)
+			}
+		}
+		res.Feed = filteredFeed
+	}
+
+	fmt.Println(len(res.Feed))
 
 	// Caching the user DIDs efficiently
 	userDIDs := []string{}
