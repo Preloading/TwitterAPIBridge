@@ -94,6 +94,11 @@ type ShortLink struct {
 	OriginalURL string `gorm:"type:string;not null"`
 }
 
+type NotificationTokens struct {
+	Token   []byte
+	UserDID string
+}
+
 var (
 	db  *gorm.DB
 	cfg config.Config

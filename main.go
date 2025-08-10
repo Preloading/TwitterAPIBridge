@@ -6,6 +6,7 @@ import (
 
 	"github.com/Preloading/TwitterAPIBridge/config"
 	"github.com/Preloading/TwitterAPIBridge/db_controller"
+	"github.com/Preloading/TwitterAPIBridge/notifications"
 	"github.com/Preloading/TwitterAPIBridge/twitterv1"
 )
 
@@ -35,5 +36,6 @@ func main() {
 	}
 
 	db_controller.InitDB(*configData)
+	go notifications.RunNotifications()
 	twitterv1.InitServer(configData)
 }
