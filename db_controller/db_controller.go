@@ -95,7 +95,7 @@ type ShortLink struct {
 }
 
 type NotificationTokens struct {
-	Token   []byte
+	Token   []byte `gorm:"primaryKey"`
 	UserDID string
 }
 
@@ -476,3 +476,5 @@ func GetOriginalURL(shortCode string) (string, error) {
 
 	return shortLink.OriginalURL, nil
 }
+
+// func GetPushTokens()

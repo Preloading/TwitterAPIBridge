@@ -555,6 +555,18 @@ type SocialContext struct {
 	FollowedBy bool `json:"followed_by" xml:"followed_by"`
 }
 
+// https://gist.github.com/ZweiSteinSoft/4733612#file-push_destinations-json, although I checked the code, and it only uses 2 of those values. (on both 5.0.3, and 4.1.3)
+type PushDestination struct {
+	AvailableLevels int `json:"available_levels" xml:"available-levels"` // This is used by the app, a responce I found online shows this at 1021, but idk what that means.
+	EnabledFor      int `json:"enabled_for" xml:"enabled-for"`           // 5
+}
+
+// maybe?
+type IdsWithCursor struct {
+	Ids []int64 `json:"ids"`
+	Cursors
+}
+
 func encodeToUint63(input string) *int64 {
 	hasher := fnv.New64a()                  // Create a new FNV-1a 64-bit hash
 	hasher.Write([]byte(input))             // Write the input string as bytes

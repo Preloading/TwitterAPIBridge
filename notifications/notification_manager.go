@@ -82,5 +82,5 @@ func readJetstreamMessages(ws *websocket.Conn, incomingMessages chan JetstreamPo
 // 3. Converting the text into a twitter post
 // 4. Send the twitter post's content as a push notification via SGN.
 func sendPushNotification() {
-
+	// db_controller.
 }

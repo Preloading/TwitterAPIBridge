@@ -137,6 +137,7 @@ func InitServer(config *config.Config) {
 	app.Get("/1/friends.:filetype", GetFollows)
 	app.Get("/1/statuses/followers.:filetype", GetStatusesFollowers)
 	app.Get("/1/statuses/friends.:filetype", GetStatusesFollows)
+	app.Get("/i/device_following/ids.:filetype", GetFollowingIds)
 
 	app.Get("/1/users/recommendations.:filetype", GetSuggestedUsers)
 	app.Get("/1/users/profile_image", UserProfileImage)
@@ -169,7 +170,7 @@ func InitServer(config *config.Config) {
 	app.Post("/1/account/update_profile.:filetype", UpdateProfile)
 	app.Post("/1/account/update_profile_image.:filetype", UpdateProfilePicture)
 	app.Get("/1/account/settings.:filetype", GetSettings)
-	app.Get("/1/account/push_destinations/device.:filetype", PushDestinations)
+	app.Get("/1/account/push_destinations/device.:filetype", DevicePushDestinations)
 
 	// Legal cuz why not?
 	app.Get("/1/legal/tos.:filetype", TOS)

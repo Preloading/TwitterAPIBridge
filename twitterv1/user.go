@@ -711,17 +711,16 @@ func GetFollows(c *fiber.Ctx) error {
 
 	if cursorInt == 0 {
 		return EncodeAndSend(c, struct {
-			Users             []bridge.TwitterUser `json:"users" xml:"users"`
-			NextCursor        uint64               `json:"next_cursor" xml:"next_cursor"`
-			PreviousCursor    uint64               `json:"previous_cursor" xml:"previous_cursor"`
-			NextCursorStr     string               `json:"next_cursor_str" xml:"-"`
-			PreviousCursorStr string               `json:"previous_cursor_str" xml:"-"`
+			Users []bridge.TwitterUser `json:"users" xml:"users"`
+			bridge.Cursors
 		}{
-			Users:             []bridge.TwitterUser{},
-			NextCursor:        0,
-			PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
-			NextCursorStr:     "0",
-			PreviousCursorStr: "0",
+			Users: []bridge.TwitterUser{},
+			Cursors: bridge.Cursors{
+				NextCursor:        0,
+				PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
+				NextCursorStr:     "0",
+				PreviousCursorStr: "0",
+			},
 		})
 	}
 
@@ -757,17 +756,111 @@ func GetFollows(c *fiber.Ctx) error {
 	}
 
 	return EncodeAndSend(c, struct {
-		Users             []bridge.TwitterUser `json:"users" xml:"users"`
-		NextCursor        uint64               `json:"next_cursor" xml:"next_cursor"`
-		PreviousCursor    uint64               `json:"previous_cursor" xml:"previous_cursor"`
-		NextCursorStr     string               `json:"next_cursor_str" xml:"-"`
-		PreviousCursorStr string               `json:"previous_cursor_str" xml:"-"`
+		Users []bridge.TwitterUser `json:"users" xml:"users"`
+		bridge.Cursors
 	}{
-		Users:             twitterUsersConverted,
-		NextCursor:        next_cursor,
-		PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
-		NextCursorStr:     strconv.FormatUint(next_cursor, 10),
-		PreviousCursorStr: "0",
+		Users: twitterUsersConverted,
+		Cursors: bridge.Cursors{
+			NextCursor:        next_cursor,
+			PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
+			NextCursorStr:     strconv.FormatUint(next_cursor, 10),
+			PreviousCursorStr: "0",
+		},
+	})
+}
+
+func GetFollowingIds(c *fiber.Ctx) error {
+	// auth
+	userDID, pds, _, oauthToken, err := GetAuthFromReq(c)
+	if err != nil {
+		return MissingAuth(c, err)
+	}
+
+	// lets go get our user data
+	actor := c.FormValue("user_id")
+	if actor == "" {
+		actor = c.FormValue("screen_name")
+		if actor == "" {
+			if userDID != nil {
+				actor = *userDID
+			} else {
+				return ReturnError(c, "No user was specified", 195, 403)
+			}
+		}
+	} else {
+		id, err := strconv.ParseInt(actor, 10, 64)
+		if err != nil {
+			return ReturnError(c, "Invalid ID format", 195, 403)
+		}
+		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
+		if err != nil {
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
+		}
+		if actorPtr == nil {
+			return ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
+		}
+		actor = *actorPtr
+	}
+
+	cursor := ""
+	var cursorInt int64
+
+	cursorStr := c.FormValue("cursor")
+	if cursorStr != "" {
+		cursorInt, err = strconv.ParseInt(cursorStr, 10, 64)
+		if err != nil || cursorInt > 1 {
+			cursor, err = bridge.NumToTid(uint64(cursorInt))
+			if err != nil {
+				fmt.Println("Error when converting Followers Cursor:", err)
+				cursor = ""
+			}
+		} else {
+			cursor = ""
+		}
+	} else {
+		cursor = ""
+	}
+
+	if cursorInt == 0 {
+		return EncodeAndSend(c, struct {
+			Users []bridge.TwitterUser `json:"users" xml:"users"`
+			bridge.Cursors
+		}{
+			Users: []bridge.TwitterUser{},
+			Cursors: bridge.Cursors{
+				NextCursor:        0,
+				PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
+				NextCursorStr:     "0",
+				PreviousCursorStr: "0",
+			},
+		})
+	}
+
+	// fetch follows
+	followers, err := blueskyapi.GetFollows(*pds, *oauthToken, cursor, actor)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return HandleBlueskyError(c, err.Error(), "app.bsky.graph.getFollows", GetFollows)
+	}
+
+	var userIDs []int64
+	for _, user := range followers.Followers {
+		userIDs = append(userIDs, *bridge.BlueSkyToTwitterID(user.DID))
+	}
+
+	next_cursor, err := bridge.TidToNum(followers.Cursor)
+	if err != nil {
+		next_cursor = 0
+	}
+
+	return EncodeAndSend(c, bridge.IdsWithCursor{
+		Ids: userIDs,
+		Cursors: bridge.Cursors{
+			NextCursor:        next_cursor,
+			PreviousCursor:    0, // Unimplemented. This could probably be figured out if i could figure out what the TID corrisponds to, if it corrisponds to anything at all.
+			NextCursorStr:     strconv.FormatUint(next_cursor, 10),
+			PreviousCursorStr: "0",
+		},
 	})
 }
 
