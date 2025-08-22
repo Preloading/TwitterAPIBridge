@@ -69,7 +69,7 @@ func InitServer(config *config.Config) {
 					return "https://ttwb.preloading.dev"
 				}
 				return "https://" + c.Hostname()
-			},
+			}(),
 			"UnPrefixedURL": func() string {
 				if c.Hostname() == "twitterbridge.loganserver.net" {
 					return "twb.preloading.dev"
@@ -78,7 +78,7 @@ func InitServer(config *config.Config) {
 					return "ttwb.preloading.dev"
 				}
 				return c.Hostname()
-			},
+			}(),
 			"Version": config.Version,
 		}, "index")
 	})
