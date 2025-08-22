@@ -57,7 +57,6 @@ func InitServer(config *config.Config) {
 
 	// Serve /
 	app.Get("/", func(c *fiber.Ctx) error {
-		// Render index within layouts/nested/main within layouts/nested/base
 		return c.Render("index", fiber.Map{
 			"DeveloperMode": config.DeveloperMode,
 			"NotConfigured": configData.CdnURL == "http://127.0.0.1:3000",

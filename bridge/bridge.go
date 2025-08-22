@@ -561,7 +561,6 @@ type PushDestination struct {
 	EnabledFor      int `json:"enabled_for" xml:"enabled-for"`           // 5
 }
 
-// maybe?
 type IdsWithCursor struct {
 	Ids []int64 `json:"ids"`
 	Cursors

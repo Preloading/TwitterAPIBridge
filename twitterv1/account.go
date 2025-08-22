@@ -26,7 +26,7 @@ func getUserMutex(userID string) *sync.Mutex {
 
 func DevicePushDestinations(c *fiber.Ctx) error {
 	return EncodeAndSend(c, bridge.PushDestination{
-		AvailableLevels: 1021, // I have no idea what any of this means.
+		AvailableLevels: 0b1111111111, // I have no idea what any of this means.
 		EnabledFor:      5,
 	})
 }
