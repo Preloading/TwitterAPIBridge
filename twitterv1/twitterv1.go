@@ -198,9 +198,13 @@ func MobileClientApiDecider(c *fiber.Ctx) error {
 }
 
 func EncodeAndSend(c *fiber.Ctx, data interface{}) error {
+	var ok bool
 	encodeType := c.Params("filetype")
 	if encodeType == "" {
-		encodeType = c.Locals("filetype").(string)
+		encodeType, ok = c.Locals("filetype").(string)
+		if !ok {
+			encodeType = "json"
+		}
 	}
 	switch encodeType {
 	case "xml":
