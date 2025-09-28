@@ -170,7 +170,11 @@ func InitServer(config *config.Config) {
 	app.Post("/1/account/update_profile.:filetype", UpdateProfile)
 	app.Post("/1/account/update_profile_image.:filetype", UpdateProfilePicture)
 	app.Get("/1/account/settings.:filetype", GetSettings)
+
+	// Push Notifications
 	app.Get("/1/account/push_destinations/device.:filetype", DevicePushDestinations)
+	app.Post("/1/account/push_destinations.:filetype", UpdatePushNotifications)
+	app.Get("/1/account/push_destinations/destroy.:filetype", RemovePush)
 
 	// Legal cuz why not?
 	app.Get("/1/legal/tos.:filetype", TOS)

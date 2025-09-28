@@ -1,13 +1,18 @@
 package twitterv1
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
+	skyglownotificationlib "github.com/Preloading/SkyglowNotificationLibraries"
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
 	"github.com/Preloading/TwitterAPIBridge/bridge"
+	"github.com/Preloading/TwitterAPIBridge/db_controller"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -25,9 +30,122 @@ func getUserMutex(userID string) *sync.Mutex {
 }
 
 func DevicePushDestinations(c *fiber.Ctx) error {
+	my_did, _, _, _, err := GetAuthFromReq(c)
+	if err != nil {
+		return MissingAuth(c, err)
+	}
+
+	notificationTokens, err := db_controller.GetPushTokensForDID(*my_did)
+	if err != nil {
+		return EncodeAndSend(c, bridge.PushDestination{
+			AvailableLevels: 1021,
+			EnabledFor:      340,
+		})
+	}
+
+	if !(len(notificationTokens) > 0) {
+		return EncodeAndSend(c, bridge.PushDestination{
+			AvailableLevels: 1021,
+			EnabledFor:      340,
+		})
+	}
+
 	return EncodeAndSend(c, bridge.PushDestination{
-		AvailableLevels: 1021, // I have no idea what any of this means.
-		EnabledFor:      5,
+		AvailableLevels: 1021, // Idk what this means
+
+		// EnabledFor is a "binary" format
+		// 9: tweets
+		// 8: retweets: from anyone
+		// 7: retweets: from people you follow
+		// 6: favourites: from anyone
+		// 5: favourites: from people you follow
+		// 4: new followers
+		// 3: mentions: from anyone
+		// 2: mentions: from people you follow
+		// 1: ?
+		// 0: direct messages
+		EnabledFor: notificationTokens[0].EnabledFor,
+	})
+}
+
+// https://gist.github.com/ZweiSteinSoft/4733612
+func UpdatePushNotifications(c *fiber.Ctx) error {
+	// auth
+	my_did, _, _, _, err := GetAuthFromReq(c)
+	if err != nil {
+		return MissingAuth(c, err)
+	}
+
+	enabledFor, err := strconv.Atoi(c.FormValue("enabled_for"))
+	if err != nil {
+		return ReturnError(c, "enabled_for is missing", 0, 400)
+	}
+
+	fmt.Println(c.FormValue("token"))
+
+	// device token
+	notificationToken := make([]byte, 32)
+	_, err = base64.StdEncoding.Decode(notificationToken, []byte(c.FormValue("token")))
+	if err != nil {
+		fmt.Println(err.Error())
+		return ReturnError(c, "device token is invalid", 0, 400)
+	}
+
+	routing_key, routing_server_address, err := skyglownotificationlib.RoutingInfoFromDeviceToken(notificationToken)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		// user is probably not using SGN
+		return EncodeAndSend(c, bridge.PushDestination{
+			AvailableLevels: 1021,
+			EnabledFor:      enabledFor,
+		})
+	}
+
+	db_controller.CreateModifyRegisteredPushNotifications(db_controller.NotificationTokens{
+		UserDID:       *my_did,
+		DeviceToken:   notificationToken,
+		RoutingKey:    routing_key,
+		ServerAddress: *routing_server_address,
+		EnabledFor:    enabledFor,
+		LastUpdated:   time.Now(),
+	})
+
+	return EncodeAndSend(c, bridge.PushDestination{
+		AvailableLevels: 1021, // Idk what this means
+		// EnabledFor is a "binary" format
+		// 9: tweets
+		// 8: retweets: from anyone
+		// 7: retweets: from people you follow
+		// 6: favourites: from anyone
+		// 5: favourites: from people you follow
+		// 4: new followers
+		// 3: mentions: from anyone
+		// 2: mentions: from people you follow
+		// 1: ?
+		// 0: direct messages
+		EnabledFor: enabledFor,
+	})
+}
+
+// this should probably use the udid
+func RemovePush(c *fiber.Ctx) error {
+	// auth
+	my_did, _, _, _, err := GetAuthFromReq(c)
+	if err != nil {
+		return MissingAuth(c, err)
+	}
+
+	err = db_controller.DeleteeeeeeeeeeeeRegistrationForPushNotificationsWithDid(*my_did)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return ReturnError(c, "something went wrong when deregistering you or smth idk and i dont care", 131, 500)
+	}
+
+	return EncodeAndSend(c, bridge.PushDestination{
+		AvailableLevels: 0,
+		EnabledFor:      0,
 	})
 }
 

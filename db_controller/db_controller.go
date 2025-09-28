@@ -20,8 +20,6 @@ import (
 )
 
 // I will most likely need to store auth tokens in a database, as I can only really get one auth related value from the user, and I can't change that value.
-// I will probably send the oauth token as:
-// {user did}/{generated uuid}/{encryptionkey}
 
 // Since the only way to detect if a user has logged out is "/1/account/push_destinations/destroy.xml", I do not have a reliable way to detect if a user has logged out.
 // I also don't wanna think what would happen if someone found my DB and stole it. Then a bunch of people would have their auth tokens stolen. Having the encryption key
@@ -95,8 +93,12 @@ type ShortLink struct {
 }
 
 type NotificationTokens struct {
-	Token   []byte `gorm:"primaryKey"`
-	UserDID string
+	DeviceToken   []byte
+	RoutingKey    []byte
+	ServerAddress string
+	UserDID       string `gorm:"column:user_did;primaryKey"`
+	EnabledFor    int
+	LastUpdated   time.Time
 }
 
 var (
@@ -137,6 +139,7 @@ func InitDB(_cfg config.Config) {
 	db.AutoMigrate(&TwitterIDs{})
 	db.AutoMigrate(&AnalyticData{})
 	db.AutoMigrate(&ShortLink{})
+	db.AutoMigrate(&NotificationTokens{})
 
 	StartPeriodicAnalyticsWriter(time.Minute)
 }
@@ -477,4 +480,56 @@ func GetOriginalURL(shortCode string) (string, error) {
 	return shortLink.OriginalURL, nil
 }
 
-// func GetPushTokens()
+func GetAllActivePushNotifications() ([]NotificationTokens, error) {
+	var fullPushTokens []NotificationTokens
+	if err := db.Find(&fullPushTokens, "enabled_for > 1").Error; err != nil { // it's greater than 1 because we aren't implementing notifications for DMs, which is the first bit, aka 1
+		return nil, err
+	}
+	return fullPushTokens, nil
+}
+
+func CreateModifyRegisteredPushNotifications(t NotificationTokens) error {
+	result := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "user_did"},
+		},
+		UpdateAll: true,
+	}).Create(&t)
+
+	return result.Error
+}
+
+func GetPushTokensForDID(did string) ([]NotificationTokens, error) {
+	var fullPushTokens []NotificationTokens
+	if err := db.Find(&fullPushTokens, "user_did = ?", did).Error; err != nil {
+		return nil, err
+	}
+	return fullPushTokens, nil
+}
+
+func SaveRegistrationForPushNotifications(token NotificationTokens) error {
+	result := db.Create(&token)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+}
+
+// vs code decided to freeze at this point, and i think its funny so im keeping it.
+func DeleteeeeeeeeeeeeRegistrationForPushNotifications(token NotificationTokens) error {
+	if err := db.Delete(&token).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// this should not be did but i am lazy
+func DeleteeeeeeeeeeeeRegistrationForPushNotificationsWithDid(did string) error {
+	if err := db.Delete(&NotificationTokens{}, "user_did = ?", did).Error; err != nil {
+		return err
+	}
+	return nil
+
+}

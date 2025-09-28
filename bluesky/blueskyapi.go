@@ -219,6 +219,12 @@ type DeleteRecordPayload struct {
 	RKey       string `json:"rkey"`
 }
 
+type ProperSubjectInteractionRecord struct {
+	Type      string  `json:"$type"`
+	CreatedAt string  `json:"createdAt"`
+	Subject   Subject `json:"subject"`
+}
+
 type PostInteractionRecord struct {
 	Type      string      `json:"$type"`
 	CreatedAt string      `json:"createdAt"`

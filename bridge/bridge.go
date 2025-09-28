@@ -558,7 +558,7 @@ type SocialContext struct {
 // https://gist.github.com/ZweiSteinSoft/4733612#file-push_destinations-json, although I checked the code, and it only uses 2 of those values. (on both 5.0.3, and 4.1.3)
 type PushDestination struct {
 	AvailableLevels int `json:"available_levels" xml:"available-levels"` // This is used by the app, a responce I found online shows this at 1021, but idk what that means.
-	EnabledFor      int `json:"enabled_for" xml:"enabled-for"`           // 5
+	EnabledFor      int `json:"enabled_for" xml:"enabled-for"`
 }
 
 // maybe?
