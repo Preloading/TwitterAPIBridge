@@ -1,6 +1,7 @@
 package db_controller
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 
 	"strconv"
 
+	skyglownotificationlib "github.com/Preloading/SkyglowNotificationLibraries"
 	"github.com/Preloading/TwitterAPIBridge/config"
 	authcrypt "github.com/Preloading/TwitterAPIBridge/cryption"
 	"github.com/google/uuid"
@@ -489,14 +491,26 @@ func GetAllActivePushNotifications() ([]NotificationTokens, error) {
 }
 
 func CreateModifyRegisteredPushNotifications(t NotificationTokens) error {
-	result := db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{
-			{Name: "user_did"},
-		},
-		UpdateAll: true,
-	}).Create(&t)
+	// Check if a record already exists for this user_did
+	var existing NotificationTokens
+	if err := db.First(&existing, "user_did = ?", t.UserDID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// It's a create
+			if err := db.Create(&t).Error; err != nil {
+				return err
+			}
 
-	return result.Error
+			skyglownotificationlib.ConfigureTokenForFeedback(t.DeviceToken, cfg.NotificationFeedbackSecret)
+		}
+		// some other DB error
+		return err
+	}
+
+	// It's an update: copy fields from t into existing (use Updates to only update non-zero fields)
+	if err := db.Model(&existing).Updates(t).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func GetPushTokensForDID(did string) ([]NotificationTokens, error) {
@@ -528,6 +542,15 @@ func DeleteeeeeeeeeeeeRegistrationForPushNotifications(token NotificationTokens)
 // this should not be did but i am lazy
 func DeleteeeeeeeeeeeeRegistrationForPushNotificationsWithDid(did string) error {
 	if err := db.Delete(&NotificationTokens{}, "user_did = ?", did).Error; err != nil {
+		return err
+	}
+	return nil
+
+}
+
+// this should not be did but i am lazy
+func DeleteeeeeeeeeeeeRegistrationForPushNotificationsWithRoutingInfo(routing_key []byte, routing_server_address string) error {
+	if err := db.Delete(&NotificationTokens{}, "routing_key = ? AND server_address = ?", routing_key, routing_server_address).Error; err != nil {
 		return err
 	}
 	return nil

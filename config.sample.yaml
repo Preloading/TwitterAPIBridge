@@ -95,3 +95,16 @@ SERVER_URLS:
 # This is used to enable some extra logging useful during development.
 # DO NOT ENABLE THIS IN A PUBLIC INSTANCE!!!
 DEVELOPER_MODE: false
+
+
+
+####################################
+#       Push Notifications         #
+####################################
+
+# This is the skyglow notification server that this will share notifications thru
+NOTIFICATION_TRUSTED_SERVER: ''
+
+# This is used for getting removed push tokens from people who uninstalled the app.
+# Hex, max value is 256 bytes
+NOTIFICATION_FEEDBACK_SECRET: ''

@@ -36,6 +36,6 @@ func main() {
 	}
 
 	db_controller.InitDB(*configData)
-	go notifications.RunNotifications()
+	go notifications.RunNotifications(*configData)
 	twitterv1.InitServer(configData)
 }

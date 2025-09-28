@@ -35,6 +35,10 @@ func DevicePushDestinations(c *fiber.Ctx) error {
 		return MissingAuth(c, err)
 	}
 
+	if configData.NotificationTrustedServer == "" {
+		return ReturnError(c, "push notifications are disabled on this server", 1000, 404)
+	}
+
 	notificationTokens, err := db_controller.GetPushTokensForDID(*my_did)
 	if err != nil {
 		return EncodeAndSend(c, bridge.PushDestination{
@@ -74,6 +78,10 @@ func UpdatePushNotifications(c *fiber.Ctx) error {
 	my_did, _, _, _, err := GetAuthFromReq(c)
 	if err != nil {
 		return MissingAuth(c, err)
+	}
+
+	if configData.NotificationTrustedServer == "" {
+		return ReturnError(c, "push notifications are disabled on this server", 1000, 404)
 	}
 
 	enabledFor, err := strconv.Atoi(c.FormValue("enabled_for"))
@@ -134,6 +142,10 @@ func RemovePush(c *fiber.Ctx) error {
 	my_did, _, _, _, err := GetAuthFromReq(c)
 	if err != nil {
 		return MissingAuth(c, err)
+	}
+
+	if configData.NotificationTrustedServer == "" {
+		return ReturnError(c, "push notifications are disabled on this server", 1000, 404)
 	}
 
 	err = db_controller.DeleteeeeeeeeeeeeRegistrationForPushNotificationsWithDid(*my_did)

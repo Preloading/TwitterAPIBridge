@@ -8,7 +8,9 @@ import (
 	"time"
 
 	sgn "github.com/Preloading/SkyglowNotificationLibraries"
+	skyglownotificationlib "github.com/Preloading/SkyglowNotificationLibraries"
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
+	"github.com/Preloading/TwitterAPIBridge/config"
 	"github.com/Preloading/TwitterAPIBridge/db_controller"
 	"github.com/Preloading/TwitterAPIBridge/twitterv1"
 	"golang.org/x/net/websocket"
@@ -49,11 +51,15 @@ var (
 	favouritesFollowingOnlyDIDs []string
 	newFollowers                []string
 	// posterDIDs                  []string
-	lastUpdatedNotificationTime time.Time
+	lastUpdatedNotificationTime            time.Time
+	lastCheckedForPushNotificationFeedback time.Time
 )
 
-func RunNotifications() {
-	sgn.ConfigureSession("d.preloading.dev") // todo make this configureable
+func RunNotifications(cfg config.Config) {
+	if cfg.NotificationTrustedServer == "" {
+		return
+	}
+	sgn.ConfigureSession(cfg.NotificationTrustedServer) // todo make this configureable
 
 	incomingMessages := make(chan JetstreamPostOutput)
 
@@ -115,6 +121,33 @@ func RunNotifications() {
 			for time.Since(lastUpdatedNotificationTime) < 5*time.Minute {
 				time.Sleep(10 * time.Second)
 			}
+		}
+	}()
+
+	go func() {
+		for {
+			if cfg.NotificationFeedbackSecretString == "" {
+				return
+			}
+
+			feedback, err := skyglownotificationlib.GetFeedback(cfg.NotificationFeedbackSecret, lastCheckedForPushNotificationFeedback)
+			if err != nil {
+				continue
+			}
+
+			lastCheckedForPushNotificationFeedback = time.Now()
+
+			for _, f := range feedback {
+				switch f.Reason {
+				case "token-removed":
+					{
+						db_controller.DeleteeeeeeeeeeeeRegistrationForPushNotificationsWithRoutingInfo(f.RoutingToken, f.RoutingTokenServer)
+
+					}
+				}
+			}
+
+			time.Sleep(2 * time.Hour)
 		}
 	}()
 

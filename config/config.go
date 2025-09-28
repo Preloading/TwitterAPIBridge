@@ -7,13 +7,15 @@
 package config
 
 import (
-	"github.com/spf13/viper"
+	"encoding/hex"
 	"fmt"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-    // Version of the server
-    Version string `mapstructure:"VERSION"`
+	// Version of the server
+	Version string `mapstructure:"VERSION"`
 	// Accessible server address
 	CdnURL string `mapstructure:"CDN_URL"`
 	// The port to run the server on
@@ -21,70 +23,82 @@ type Config struct {
 	// This enables extra logging, INCLUDING SENSETIVE INFORMATION like BLUESKY TOKENS. Useful for debugging with tools like insomnia. DO NOT USE ON PUBLIC SERVERS
 	// Also requires all passwords start with "dev_" to work
 	DeveloperMode bool `mapstructure:"DEVELOPER_MODE"`
-    // Collects analytics on users.
-    TrackAnalytics bool `mapstructure:"TRACK_ANALYTICS"`
-    // Database type (mysql, postgres, sqlite)
-    DatabaseType string `mapstructure:"DATABASE_TYPE"`
-    // Database path
-    DatabasePath string `mapstructure:"DATABASE_PATH"`
+	// Collects analytics on users.
+	TrackAnalytics bool `mapstructure:"TRACK_ANALYTICS"`
+	// Database type (mysql, postgres, sqlite)
+	DatabaseType string `mapstructure:"DATABASE_TYPE"`
+	// Database path
+	DatabasePath string `mapstructure:"DATABASE_PATH"`
 
-    UseXForwardedFor bool `mapstructure:"USE_X_FORWARDED_FOR"`
+	UseXForwardedFor bool `mapstructure:"USE_X_FORWARDED_FOR"`
 
-    ImgDisplayText string `mapstructure:"IMG_DISPLAY_TEXT"`
-    ImgURLText string `mapstructure:"IMG_URL_TEXT"`
-    VidDisplayText string `mapstructure:"VID_DISPLAY_TEXT"`
-    VidURLText string `mapstructure:"VID_URL_TEXT"`
+	ImgDisplayText string `mapstructure:"IMG_DISPLAY_TEXT"`
+	ImgURLText     string `mapstructure:"IMG_URL_TEXT"`
+	VidDisplayText string `mapstructure:"VID_DISPLAY_TEXT"`
+	VidURLText     string `mapstructure:"VID_URL_TEXT"`
 
-    // Secret key used for JWT. Must be at least 32 bytes long. Keep this secret!
-    SecretKey string `mapstructure:"SECRET_KEY"` 
-    // The security key but in bytes.
-    SecretKeyBytes []byte
-    // Min Version token version the server will accept
-    MinTokenVersion int `mapstructure:"MIN_TOKEN_VERSION"`
-    // Server Identifier, used for knowing what server a token belongs to.
-    ServerIdentifier string `mapstructure:"SERVER_IDENTIFIER"`
-    // Server URLs used for contacting the server
-    ServerURLs []string `mapstructure:"SERVER_URLS"`
+	// Secret key used for JWT. Must be at least 32 bytes long. Keep this secret!
+	SecretKey string `mapstructure:"SECRET_KEY"`
+	// The security key but in bytes.
+	SecretKeyBytes []byte
+	// Min Version token version the server will accept
+	MinTokenVersion int `mapstructure:"MIN_TOKEN_VERSION"`
+	// Server Identifier, used for knowing what server a token belongs to.
+	ServerIdentifier string `mapstructure:"SERVER_IDENTIFIER"`
+	// Server URLs used for contacting the server
+	ServerURLs []string `mapstructure:"SERVER_URLS"`
+
+	//notifications
+	NotificationTrustedServer        string `mapstructure:"NOTIFICATION_TRUSTED_SERVER"`
+	NotificationFeedbackSecretString string `mapstructure:"NOTIFICATION_FEEDBACK_SECRET"`
+	NotificationFeedbackSecret       []byte
 }
 
 // Loads our config files.
 func LoadConfig() (*Config, error) {
-    viper.SetConfigName("config") // Name of the config file (without extension)
-    viper.SetConfigType("yaml")  // File type
-    viper.AddConfigPath(".")     // Look for config in the current directory
-    viper.AddConfigPath("/config/") // Path for Docker setups
-    
-    // Read environment variables with a specific prefix
-    viper.SetEnvPrefix("TWITTER_BRIDGE")
+	viper.SetConfigName("config")   // Name of the config file (without extension)
+	viper.SetConfigType("yaml")     // File type
+	viper.AddConfigPath(".")        // Look for config in the current directory
+	viper.AddConfigPath("/config/") // Path for Docker setups
 
-    // Set default values
-    viper.SetDefault("VERSION", "1.0.6") // wait till i forget to update this
-    viper.SetDefault("SERVER_PORT", "3000")
-    viper.SetDefault("DEVELOPER_MODE", false)
-    viper.SetDefault("DATABASE_TYPE", "sqlite")
-    viper.SetDefault("DATABASE_PATH", "./db/twitterbridge.db")
-    viper.SetDefault("TRACK_ANALYTICS", true)
-    viper.SetDefault("CDN_URL", "http://127.0.0.1:3000")
-    viper.SetDefault("USE_X_FORWARDED_FOR", false)
-    viper.SetDefault("IMG_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
-    viper.SetDefault("VID_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
-    viper.SetDefault("IMG_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
-    viper.SetDefault("VID_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
-    viper.SetDefault("SECRET_KEY", "")
-    viper.SetDefault("MIN_TOKEN_VERSION", 1)
-    
-    // Read config file
-    if err := viper.ReadInConfig(); err != nil {
-        fmt.Println("No config file found, relying on environment variables")
-    }
+	// Read environment variables with a specific prefix
+	viper.SetEnvPrefix("TWITTER_BRIDGE")
 
-    // Bind config to struct
-    var config Config
-    if err := viper.Unmarshal(&config); err != nil {
-        return nil, err
-    }
+	// Set default values
+	viper.SetDefault("VERSION", "1.0.6") // wait till i forget to update this
+	viper.SetDefault("SERVER_PORT", "3000")
+	viper.SetDefault("DEVELOPER_MODE", false)
+	viper.SetDefault("DATABASE_TYPE", "sqlite")
+	viper.SetDefault("DATABASE_PATH", "./db/twitterbridge.db")
+	viper.SetDefault("TRACK_ANALYTICS", true)
+	viper.SetDefault("CDN_URL", "http://127.0.0.1:3000")
+	viper.SetDefault("USE_X_FORWARDED_FOR", false)
+	viper.SetDefault("IMG_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
+	viper.SetDefault("VID_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
+	viper.SetDefault("IMG_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
+	viper.SetDefault("VID_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
+	viper.SetDefault("SECRET_KEY", "")
+	viper.SetDefault("MIN_TOKEN_VERSION", 1)
+	viper.SetDefault("NOTIFICATION_TRUSTED_SERVER", "")
+	viper.SetDefault("NOTIFICATION_SECRET_KEY", "")
 
-    config.SecretKeyBytes = []byte(config.SecretKey)
+	// Read config file
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Println("No config file found, relying on environment variables")
+	}
 
-    return &config, nil
+	// Bind config to struct
+	var config Config
+	if err := viper.Unmarshal(&config); err != nil {
+		return nil, err
+	}
+
+	config.SecretKeyBytes = []byte(config.SecretKey)
+	config.NotificationFeedbackSecret = make([]byte, hex.DecodedLen(len(config.NotificationFeedbackSecretString)))
+	_, err := hex.Decode(config.NotificationFeedbackSecret, []byte(config.NotificationFeedbackSecretString))
+	if err != nil {
+		panic("you failed to set the notification feedback secret to a correct value. set it to be correct or not at all")
+	}
+
+	return &config, nil
 }
