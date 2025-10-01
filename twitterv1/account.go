@@ -104,10 +104,7 @@ func UpdatePushNotifications(c *fiber.Ctx) error {
 	if err != nil {
 		fmt.Println(err.Error())
 		// user is probably not using SGN
-		return EncodeAndSend(c, bridge.PushDestination{
-			AvailableLevels: 1021,
-			EnabledFor:      enabledFor,
-		})
+		return ReturnError(c, "Skyglow Notifications is required for notifications", 1000, 404)
 	}
 
 	db_controller.CreateModifyRegisteredPushNotifications(db_controller.NotificationTokens{
