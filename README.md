@@ -7,7 +7,7 @@
 This custom server translates Twitter V1 requests to Bluesky for Twitter clients.
 
 # Demo (ios)
-![Demo of A Twitter Bridge on iOS 6, Twitter 5.0.3](https://raw.githubusercontent.com/Preloading/TwitterAPIBridge/refs/heads/main/resources/demo1.mp4)
+<video src="https://raw.githubusercontent.com/Preloading/TwitterAPIBridge/refs/heads/main/resources/demo1.mp4" controls></video>
 
 # Compatibility
 To see what devices and versions are compatible, look at [the compatibility list](https://github.com/Preloading/TwitterAPIBridge/blob/main/COMPATIBILITY.md)
