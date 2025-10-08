@@ -85,32 +85,31 @@ func InitServer(config *config.Config) {
 
 	// Auth
 	app.Post("/oauth/access_token", access_token)
-	app.Get("/1/account/verify_credentials.:filetype", VerifyCredentials)
-	app.Get("/account/verify_credentials.:filetype", VerifyCredentials)
+	AddV1Path(app.Get, "/1/account/verify_credentials.:filetype", VerifyCredentials)
 
 	// Tweeting
-	app.Post("/1/statuses/update.:filetype", status_update)
-	app.Post("/1/statuses/update_with_media.:filetype", status_update_with_media)
+	AddV1Path(app.Post, "/1/statuses/update.:filetype", status_update)
+	AddV1Path(app.Post, "/1/statuses/update_with_media.:filetype", status_update_with_media)
 
 	// Interactions
-	app.Post("/1/statuses/retweet/:id.:filetype", retweet)
-	app.Post("/1/favorites/create/:id.:filetype", favourite)
-	app.Post("/1/favorites/destroy/:id.:filetype", Unfavourite)
-	app.Post("/1/statuses/destroy/:id.:filetype", DeleteTweet)
+	AddV1Path(app.Post, "/1/statuses/retweet/:id.:filetype", retweet)
+	AddV1Path(app.Post, "/1/favorites/create/:id.:filetype", favourite)
+	AddV1Path(app.Post, "/1/favorites/destroy/:id.:filetype", Unfavourite)
+	AddV1Path(app.Post, "/1/statuses/destroy/:id.:filetype", DeleteTweet)
 
 	// Posts
-	app.Get("/1/statuses/home_timeline.:filetype", home_timeline)
-	app.Get("/1/statuses/user_timeline.:filetype", user_timeline)
-	app.Get("/1/statuses/mentions.:filetype", mentions_timeline)
-	app.Get("/1/favorites/toptweets.:filetype", hot_post_timeline)
-	app.Get("/1/statuses/media_timeline.:filetype", media_timeline)
-	app.Get("/1/statuses/show/:id.:filetype", GetStatusFromId)
+	AddV1Path(app.Get, "/1/statuses/home_timeline.:filetype", home_timeline)
+	AddV1Path(app.Get, "/1/statuses/user_timeline.:filetype", user_timeline)
+	AddV1Path(app.Get, "/1/statuses/mentions.:filetype", mentions_timeline)
+	AddV1Path(app.Get, "/1/favorites/toptweets.:filetype", hot_post_timeline)
+	AddV1Path(app.Get, "/1/statuses/media_timeline.:filetype", media_timeline)
+	AddV1Path(app.Get, "/1/statuses/show/:id.:filetype", GetStatusFromId)
 	app.Get("/i/statuses/:id/activity/summary.:filetype", TweetInfo)
-	app.Get("/1/related_results/show/:id.:filetype", RelatedResults)
+	AddV1Path(app.Get, "/1/related_results/show/:id.:filetype", RelatedResults)
 
 	// Users
-	app.Get("/1/users/show.:filetype", user_info)
-	app.Get("/1/users/show/*", func(c *fiber.Ctx) error {
+	AddV1Path(app.Get, "/1/users/show.:filetype", user_info)
+	AddV1Path(app.Get, "/users/show/*", func(c *fiber.Ctx) error {
 		path := c.Params("*")
 		lastDotIndex := strings.LastIndex(path, ".")
 
@@ -125,60 +124,60 @@ func InitServer(config *config.Config) {
 
 		return user_info(c)
 	})
-	app.Get("/1/users/lookup.:filetype", UsersLookup)
-	app.Post("/1/users/lookup.:filetype", UsersLookup)
-	app.Get("/1/friendships/lookup.:filetype", UserRelationships)
-	app.Get("/1/friendships/show.:filetype", GetUsersRelationship)
-	app.Get("/1/favorites/:id.:filetype", likes_timeline)
-	app.Post("/1/friendships/create.:filetype", FollowUser)
-	app.Post("/1/friendships/destroy.:filetype", UnfollowUserForm)
-	app.Post("/1/friendships/destroy/:id.:filetype", UnfollowUserParams)
-	app.Get("/1/followers.:filetype", GetFollowers)
-	app.Get("/1/friends.:filetype", GetFollows)
-	app.Get("/1/statuses/followers.:filetype", GetStatusesFollowers)
-	app.Get("/1/statuses/friends.:filetype", GetStatusesFollows)
-	app.Get("/i/device_following/ids.:filetype", GetFollowingIds)
+	AddV1Path(app.Get, "/users/lookup.:filetype", UsersLookup)
+	AddV1Path(app.Post, "/users/lookup.:filetype", UsersLookup)
+	AddV1Path(app.Get, "/friendships/lookup.:filetype", UserRelationships)
+	AddV1Path(app.Get, "/friendships/show.:filetype", GetUsersRelationship)
+	AddV1Path(app.Get, "/favorites/:id.:filetype", likes_timeline)
+	AddV1Path(app.Post, "/friendships/create.:filetype", FollowUser)
+	AddV1Path(app.Post, "/1/friendships/destroy.:filetype", UnfollowUserForm)
+	AddV1Path(app.Post, "/1/friendships/destroy/:id.:filetype", UnfollowUserParams)
+	AddV1Path(app.Get, "/1/followers.:filetype", GetFollowers)
+	AddV1Path(app.Get, "/1/friends.:filetype", GetFollows)
+	AddV1Path(app.Get, "/1/statuses/followers.:filetype", GetStatusesFollowers)
+	AddV1Path(app.Get, "/1/statuses/friends.:filetype", GetStatusesFollows)
+	AddV1Path(app.Get, "/i/device_following/ids.:filetype", GetFollowingIds)
 
-	app.Get("/1/users/recommendations.:filetype", GetSuggestedUsers)
-	app.Get("/1/users/profile_image", UserProfileImage)
+	AddV1Path(app.Get, "/1/users/recommendations.:filetype", GetSuggestedUsers)
+	AddV1Path(app.Get, "/1/users/profile_image", UserProfileImage)
 
 	// Connect
-	app.Get("/1/users/search.:filetype", UserSearch)
+	AddV1Path(app.Get, "/1/users/search.:filetype", UserSearch)
 	app.Get("/i/search/typeahead.:filetype", SearchAhead)
 	app.Get("/i/activity/about_me.:filetype", GetMyActivity)
 
 	// Discover
-	app.Get("/1/trends/:woeid.:filetype", trends_woeid)
-	app.Get("/1/trends/current.:filetype", trends_woeid)
-	app.Get("/1/users/suggestions.:filetype", SuggestedTopics)
-	app.Get("/1/users/suggestions/:slug.:filetype", GetTopicSuggestedUsers)
+	AddV1Path(app.Get, "/1/trends/:woeid.:filetype", trends_woeid)
+	AddV1Path(app.Get, "/1/trends/current.:filetype", trends_woeid)
+	AddV1Path(app.Get, "/1/users/suggestions.:filetype", SuggestedTopics)
+	AddV1Path(app.Get, "/1/users/suggestions/:slug.:filetype", GetTopicSuggestedUsers)
 	app.Get("/i/search.:filetype", InternalSearch)
 	app.Get("/i/discovery.:filetype", discovery)
 
 	// Lists
-	app.Get("/1/lists.:filetype", GetUsersLists)
-	app.Get("/1/:user/lists.:filetype", GetUsersLists)
-	app.Get("/1/lists/statuses.:filetype", list_timeline)
-	app.Get("/1/:user/lists/:slug/statuses.:filetype", list_timeline)
-	app.Get("/1/lists/members.:filetype", GetListMembers)
-	app.Get("/1/:user/:list/members.:filetype", GetListMembers)
+	AddV1Path(app.Get, "/1/lists.:filetype", GetUsersLists)
+	AddV1Path(app.Get, "/1/:user/lists.:filetype", GetUsersLists)
+	AddV1Path(app.Get, "/1/lists/statuses.:filetype", list_timeline)
+	AddV1Path(app.Get, "/1/:user/lists/:slug/statuses.:filetype", list_timeline)
+	AddV1Path(app.Get, "/1/lists/members.:filetype", GetListMembers)
+	AddV1Path(app.Get, "/1/:user/:list/members.:filetype", GetListMembers)
 
-	app.Get("/1/lists/subscriptions.:filetype", GetUsersLists)       // This doesn't actually exist on bluesky, but here's something similar enough. Lists made by you.
-	app.Get("/1/:user/lists/subscriptions.:filetype", GetUsersLists) // Well, if i'm to get technical, you can subscribe to moderation lists, but not the lists this expects.
+	AddV1Path(app.Get, "/1/lists/subscriptions.:filetype", GetUsersLists)       // This doesn't actually exist on bluesky, but here's something similar enough. Lists made by you.
+	AddV1Path(app.Get, "/1/:user/lists/subscriptions.:filetype", GetUsersLists) // Well, if i'm to get technical, you can subscribe to moderation lists, but not the lists this expects.
 
 	// Account / Settings
-	app.Post("/1/account/update_profile.:filetype", UpdateProfile)
-	app.Post("/1/account/update_profile_image.:filetype", UpdateProfilePicture)
-	app.Get("/1/account/settings.:filetype", GetSettings)
+	AddV1Path(app.Post, "/1/account/update_profile.:filetype", UpdateProfile)
+	AddV1Path(app.Post, "/1/account/update_profile_image.:filetype", UpdateProfilePicture)
+	AddV1Path(app.Get, "/1/account/settings.:filetype", GetSettings)
 
 	// Push Notifications
-	app.Get("/1/account/push_destinations/device.:filetype", DevicePushDestinations)
-	app.Post("/1/account/push_destinations.:filetype", UpdatePushNotifications)
-	app.Get("/1/account/push_destinations/destroy.:filetype", RemovePush)
+	AddV1Path(app.Get, "/1/account/push_destinations/device.:filetype", DevicePushDestinations)
+	AddV1Path(app.Post, "/1/account/push_destinations.:filetype", UpdatePushNotifications)
+	AddV1Path(app.Get, "/1/account/push_destinations/destroy.:filetype", RemovePush)
 
 	// Legal cuz why not?
-	app.Get("/1/legal/tos.:filetype", TOS)
-	app.Get("/1/legal/privacy.:filetype", PrivacyPolicy)
+	AddV1Path(app.Get, "/1/legal/tos.:filetype", TOS)
+	AddV1Path(app.Get, "/1/legal/privacy.:filetype", PrivacyPolicy)
 
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)
@@ -196,9 +195,14 @@ func InitServer(config *config.Config) {
 	app.Listen(fmt.Sprintf(":%d", config.ServerPort))
 }
 
+func AddV1Path(function func(string, ...fiber.Handler) fiber.Router, url string, handler fiber.Handler) {
+	function(url, handler)
+	function(fmt.Sprintf("/1%s", url), handler)
+}
+
 // misc
 func MobileClientApiDecider(c *fiber.Ctx) error {
-	return c.SendString("")
+	return c.SendString("") // todo maybe?
 }
 
 func EncodeAndSend(c *fiber.Ctx, data interface{}) error {
