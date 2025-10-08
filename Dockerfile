@@ -1,9 +1,16 @@
 # syntax=docker/dockerfile:1
-FROM golang AS build-stage
+FROM golang:1.21-trixie AS build-stage
+
+# Install libvips and libvips-dev
+RUN apt-get update && \
+    apt-get install -y libvips libvips-dev && \
+    rm -rf /var/lib/apt/lists/*
+
 ADD . /src
 WORKDIR /src
 
 RUN CGO_ENABLED=1 GOOS=linux go build -o /bin/twitterbridge .
+
 
 FROM gcr.io/distroless/base-debian12 AS build-release-stage
 COPY --from=build-stage /bin/twitterbridge /bin/twitterbridge
