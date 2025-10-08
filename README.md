@@ -6,6 +6,9 @@
 
 This custom server translates Twitter V1 requests to Bluesky for Twitter clients.
 
+# Demo (ios)
+https://github.com/user-attachments/assets/919dcbe9-08b6-4081-9988-05f07b00a710
+
 # Compatibility
 To see what devices and versions are compatible, look at [the compatibility list](https://github.com/Preloading/TwitterAPIBridge/blob/main/COMPATIBILITY.md)
 
@@ -17,7 +20,7 @@ https://ttwb.preloading.dev HTTP & HTTPS, Based on commits (my instance) (old ur
 
 ## Usage
 ### iOS Official App
-1. Install the IPA of your choosing (you can find some here, along with android versions: https://loganserver.net/twitters/, also elon don't sue me pls). At present moment, recommended is 4.1.3, latest to work is 5.0.3 for offical iOS)
+1. Install the IPA of your choosing (you can find some here, along with android versions: https://loganserver.net/twitters/, also elon don't sue me pls). At present moment, latest & recommended is 5.0.3 for offical iOS)
 2. Create a bluesky app password (assuming you have a bluesky account), menu > settings > privacy and security > app passwords. You will want to enable DMs for future DM compatibility.
 3. Open the Twitter app
 4. Click the login button
