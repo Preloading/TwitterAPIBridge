@@ -1960,7 +1960,7 @@ func GetOthersSuggestedUsers(pds string, token string, limit int, actor string) 
 func GetNotifications(pds string, token string, limit int, context string) (*Notifications, error) {
 	url := pds + "/xrpc/app.bsky.notification.listNotifications?limit=" + fmt.Sprintf("%d", limit)
 	if context != "" {
-		url = pds + "/xrpc/app.bsky.notification.listNotifications?cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
+		url = pds + "/xrpc/app.bsky.notification.listNotifications?reasons=mention&reasons=reply&reasons=quote&reasons=like&reasons=repost&reasons=follow&cursor=" + context + "&limit=" + fmt.Sprintf("%d", limit)
 	}
 
 	resp, err := SendRequest(&token, http.MethodGet, url, nil)

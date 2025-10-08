@@ -192,7 +192,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 		if notification.ReasonSubject != "" {
 			uniquePosts[notification.ReasonSubject] = true
 		}
-		if notification.Reason == "mention" || notification.Reason == "reply" {
+		if notification.Reason == "mention" || notification.Reason == "reply" || notification.Reason == "quote" {
 			uniquePosts[notification.URI] = true
 		}
 	}
@@ -372,11 +372,15 @@ func processNotificationGroup(group notificationGroup, userCache *sync.Map, post
 					activity.Targets = []bridge.Tweet{*replytweet}
 					activity.TargetObjects = []bridge.Tweet{*tweet}
 				}
+			case "quote":
+				if quotingPost, ok := postCache.Load(group.notifications[0].URI); ok {
+					activity.TargetObjects = append(activity.TargetObjects, *(quotingPost.(*bridge.Tweet)))
+				}
 			}
 		}
 	} else {
 		switch group.reason {
-		case "mention", "quote":
+		case "mention":
 			if post, ok := postCache.Load(group.notifications[0].URI); ok {
 				tweet := post.(*bridge.Tweet)
 				activity.Sources = []bridge.TwitterUser{}

@@ -173,7 +173,7 @@ func InitServer(config *config.Config) {
 	// Push Notifications
 	AddV1Path(app.Get, "/account/push_destinations/device.:filetype", DevicePushDestinations)
 	AddV1Path(app.Post, "/account/push_destinations.:filetype", UpdatePushNotifications)
-	AddV1Path(app.Get, "/account/push_destinations/destroy.:filetype", RemovePush)
+	AddV1Path(app.Post, "/account/push_destinations/destroy.:filetype", RemovePush)
 
 	// Legal cuz why not?
 	AddV1Path(app.Get, "/legal/tos.:filetype", TOS)
