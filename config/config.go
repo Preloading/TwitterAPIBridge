@@ -37,6 +37,9 @@ type Config struct {
 	VidDisplayText string `mapstructure:"VID_DISPLAY_TEXT"`
 	VidURLText     string `mapstructure:"VID_URL_TEXT"`
 
+	GifDisplayText string `mapstructure:"GIF_DISPLAY_TEXT"`
+	GifURLText     string `mapstructure:"GIF_URL_TEXT"`
+
 	// Secret key used for JWT. Must be at least 32 bytes long. Keep this secret!
 	SecretKey string `mapstructure:"SECRET_KEY"`
 	// The security key but in bytes.
@@ -65,7 +68,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetEnvPrefix("TWITTER_BRIDGE")
 
 	// Set default values
-	viper.SetDefault("VERSION", "1.0.6") // wait till i forget to update this
+	viper.SetDefault("VERSION", "1.0.7") // wait till i forget to update this
 	viper.SetDefault("SERVER_PORT", "3000")
 	viper.SetDefault("DEVELOPER_MODE", false)
 	viper.SetDefault("DATABASE_TYPE", "sqlite")
@@ -75,8 +78,10 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("USE_X_FORWARDED_FOR", false)
 	viper.SetDefault("IMG_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
 	viper.SetDefault("VID_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
+	viper.SetDefault("GIF_DISPLAY_TEXT", "pic.twitter.com/{shortblob}")
 	viper.SetDefault("IMG_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
 	viper.SetDefault("VID_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
+	viper.SetDefault("GIF_URL_TEXT", "http://127.0.0.1:3000/img/{shortblob}")
 	viper.SetDefault("SECRET_KEY", "")
 	viper.SetDefault("MIN_TOKEN_VERSION", 1)
 	viper.SetDefault("NOTIFICATION_TRUSTED_SERVER", "")

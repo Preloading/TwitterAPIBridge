@@ -360,6 +360,8 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 	}
 
 	id := 1
+
+	// Images
 	for _, image := range tweet.Record.Embed.Images {
 		// Add the image "url" to the text
 		startLen, endLen := 0, 0
@@ -539,6 +541,198 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 				Large: bridge.Size{
 					W:      image.AspectRatio.Width,
 					H:      image.AspectRatio.Height,
+					Resize: "fit",
+				},
+			},
+
+			Indices: []int{
+				startLen,
+				endLen,
+			},
+		})
+		id++
+	}
+
+	// GIFs
+	if tweet.Record.Embed.Type == "app.bsky.embed.external" && strings.HasPrefix(tweet.Record.Embed.External.Uri, "https://media.tenor.com/") {
+		startLen, endLen := 0, 0
+		formattedImageURL := configData.GifURLText
+		displayURL := configData.GifDisplayText
+		shortCode := ""
+		if displayURL != "" {
+			if strings.Contains(displayURL, "{shortcode}") {
+				shortCode, err = CreateShortLink(tweet.Record.Embed.External.Uri, "g")
+				if err != nil {
+					fmt.Println("Error creating short link:", err)
+					displayURL = strings.ReplaceAll(displayURL, "{shortcode}", "")
+				} else {
+					displayURL = strings.ReplaceAll(displayURL, "{shortcode}", shortCode)
+				}
+			}
+
+			if len(processedText) == 0 {
+				endLen = utf8.RuneCountInString(displayURL)
+
+				processedText = displayURL
+			} else {
+				startLen = utf8.RuneCountInString(processedText) + 1
+				endLen = (utf8.RuneCountInString(processedText) + 1) + utf8.RuneCountInString(displayURL)
+
+				processedText = processedText + "\n" + displayURL
+			}
+		}
+		if formattedImageURL != "" {
+			if strings.Contains(formattedImageURL, "{shortcode}") {
+				if shortCode == "" {
+					shortCode, err = CreateShortLink(tweet.Record.Embed.External.Uri, "g")
+					if err != nil {
+						fmt.Println("Error creating short link:", err)
+						formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortcode}", "")
+					} else {
+						formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortcode}", shortCode)
+					}
+				} else {
+					formattedImageURL = strings.ReplaceAll(formattedImageURL, "{shortcode}", shortCode)
+				}
+
+			}
+		}
+
+		// url parsing jank to get the width and height
+		w := 200
+		h := 200
+
+		u, err := url.Parse(tweet.Record.Embed.External.Uri)
+		if err == nil {
+			q := u.Query()
+			widthStr := q.Get("ww")
+			heightStr := q.Get("hh")
+			fmt.Sscanf(widthStr, "%d", &w)
+			fmt.Sscanf(heightStr, "%d", &h)
+		}
+
+		mediaWebURL := configData.CdnURL + "/cdn/img/bsky/" + tweet.Author.DID + "/" + tweet.Record.Embed.External.Thumb.Ref.Link + ".jpg"
+
+		// Process each image
+		tweetEntities.Media = append(tweetEntities.Media, bridge.Media{
+			XMLFormat: bridge.MediaXML{
+				Start:         startLen,
+				End:           endLen,
+				Type:          "photo",
+				ID:            int64(id),
+				MediaURL:      mediaWebURL,
+				MediaURLHttps: mediaWebURL,
+
+				DisplayURL:  displayURL,
+				ExpandedURL: tweet.Record.Embed.External.Uri,
+				URL:         formattedImageURL,
+
+				Sizes: bridge.MediaSize{
+					Thumb: func() bridge.Size {
+						if w > h {
+							return bridge.Size{
+								W:      150,
+								H:      int(150 * float64(h) / float64(w)),
+								Resize: "crop",
+							}
+						}
+						return bridge.Size{
+							W:      int(150 * float64(w) / float64(h)),
+							H:      150,
+							Resize: "crop",
+						}
+					}(),
+					Small: func() bridge.Size {
+						if w > h {
+							return bridge.Size{
+								W:      340,
+								H:      int(340 * float64(h) / float64(w)),
+								Resize: "fit",
+							}
+						}
+						return bridge.Size{
+							W:      int(340 * float64(w) / float64(h)),
+							H:      340,
+							Resize: "fit",
+						}
+					}(),
+					Medium: func() bridge.Size {
+						if w > h {
+							return bridge.Size{
+								W:      600,
+								H:      int(600 * float64(h) / float64(w)),
+								Resize: "fit",
+							}
+						}
+						return bridge.Size{
+							W:      int(600 * float64(w) / float64(h)),
+							H:      600,
+							Resize: "fit",
+						}
+					}(),
+					Large: bridge.Size{
+						W:      w,
+						H:      h,
+						Resize: "fit",
+					},
+				},
+			},
+			Type:          "photo",
+			ID:            int64(id),
+			IDStr:         strconv.Itoa(id),
+			MediaURL:      mediaWebURL,
+			MediaURLHttps: mediaWebURL,
+
+			DisplayURL:  displayURL,
+			ExpandedURL: tweet.Record.Embed.External.Uri,
+			URL:         formattedImageURL,
+
+			Sizes: bridge.MediaSize{
+				Thumb: func() bridge.Size {
+					if w > h {
+						return bridge.Size{
+							W:      150,
+							H:      int(150 * float64(h) / float64(w)),
+							Resize: "crop",
+						}
+					}
+					return bridge.Size{
+						W:      int(150 * float64(w) / float64(h)),
+						H:      150,
+						Resize: "crop",
+					}
+				}(),
+				Small: func() bridge.Size {
+					if w > h {
+						return bridge.Size{
+							W:      340,
+							H:      int(340 * float64(h) / float64(w)),
+							Resize: "fit",
+						}
+					}
+					return bridge.Size{
+						W:      int(340 * float64(w) / float64(h)),
+						H:      340,
+						Resize: "fit",
+					}
+				}(),
+				Medium: func() bridge.Size {
+					if w > h {
+						return bridge.Size{
+							W:      600,
+							H:      int(600 * float64(h) / float64(w)),
+							Resize: "fit",
+						}
+					}
+					return bridge.Size{
+						W:      int(600 * float64(w) / float64(h)),
+						H:      600,
+						Resize: "fit",
+					}
+				}(),
+				Large: bridge.Size{
+					W:      w,
+					H:      h,
 					Resize: "fit",
 				},
 			},

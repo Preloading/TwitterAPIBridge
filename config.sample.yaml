@@ -31,6 +31,10 @@ VID_DISPLAY_TEXT: 'pic.twitter.com/{shortcode}'
 VID_URL_TEXT: 'http://127.0.0.1:3000/img/{shortcode}' # even though it says images, this handles videos too.
 
 
+# For gifs (from tenor), you only have shortcode for this one (due to my lazyness)
+GIF_DISPLAY_TEXT: 'pic.twitter.com/{shortcode}'
+GIF_URL_TEXT: 'http://127.0.0.1:3000/img/{shortcode}'
+
 # SERVER_PORT is the port the server will listen on.
 SERVER_PORT: 3000
 

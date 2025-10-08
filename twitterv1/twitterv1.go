@@ -85,30 +85,30 @@ func InitServer(config *config.Config) {
 
 	// Auth
 	app.Post("/oauth/access_token", access_token)
-	AddV1Path(app.Get, "/1/account/verify_credentials.:filetype", VerifyCredentials)
+	AddV1Path(app.Get, "/account/verify_credentials.:filetype", VerifyCredentials)
 
 	// Tweeting
-	AddV1Path(app.Post, "/1/statuses/update.:filetype", status_update)
-	AddV1Path(app.Post, "/1/statuses/update_with_media.:filetype", status_update_with_media)
+	AddV1Path(app.Post, "/statuses/update.:filetype", status_update)
+	AddV1Path(app.Post, "/statuses/update_with_media.:filetype", status_update_with_media)
 
 	// Interactions
-	AddV1Path(app.Post, "/1/statuses/retweet/:id.:filetype", retweet)
-	AddV1Path(app.Post, "/1/favorites/create/:id.:filetype", favourite)
-	AddV1Path(app.Post, "/1/favorites/destroy/:id.:filetype", Unfavourite)
-	AddV1Path(app.Post, "/1/statuses/destroy/:id.:filetype", DeleteTweet)
+	AddV1Path(app.Post, "/statuses/retweet/:id.:filetype", retweet)
+	AddV1Path(app.Post, "/favorites/create/:id.:filetype", favourite)
+	AddV1Path(app.Post, "/favorites/destroy/:id.:filetype", Unfavourite)
+	AddV1Path(app.Post, "/statuses/destroy/:id.:filetype", DeleteTweet)
 
 	// Posts
-	AddV1Path(app.Get, "/1/statuses/home_timeline.:filetype", home_timeline)
-	AddV1Path(app.Get, "/1/statuses/user_timeline.:filetype", user_timeline)
-	AddV1Path(app.Get, "/1/statuses/mentions.:filetype", mentions_timeline)
-	AddV1Path(app.Get, "/1/favorites/toptweets.:filetype", hot_post_timeline)
-	AddV1Path(app.Get, "/1/statuses/media_timeline.:filetype", media_timeline)
-	AddV1Path(app.Get, "/1/statuses/show/:id.:filetype", GetStatusFromId)
+	AddV1Path(app.Get, "/statuses/home_timeline.:filetype", home_timeline)
+	AddV1Path(app.Get, "/statuses/user_timeline.:filetype", user_timeline)
+	AddV1Path(app.Get, "/statuses/mentions.:filetype", mentions_timeline)
+	AddV1Path(app.Get, "/favorites/toptweets.:filetype", hot_post_timeline)
+	AddV1Path(app.Get, "/tatuses/media_timeline.:filetype", media_timeline)
+	AddV1Path(app.Get, "/statuses/show/:id.:filetype", GetStatusFromId)
 	app.Get("/i/statuses/:id/activity/summary.:filetype", TweetInfo)
-	AddV1Path(app.Get, "/1/related_results/show/:id.:filetype", RelatedResults)
+	AddV1Path(app.Get, "/related_results/show/:id.:filetype", RelatedResults)
 
 	// Users
-	AddV1Path(app.Get, "/1/users/show.:filetype", user_info)
+	AddV1Path(app.Get, "/users/show.:filetype", user_info)
 	AddV1Path(app.Get, "/users/show/*", func(c *fiber.Ctx) error {
 		path := c.Params("*")
 		lastDotIndex := strings.LastIndex(path, ".")
@@ -130,54 +130,54 @@ func InitServer(config *config.Config) {
 	AddV1Path(app.Get, "/friendships/show.:filetype", GetUsersRelationship)
 	AddV1Path(app.Get, "/favorites/:id.:filetype", likes_timeline)
 	AddV1Path(app.Post, "/friendships/create.:filetype", FollowUser)
-	AddV1Path(app.Post, "/1/friendships/destroy.:filetype", UnfollowUserForm)
-	AddV1Path(app.Post, "/1/friendships/destroy/:id.:filetype", UnfollowUserParams)
-	AddV1Path(app.Get, "/1/followers.:filetype", GetFollowers)
-	AddV1Path(app.Get, "/1/friends.:filetype", GetFollows)
-	AddV1Path(app.Get, "/1/statuses/followers.:filetype", GetStatusesFollowers)
-	AddV1Path(app.Get, "/1/statuses/friends.:filetype", GetStatusesFollows)
-	AddV1Path(app.Get, "/i/device_following/ids.:filetype", GetFollowingIds)
+	AddV1Path(app.Post, "/friendships/destroy.:filetype", UnfollowUserForm)
+	AddV1Path(app.Post, "/friendships/destroy/:id.:filetype", UnfollowUserParams)
+	AddV1Path(app.Get, "/followers.:filetype", GetFollowers)
+	AddV1Path(app.Get, "/friends.:filetype", GetFollows)
+	AddV1Path(app.Get, "/statuses/followers.:filetype", GetStatusesFollowers)
+	AddV1Path(app.Get, "/statuses/friends.:filetype", GetStatusesFollows)
+	app.Get("/i/device_following/ids.:filetype", GetFollowingIds)
 
-	AddV1Path(app.Get, "/1/users/recommendations.:filetype", GetSuggestedUsers)
-	AddV1Path(app.Get, "/1/users/profile_image", UserProfileImage)
+	AddV1Path(app.Get, "/users/recommendations.:filetype", GetSuggestedUsers)
+	AddV1Path(app.Get, "/users/profile_image", UserProfileImage)
 
 	// Connect
-	AddV1Path(app.Get, "/1/users/search.:filetype", UserSearch)
+	AddV1Path(app.Get, "/users/search.:filetype", UserSearch)
 	app.Get("/i/search/typeahead.:filetype", SearchAhead)
 	app.Get("/i/activity/about_me.:filetype", GetMyActivity)
 
 	// Discover
-	AddV1Path(app.Get, "/1/trends/:woeid.:filetype", trends_woeid)
-	AddV1Path(app.Get, "/1/trends/current.:filetype", trends_woeid)
-	AddV1Path(app.Get, "/1/users/suggestions.:filetype", SuggestedTopics)
-	AddV1Path(app.Get, "/1/users/suggestions/:slug.:filetype", GetTopicSuggestedUsers)
+	AddV1Path(app.Get, "/trends/:woeid.:filetype", trends_woeid)
+	AddV1Path(app.Get, "/trends/current.:filetype", trends_woeid)
+	AddV1Path(app.Get, "/users/suggestions.:filetype", SuggestedTopics)
+	AddV1Path(app.Get, "/users/suggestions/:slug.:filetype", GetTopicSuggestedUsers)
 	app.Get("/i/search.:filetype", InternalSearch)
 	app.Get("/i/discovery.:filetype", discovery)
 
 	// Lists
-	AddV1Path(app.Get, "/1/lists.:filetype", GetUsersLists)
-	AddV1Path(app.Get, "/1/:user/lists.:filetype", GetUsersLists)
-	AddV1Path(app.Get, "/1/lists/statuses.:filetype", list_timeline)
-	AddV1Path(app.Get, "/1/:user/lists/:slug/statuses.:filetype", list_timeline)
-	AddV1Path(app.Get, "/1/lists/members.:filetype", GetListMembers)
-	AddV1Path(app.Get, "/1/:user/:list/members.:filetype", GetListMembers)
+	AddV1Path(app.Get, "/lists.:filetype", GetUsersLists)
+	AddV1Path(app.Get, "/:user/lists.:filetype", GetUsersLists)
+	AddV1Path(app.Get, "/lists/statuses.:filetype", list_timeline)
+	AddV1Path(app.Get, "/:user/lists/:slug/statuses.:filetype", list_timeline)
+	AddV1Path(app.Get, "/lists/members.:filetype", GetListMembers)
+	AddV1Path(app.Get, "/:user/:list/members.:filetype", GetListMembers)
 
-	AddV1Path(app.Get, "/1/lists/subscriptions.:filetype", GetUsersLists)       // This doesn't actually exist on bluesky, but here's something similar enough. Lists made by you.
-	AddV1Path(app.Get, "/1/:user/lists/subscriptions.:filetype", GetUsersLists) // Well, if i'm to get technical, you can subscribe to moderation lists, but not the lists this expects.
+	AddV1Path(app.Get, "/lists/subscriptions.:filetype", GetUsersLists)       // This doesn't actually exist on bluesky, but here's something similar enough. Lists made by you.
+	AddV1Path(app.Get, "/:user/lists/subscriptions.:filetype", GetUsersLists) // Well, if i'm to get technical, you can subscribe to moderation lists, but not the lists this expects.
 
 	// Account / Settings
-	AddV1Path(app.Post, "/1/account/update_profile.:filetype", UpdateProfile)
-	AddV1Path(app.Post, "/1/account/update_profile_image.:filetype", UpdateProfilePicture)
-	AddV1Path(app.Get, "/1/account/settings.:filetype", GetSettings)
+	AddV1Path(app.Post, "/account/update_profile.:filetype", UpdateProfile)
+	AddV1Path(app.Post, "/account/update_profile_image.:filetype", UpdateProfilePicture)
+	AddV1Path(app.Get, "/account/settings.:filetype", GetSettings)
 
 	// Push Notifications
-	AddV1Path(app.Get, "/1/account/push_destinations/device.:filetype", DevicePushDestinations)
-	AddV1Path(app.Post, "/1/account/push_destinations.:filetype", UpdatePushNotifications)
-	AddV1Path(app.Get, "/1/account/push_destinations/destroy.:filetype", RemovePush)
+	AddV1Path(app.Get, "/account/push_destinations/device.:filetype", DevicePushDestinations)
+	AddV1Path(app.Post, "/account/push_destinations.:filetype", UpdatePushNotifications)
+	AddV1Path(app.Get, "/account/push_destinations/destroy.:filetype", RemovePush)
 
 	// Legal cuz why not?
-	AddV1Path(app.Get, "/1/legal/tos.:filetype", TOS)
-	AddV1Path(app.Get, "/1/legal/privacy.:filetype", PrivacyPolicy)
+	AddV1Path(app.Get, "/legal/tos.:filetype", TOS)
+	AddV1Path(app.Get, "/legal/privacy.:filetype", PrivacyPolicy)
 
 	// CDN Downscaler
 	app.Get("/cdn/img", CDNDownscaler)

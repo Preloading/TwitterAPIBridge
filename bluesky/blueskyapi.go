@@ -88,11 +88,17 @@ type PostReason struct {
 }
 
 type Embed struct {
-	Type   string  `json:"$type"`
-	Images []Image `json:"images,omitempty"`
-	Video  `json:",omitempty"`
+	Type     string        `json:"$type"`
+	Images   []Image       `json:"images,omitempty"`
+	External ExternalImage `json:"external,omitempty"`
+	Video    `json:",omitempty"`
 }
 
+// doesn't contain everything, but who cares
+type ExternalImage struct {
+	Uri   string `json:"uri"`
+	Thumb Blob   `json:"thumb"`
+}
 type Image struct {
 	Alt         string      `json:"alt"`
 	AspectRatio AspectRatio `json:"aspectRatio"`

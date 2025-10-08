@@ -2,6 +2,7 @@ package twitterv1
 
 import (
 	"hash/fnv"
+	"strings"
 	"sync"
 
 	"github.com/Preloading/TwitterAPIBridge/db_controller"
@@ -94,5 +95,10 @@ func RedirectToLink(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).SendString("Could not find image!")
 	}
 
-	return c.Redirect(configData.CdnURL+originalURL, fiber.StatusMovedPermanently)
+	if strings.HasPrefix(originalURL, "http") { // probably a standalone url
+		return c.Redirect(originalURL, fiber.StatusMovedPermanently)
+	} else {
+		return c.Redirect(configData.CdnURL+originalURL, fiber.StatusMovedPermanently)
+	}
+
 }
