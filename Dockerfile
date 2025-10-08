@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.21-trixie AS build-stage
+FROM golang:1.25.2-trixie AS build-stage
 
 # Install libvips and libvips-dev
 RUN apt-get update && \
