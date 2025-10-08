@@ -228,7 +228,7 @@ func GetMyActivity(c *fiber.Ctx) error {
 	}()
 
 	// Fetch posts in parallel chunks
-	postChunks := chunkSlice(postsToLookUp, 10) // Process 10 posts at a time
+	postChunks := chunkSlice(postsToLookUp, 1) // I may have made this wrong, so that this isn't how many it does in parrellel, this is how many it does in one section, TODO: fix this
 	for _, chunk := range postChunks {
 		wg.Add(1)
 		go func(posts []string) {
