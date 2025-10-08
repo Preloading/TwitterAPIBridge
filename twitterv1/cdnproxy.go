@@ -2,10 +2,7 @@ package twitterv1
 
 import (
 	"fmt"
-	"image"
-	"image/gif"
-	"image/jpeg"
-	"image/png"
+	"io"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -14,8 +11,10 @@ import (
 
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
 	"github.com/gofiber/fiber/v2"
-	"github.com/nfnt/resize"
+	"github.com/h2non/bimg"
 )
+
+var httpClient = &http.Client{}
 
 func CDNDownscaler(c *fiber.Ctx) error {
 	imageURL := c.Query("url")
@@ -101,19 +100,34 @@ func CDNDownscaler(c *fiber.Ctx) error {
 		height = 0
 	}
 
-	resp, err := http.Get(imageURL)
+	resp, err := httpClient.Get(imageURL)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch image")
 	}
 	defer resp.Body.Close()
 
-	img, format, err := image.Decode(resp.Body)
+	if resizeOption == "none" || (width == 0 && height == 0) {
+		c.Response().Header.Set("Cache-Control", "public, max-age=1209600")
+		c.Response().Header.Set("Content-Type", resp.Header.Get("Content-Type"))
+		imgBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to recieve image")
+		}
+		return c.Send(imgBytes)
+	}
+
+	imgBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to decode image")
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to recieve image")
+	}
+
+	imgMetadata, err := bimg.Metadata(imgBytes)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("bad img")
 	}
 
 	if maintainAspect {
-		w, h := img.Bounds().Dx(), img.Bounds().Dy()
+		w, h := imgMetadata.Size.Width, imgMetadata.Size.Height
 		if w > h {
 			w = width
 			h = int(float64(width) * float64(h) / float64(w))
@@ -125,36 +139,44 @@ func CDNDownscaler(c *fiber.Ctx) error {
 		height = h
 	}
 
+	o := bimg.Options{}
+
 	if width > 0 || height > 0 {
 		switch resizeOption {
 		case "fit":
-			img = resize.Resize(uint(width), uint(height), img, resize.Lanczos3)
+			o = bimg.Options{
+				Height: height,
+				Width:  width,
+			}
 		case "crop":
-			img = resize.Thumbnail(uint(width), uint(height), img, resize.Lanczos3)
+			o = bimg.Options{
+				Height: height,
+				Width:  width,
+				Crop:   true,
+			}
 		case "none":
+			c.Set("Content-Type", "image/"+imgMetadata.Type)
+
+			c.Response().Header.Set("Cache-Control", "public, max-age=1209600")
+			return c.Send(imgBytes)
 			// Do nothing
 		default:
-			img = resize.Resize(uint(width), uint(height), img, resize.Lanczos3)
+			o = bimg.Options{
+				Height: height,
+				Width:  width,
+			}
 		}
 	}
 
-	c.Set("Content-Type", "image/"+format)
-	switch format {
-	case "jpeg":
-		err = jpeg.Encode(c.Response().BodyWriter(), img, nil)
-	case "png":
-		err = png.Encode(c.Response().BodyWriter(), img)
-	case "gif":
-		err = gif.Encode(c.Response().BodyWriter(), img, nil)
-	default:
-		return c.Status(fiber.StatusInternalServerError).SendString("Unsupported image format")
-	}
-
+	imgScaled, err := bimg.Resize(imgBytes, o)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode image")
 	}
+
+	c.Set("Content-Type", "image/"+imgMetadata.Type)
+
 	c.Response().Header.Set("Cache-Control", "public, max-age=1209600")
-	return nil
+	return c.Send(imgScaled)
 }
 
 func UserProfileImage(c *fiber.Ctx) error {
