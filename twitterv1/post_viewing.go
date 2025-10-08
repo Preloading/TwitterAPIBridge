@@ -361,8 +361,10 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 
 	id := 1
 
+	// Quote replies are different for some reason, app.bsky.embed.recordWithMedia
+
 	// Images
-	for _, image := range tweet.Record.Embed.Images {
+	for _, image := range append(tweet.Record.Embed.Images, tweet.Record.Embed.Media.Images...) {
 		// Add the image "url" to the text
 		startLen, endLen := 0, 0
 		formattedImageURL := configData.ImgURLText
