@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!-- im bad at css-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Twitter Bridge</title>
+    <style>
+        * {
+            font-family: sans-serif;
+        }
+        .button {
+            font-weight:900;
+            padding-top: 0.5em;
+            padding-bottom: 0.5em;
+            padding-left: 1em;
+            padding-right: 1em;
+            border: 1px solid #e9eef1;
+            border-radius: 4px;
+        }
+        .b {
+            background-color:#52a5e6;
+            color:white;
+            border-color: #3b96de;
+        }
+        .w {
+            background-color:#f7fafb;
+            color:#51626d;
+            border-color: #e9eef1;
+        }
+        .s {
+            font-size: x-small;
+        }
+        .container {
+            width: min(30em, 90vw); 
+            padding: 1em;
+            border-radius: 4px;
+            border: 1px solid #dde4e8;
+            margin: 1em; 
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: x-large;
+        }
+
+        input {
+            margin: 0.5em
+        }
+
+    </style>
+    <noscript>
+        <!-- This is incase we don't have JS. Oauth is very likely to be impossible, so lets only allow app password. -->
+        <style>
+            #switchButton {
+                display: none;
+            }
+            #appPasswordDiv {
+                display:block !important; 
+            }
+        </style>
+    </noscript>
+</head>
+<body>
+    <div style="display:table;width:100%;height:100%;">
+        <div style="display:table-cell;vertical-align:middle;">
+          <div style="margin-left:auto;margin-right:auto;" class="container">
+                <form>
+                    <input type="hidden" id="authType" name="type" value="apppassword" />
+                    <h1>Authorize app to access your account?</h1>
+                    <div class="inputFields">
+                        <span>Handle</span><input name="handle" id="handle" type="text" placeholder="preloading.bsky.social"><br>
+                        <div style="display:none;" id="appPasswordDiv"><span>App Password</span><input name="password" id="appPassword" type="password"></div>
+                    </div>
+                    <br>
+                    <input type="submit" value="Authorize app" class="b button">
+                    <button type="button" id="switchButton" class="w button" onclick="swapMode()">Use app password instead</button>
+                    <button type="button" class="w button">Cancel</button>
+                    <p style="color:#73af4f">This application will be able to control your whole account.</p>
+                    <p class="s">Learn more about A Twitter Bridge on the <a href="/">homepage</a></p>
+                </form>
+            <div>
+        </div>
+    </div>
+    <script>
+        handle = document.getElementById("handle")
+        appPassword = document.getElementById("appPassword")
+        appPasswordDiv = document.getElementById("appPasswordDiv")
+        switchButton = document.getElementById("switchButton")
+        authType = document.getElementById("authType")
+
+        authType.value = "oauth"
+
+        usingAppPassword = false;
+        function swapMode() {
+            usingAppPassword = !usingAppPassword
+            if (usingAppPassword) {
+                switchButton.innerHTML = "Use oauth instead"
+                appPasswordDiv.style.display = "block";
+                authType.value = "apppassword"
+            } else {
+                switchButton.innerHTML = "Use app password instead"
+                appPasswordDiv.style.display = "none";
+                appPassword.value = ""
+                authType.value = "oauth"
+            }
+        }
+
+        
+    </script>
+</body>
+</html>
