@@ -191,6 +191,9 @@ func InitServer(config *config.Config) {
 
 	// misc
 	app.Get("/mobile_client_api/decider/:path", MobileClientApiDecider)
+	AddV1Path(app.Get, "/help/test.:filetype", func(c *fiber.Ctx) error {
+		return c.SendString("ok")
+	})
 
 	app.Listen(fmt.Sprintf(":%d", config.ServerPort))
 }
