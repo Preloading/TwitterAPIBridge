@@ -364,7 +364,12 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 	// Quote replies are different for some reason, app.bsky.embed.recordWithMedia
 
 	// Images
-	for _, image := range append(tweet.Record.Embed.Images, tweet.Record.Embed.Media.Images...) {
+
+	bskyimages := tweet.Record.Embed.Images
+	if tweet.Record.Embed.Media != nil {
+		bskyimages = append(bskyimages, tweet.Record.Embed.Media.Images...)
+	}
+	for _, image := range bskyimages {
 		// Add the image "url" to the text
 		startLen, endLen := 0, 0
 		formattedImageURL := configData.ImgURLText
@@ -556,7 +561,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 	}
 
 	// GIFs
-	if tweet.Record.Embed.Type == "app.bsky.embed.external" && strings.HasPrefix(tweet.Record.Embed.External.Uri, "https://media.tenor.com/") {
+	if tweet.Record.Embed.External != nil && tweet.Record.Embed.Type == "app.bsky.embed.external" && strings.HasPrefix(tweet.Record.Embed.External.Uri, "https://media.tenor.com/") {
 		startLen, endLen := 0, 0
 		formattedImageURL := configData.GifURLText
 		displayURL := configData.GifDisplayText
@@ -834,7 +839,7 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 	// Videos.
 	// I am 99% sure twitter API 1.0 did not have proper video uploads, so we embed it as a link.
 
-	if tweet.Record.Embed.Video.Video != nil {
+	if tweet.Record.Embed.Video != nil && tweet.Record.Embed.Video.Video != nil {
 		video := tweet.Record.Embed.Video // i don't want to refrence it forever
 
 		// Adding the URL into the text of the tweet
