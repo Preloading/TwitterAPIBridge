@@ -351,6 +351,9 @@ func DeleteTweet(c *fiber.Ctx) error {
 			return ReturnError(c, "You can only delete your own retweets", 195, fiber.StatusForbidden)
 		}
 		collection = "app.bsky.feed.repost"
+		if postToDelete.Thread.Post.Viewer.Repost == nil {
+			return ReturnError(c, "You have to retweet before you can unretweet", 195, fiber.StatusForbidden)
+		}
 		postId = *postToDelete.Thread.Post.Viewer.Repost
 	} else {
 		if postToDelete.Thread.Post.Author.DID != *user_did {
