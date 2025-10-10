@@ -271,7 +271,7 @@ func AttemptToAuthenticateWithOauth(c *fiber.Ctx) error {
 		tokenData.AuthPDS = pds
 
 		// create verifier
-		if tokenData.Callback == "oob" {
+		if tokenData.Callback == "oob" || tokenData.Callback == "" {
 			// generate our pin
 			tokenData.Verifier, err = GenerateNumericPIN(7)
 			if err != nil {
