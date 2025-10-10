@@ -87,6 +87,11 @@ func InitServer(config *config.Config) {
 	app.Post("/oauth/access_token", access_token)
 	AddV1Path(app.Get, "/account/verify_credentials.:filetype", VerifyCredentials)
 
+	// OAUTH
+	app.Post("/oauth/request_token", RequestToken)
+	app.Get("/oauth/authenticate", ServeOAuthLoginPage)
+	app.Post("/oauth/authenticate", AttemptToAuthenticateWithOauth)
+
 	// Tweeting
 	AddV1Path(app.Post, "/statuses/update.:filetype", status_update)
 	AddV1Path(app.Post, "/statuses/update_with_media.:filetype", status_update_with_media)
@@ -195,6 +200,7 @@ func InitServer(config *config.Config) {
 		return c.SendString("ok")
 	})
 
+	go cleanupTempTokens()
 	app.Listen(fmt.Sprintf(":%d", config.ServerPort))
 }
 
