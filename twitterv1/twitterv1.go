@@ -89,6 +89,7 @@ func InitServer(config *config.Config) {
 
 	// OAUTH
 	app.Post("/oauth/request_token", RequestToken)
+	app.Get("/oauth/request_token", RequestToken)
 	app.Get("/oauth/authenticate", ServeOAuthLoginPage)
 	app.Post("/oauth/authenticate", AttemptToAuthenticateWithOauth)
 
