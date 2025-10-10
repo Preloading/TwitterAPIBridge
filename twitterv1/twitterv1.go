@@ -89,6 +89,8 @@ func InitServer(config *config.Config) {
 
 	// OAUTH
 	app.Post("/oauth/request_token", RequestToken)
+	app.Get("/oauth/authenticate", ServeOAuthLoginPage)
+	app.Post("/oauth/authenticate", AttemptToAuthenticateWithOauth)
 
 	// Tweeting
 	AddV1Path(app.Post, "/statuses/update.:filetype", status_update)

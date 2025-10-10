@@ -18,6 +18,74 @@ import (
 	"github.com/google/uuid"
 )
 
+func ReturnSuccessfulAuth(c *fiber.Ctx, res blueskyapi.AuthResponse, pds string) error {
+	// Our bluesky authentication was sucessful! Now we should store the auth info, encryted, in the DB
+	encryptionkey, err := cryption.GenerateKey()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return ReturnError(c, "Failed to generate encryption key", 131, fiber.StatusInternalServerError)
+	}
+
+	access_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.AccessJwt)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return ReturnError(c, "Failed to get token expiration.", 131, fiber.StatusInternalServerError)
+	}
+	refresh_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.RefreshJwt)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return ReturnError(c, "Failed to get token expiration.", 131, fiber.StatusInternalServerError)
+	}
+
+	uuid, err := db_controller.StoreToken(res.DID, pds, res.AccessJwt, res.RefreshJwt, encryptionkey, *access_token_expiry, *refresh_token_expiry)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return ReturnError(c, "Failed to store token, if this persists contact instance operator.", 131, fiber.StatusInternalServerError)
+	}
+	encryptionkey = strings.ReplaceAll(encryptionkey, "+", "-")
+	encryptionkey = strings.ReplaceAll(encryptionkey, "/", "_")
+	encryptionkey = strings.ReplaceAll(encryptionkey, "=", "") // remove padding
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, bridge.AuthToken{
+		Version:          2,
+		Platform:         "bluesky",
+		DID:              res.DID,
+		CryptoKey:        encryptionkey,
+		TokenUUID:        *uuid,
+		ServerIdentifier: configData.ServerIdentifier,
+		ServerURLs:       configData.ServerURLs,
+		RegisteredClaims: &jwt.RegisteredClaims{
+			// No ExpiresAt field means the token never expires
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    configData.ServerIdentifier,
+			ExpiresAt: jwt.NewNumericDate(time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)), // it dies without this. i guess it's also nice to have ig
+		},
+	})
+
+	oauth_token, err := token.SignedString(configData.SecretKeyBytes)
+	if err != nil {
+		return ReturnError(c, "Failed to sign token, if this persists contact instance operator.", 131, fiber.StatusInternalServerError)
+	}
+
+	db_controller.StoreAnalyticData(db_controller.AnalyticData{
+		DataType:             "auth",
+		IPAddress:            c.IP(),
+		UserAgent:            c.Get("User-Agent"),
+		Language:             c.Get("Accept-Language"),
+		TwitterClient:        c.Get("X-Twitter-Client"),
+		TwitterClientVersion: c.Get("X-Twitter-Client-Version"),
+		Timestamp:            time.Now(),
+	})
+
+	session, err := blueskyapi.GetSession(pds, res.AccessJwt)
+	if err != nil {
+		return ReturnError(c, "Failed to get token information", 131, fiber.StatusInternalServerError)
+	}
+	return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=%s&x_auth_expires=0", oauth_token, oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(res.DID)), url.QueryEscape(session.Handle)))
+}
+
 // https://developer.x.com/en/docs/authentication/api-reference/access_token
 // and
 // https://web.archive.org/web/20120708225149/https://dev.twitter.com/docs/oauth/xauth
@@ -34,67 +102,8 @@ func access_token(c *fiber.Ctx) error {
 			return HandleBlueskyError(c, err.Error(), "com.atproto.server.createSession", access_token)
 		}
 
-		// Our bluesky authentication was sucessful! Now we should store the auth info, encryted, in the DB
-		encryptionkey, err := cryption.GenerateKey()
-		if err != nil {
-			fmt.Println("Error:", err)
-			return ReturnError(c, "Failed to generate encryption key", 131, fiber.StatusInternalServerError)
-		}
+		return ReturnSuccessfulAuth(c, *res, *pds)
 
-		access_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.AccessJwt)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return ReturnError(c, "Failed to get token expiration.", 131, fiber.StatusInternalServerError)
-		}
-		refresh_token_expiry, err := cryption.GetJWTTokenExpirationUnix(res.RefreshJwt)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return ReturnError(c, "Failed to get token expiration.", 131, fiber.StatusInternalServerError)
-		}
-
-		uuid, err := db_controller.StoreToken(res.DID, *pds, res.AccessJwt, res.RefreshJwt, encryptionkey, *access_token_expiry, *refresh_token_expiry)
-
-		if err != nil {
-			fmt.Println("Error:", err)
-			return ReturnError(c, "Failed to store token, if this persists contact instance operator.", 131, fiber.StatusInternalServerError)
-		}
-		encryptionkey = strings.ReplaceAll(encryptionkey, "+", "-")
-		encryptionkey = strings.ReplaceAll(encryptionkey, "/", "_")
-		encryptionkey = strings.ReplaceAll(encryptionkey, "=", "") // remove padding
-
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, bridge.AuthToken{
-			Version:          2,
-			Platform:         "bluesky",
-			DID:              res.DID,
-			CryptoKey:        encryptionkey,
-			TokenUUID:        *uuid,
-			ServerIdentifier: configData.ServerIdentifier,
-			ServerURLs:       configData.ServerURLs,
-			RegisteredClaims: &jwt.RegisteredClaims{
-				// No ExpiresAt field means the token never expires
-				IssuedAt:  jwt.NewNumericDate(time.Now()),
-				NotBefore: jwt.NewNumericDate(time.Now()),
-				Issuer:    configData.ServerIdentifier,
-				ExpiresAt: jwt.NewNumericDate(time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)), // it dies without this. i guess it's also nice to have ig
-			},
-		})
-
-		oauth_token, err := token.SignedString(configData.SecretKeyBytes)
-		if err != nil {
-			return ReturnError(c, "Failed to sign token, if this persists contact instance operator.", 131, fiber.StatusInternalServerError)
-		}
-
-		db_controller.StoreAnalyticData(db_controller.AnalyticData{
-			DataType:             "auth",
-			IPAddress:            c.IP(),
-			UserAgent:            c.Get("User-Agent"),
-			Language:             c.Get("Accept-Language"),
-			TwitterClient:        c.Get("X-Twitter-Client"),
-			TwitterClientVersion: c.Get("X-Twitter-Client-Version"),
-			Timestamp:            time.Now(),
-		})
-
-		return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=%s&x_auth_expires=0", oauth_token, oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(res.DID)), url.QueryEscape(authUsername))) // TODO: make this the actual screenname
 	} else if authMode == "exchange_auth" {
 		return c.Status(fiber.StatusUnauthorized).SendString("i have no idea what this should respond with, but it works if i don't have it implemented, so thats what im doing. If you do know what this does, lmk! <3")
 		// this is a hack
@@ -110,6 +119,12 @@ func access_token(c *fiber.Ctx) error {
 		// }
 
 		// return c.SendString(fmt.Sprintf("oauth_token=%s&oauth_token_secret=%s&user_id=%s&screen_name=%s&x_auth_expires=0", *oauth_token, *oauth_token, fmt.Sprintf("%d", bridge.BlueSkyToTwitterID(*my_did)), url.QueryEscape(authenticating_user.ScreenName)))
+	} else if authMode == "" {
+		if c.Get("Authorization") != "" {
+			// this is likely an oauth request
+			return OAuthAccessToken(c)
+		}
+		return c.SendStatus(501)
 	}
 	// We have an unknown request. huh. Probably registration, i'll find a way to send an error msg for that later, as registration is out of scope.
 	return c.SendStatus(501)

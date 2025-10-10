@@ -688,9 +688,9 @@ input.textual,button.textual{
 	height:14px
 }
 @media(-webkit-min-device-pixel-ratio:1.5),(min-resolution:144dpi){
-	.ic-sm-verified,.follow-button b,#header .logo a,.badges .verified,.badges .protected,.tweet-actions i,.retweet-icon{
+	/* .ic-sm-verified,.follow-button b,#header .logo a,.badges .verified,.badges .protected,.tweet-actions i,.retweet-icon{
 		background-image:url(../login/img/16/xlogo.png)
-}
+} */
 	.js .notice.callback h2,.wait-msg{
 		background-image:url(../login/img/16/spinner@2x.gif)
 }

@@ -391,6 +391,12 @@ type FTime struct {
 	time.Time
 }
 
+type Session struct {
+	DID    string `json:"did"`
+	Handle string `json:"handle"`
+	Email  string `json:"email"`
+}
+
 func (ct *FTime) UnmarshalJSON(b []byte) error {
 	// Remove quotes
 	s := strings.Trim(string(b), `"`)
@@ -1988,6 +1994,36 @@ func GetNotifications(pds string, token string, limit int, context string) (*Not
 	}
 
 	return &notifications, nil
+}
+
+func GetSession(pds string, token string) (*Session, error) {
+	url := pds + "/xrpc/com.atproto.server.getSession"
+
+	resp, err := SendRequest(&token, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// // Print the response body for debugging
+	// bodyBytes, _ := io.ReadAll(resp.Body)
+	// bodyString := string(bodyBytes)
+	// fmt.Println("Response Body:", bodyString)
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		fmt.Println("Response Status:", resp.StatusCode)
+		fmt.Println("Response Body:", bodyString)
+		return nil, errors.New(bodyString) // return response
+	}
+
+	session := Session{}
+	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
+		return nil, err
+	}
+
+	return &session, nil
 }
 
 func GetMentions(pds string, token string, limit int, context string) (*Notifications, error) {
