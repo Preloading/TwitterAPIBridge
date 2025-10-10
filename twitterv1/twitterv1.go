@@ -88,6 +88,7 @@ func InitServer(config *config.Config) {
 	AddV1Path(app.Get, "/account/verify_credentials.:filetype", VerifyCredentials)
 
 	// OAUTH
+	app.Get("/oauth/request_token", RequestToken)
 	app.Post("/oauth/request_token", RequestToken)
 	app.Get("/oauth/request_token", RequestToken)
 	app.Get("/oauth/authorize", ServeOAuthLoginPage)
