@@ -241,6 +241,7 @@ func EncodeAndSend(c *fiber.Ctx, data interface{}) error {
 		customHeader := []byte(`<?xml version="1.0" encoding="UTF-8"?>`)
 		xmlContent = append(customHeader, xmlContent...)
 
+		c.Set("Content-Type", "application/xml")
 		return c.SendString(string(xmlContent))
 	case "json", "":
 		encoded, err := json.Marshal(data)
@@ -248,6 +249,7 @@ func EncodeAndSend(c *fiber.Ctx, data interface{}) error {
 			fmt.Println("Error:", err)
 			return c.Status(fiber.StatusInternalServerError).SendString("Failed to encode into json!")
 		}
+		c.Set("Content-Type", "application/json")
 		return c.SendString(string(encoded))
 	default:
 		return c.Status(fiber.StatusInternalServerError).SendString("Invalid file type!")
