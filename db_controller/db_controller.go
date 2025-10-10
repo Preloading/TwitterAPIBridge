@@ -19,6 +19,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/gorm/logger"
 )
 
 // I will most likely need to store auth tokens in a database, as I can only really get one auth related value from the user, and I can't change that value.
@@ -118,15 +119,19 @@ func InitDB(_cfg config.Config) {
 		}
 	}
 
+	gormConfig := &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Warn), // Use Warn to see slow SQL, but not info/debug
+	}
+
 	// Initialize the database connection
 	var err error
 	switch cfg.DatabaseType {
 	case "sqlite":
-		db, err = gorm.Open(sqlite.Open(cfg.DatabasePath), &gorm.Config{})
+		db, err = gorm.Open(sqlite.Open(cfg.DatabasePath), gormConfig)
 	case "mysql":
-		db, err = gorm.Open(mysql.Open(cfg.DatabasePath), &gorm.Config{})
+		db, err = gorm.Open(mysql.Open(cfg.DatabasePath), gormConfig)
 	case "postgres":
-		db, err = gorm.Open(postgres.Open(cfg.DatabasePath), &gorm.Config{})
+		db, err = gorm.Open(postgres.Open(cfg.DatabasePath), gormConfig)
 	default:
 		panic("unsupported database type")
 	}

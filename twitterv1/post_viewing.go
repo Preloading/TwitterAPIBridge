@@ -125,7 +125,16 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 		}
 		_, date, _, err := bridge.TwitterMsgIdToBluesky(&maxIDInt)
 		if err != nil {
-			return ReturnError(c, "max_id was not found", 144, fiber.StatusForbidden)
+			tempId := maxIDInt - 1
+			_, date, _, err = bridge.TwitterMsgIdToBluesky(&tempId)
+			if err != nil {
+				tempId = maxIDInt + 1
+				_, date, _, err = bridge.TwitterMsgIdToBluesky(&tempId)
+				if err != nil {
+					return ReturnError(c, "max_id was not found", 144, fiber.StatusForbidden)
+
+				}
+			}
 		}
 		context = date.Format(time.RFC3339)
 	}
@@ -143,7 +152,17 @@ func convert_timeline(c *fiber.Ctx, param string, requireAuth bool, fetcher func
 		}
 		_, tempDate, _, err := bridge.TwitterMsgIdToBluesky(&sinceIdInt)
 		if err != nil {
-			return ReturnError(c, "since_id was not found", 144, fiber.StatusForbidden)
+			// the offical twitter docs recommended you add one to the id. Because of... technical debt, our IDs do not support this, and thus this must be done
+			tempId := sinceIdInt - 1
+			_, tempDate, _, err = bridge.TwitterMsgIdToBluesky(&tempId)
+			if err != nil {
+				tempId = sinceIdInt + 1
+				_, tempDate, _, err = bridge.TwitterMsgIdToBluesky(&tempId)
+				if err != nil {
+					return ReturnError(c, "since_id was not found", 144, fiber.StatusForbidden)
+				}
+			}
+
 		}
 		since_date = *tempDate
 		hasSinceDate = true
