@@ -34,22 +34,11 @@ func hot_post_timeline(c *fiber.Ctx) error {
 }
 
 func user_timeline(c *fiber.Ctx) error {
-	actor := c.Query("screen_name")
-	if actor == "" {
-		actor = c.Query("user_id")
-		if actor == "" {
-			return ReturnError(c, "No user provided", 195, fiber.StatusForbidden)
-		}
-		actorInt, err := strconv.ParseInt(actor, 10, 64)
-		if err != nil {
-			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
-		}
-		actorPtr, err := bridge.TwitterIDToBlueSky(&actorInt)
-		if err != nil {
-			return ReturnError(c, "Invalid user_id provided", 195, fiber.StatusForbidden)
-		}
-		actor = *actorPtr
+	actorPtr, err := GetUserSpecifiedInRequest(c, nil)
+	if err != nil {
+		return err
 	}
+	actor := *actorPtr
 	return convert_timeline(c, actor, false, blueskyapi.GetUserTimeline)
 }
 

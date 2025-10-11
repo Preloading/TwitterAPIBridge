@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"strconv"
 	"strings"
 
 	blueskyapi "github.com/Preloading/TwitterAPIBridge/bluesky"
+	"github.com/Preloading/TwitterAPIBridge/bridge"
 	"github.com/Preloading/TwitterAPIBridge/config"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -106,7 +108,9 @@ func InitServer(config *config.Config) {
 
 	// Posts
 	AddV1Path(app.Get, "/statuses/home_timeline.:filetype", home_timeline)
+	AddV1Path(app.Get, "/statuses/friends_timeline.:filetype", home_timeline)
 	AddV1Path(app.Get, "/statuses/user_timeline.:filetype", user_timeline)
+	AddV1Path(app.Get, "/statuses/user_timeline/*", HandleFiletypeSplitter(user_timeline))
 	AddV1Path(app.Get, "/statuses/mentions.:filetype", mentions_timeline)
 	AddV1Path(app.Get, "/favorites/toptweets.:filetype", hot_post_timeline)
 	AddV1Path(app.Get, "/tatuses/media_timeline.:filetype", media_timeline)
@@ -116,21 +120,7 @@ func InitServer(config *config.Config) {
 
 	// Users
 	AddV1Path(app.Get, "/users/show.:filetype", user_info)
-	AddV1Path(app.Get, "/users/show/*", func(c *fiber.Ctx) error {
-		path := c.Params("*")
-		lastDotIndex := strings.LastIndex(path, ".")
-
-		if lastDotIndex == -1 {
-			// No file extension found
-			c.Locals("handle", path)
-			c.Locals("filetype", "json") // Default to JSON
-		} else {
-			c.Locals("handle", path[:lastDotIndex])
-			c.Locals("filetype", path[lastDotIndex+1:])
-		}
-
-		return user_info(c)
-	})
+	AddV1Path(app.Get, "/users/show/*", HandleFiletypeSplitter(user_info))
 	AddV1Path(app.Get, "/users/lookup.:filetype", UsersLookup)
 	AddV1Path(app.Post, "/users/lookup.:filetype", UsersLookup)
 	AddV1Path(app.Get, "/friendships/lookup.:filetype", UserRelationships)
@@ -143,6 +133,10 @@ func InitServer(config *config.Config) {
 	AddV1Path(app.Get, "/friends.:filetype", GetFollows)
 	AddV1Path(app.Get, "/statuses/followers.:filetype", GetStatusesFollowers)
 	AddV1Path(app.Get, "/statuses/friends.:filetype", GetStatusesFollows)
+	AddV1Path(app.Get, "/friends/ids.:filetype", GetFollowingIds)
+	AddV1Path(app.Get, "/friends/ids/*", HandleFiletypeSplitter(GetFollowingIds))
+	AddV1Path(app.Get, "/followers/ids.:filetype", GetFollowersIds)
+	AddV1Path(app.Get, "/followers/ids/*", HandleFiletypeSplitter(GetFollowersIds))
 	app.Get("/i/device_following/ids.:filetype", GetFollowingIds)
 
 	AddV1Path(app.Get, "/users/recommendations.:filetype", GetSuggestedUsers)
@@ -206,9 +200,58 @@ func InitServer(config *config.Config) {
 	app.Listen(fmt.Sprintf(":%d", config.ServerPort))
 }
 
+func HandleFiletypeSplitter(handler fiber.Handler) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		path := c.Params("*")
+		lastDotIndex := strings.LastIndex(path, ".")
+
+		if lastDotIndex == -1 {
+			// No file extension found
+			c.Locals("handle", path)
+			c.Locals("filetype", "json") // Default to JSON
+		} else {
+			c.Locals("handle", path[:lastDotIndex])
+			c.Locals("filetype", path[lastDotIndex+1:])
+		}
+
+		return handler(c)
+	}
+}
+
 func AddV1Path(function func(string, ...fiber.Handler) fiber.Router, url string, handler fiber.Handler) {
 	function(url, handler)
 	function(fmt.Sprintf("/1%s", url), handler)
+}
+
+func GetUserSpecifiedInRequest(c *fiber.Ctx, no_value_default *string) (*string, error) {
+	actor := c.FormValue("user_id")
+	if actor == "" {
+		actor = c.FormValue("screen_name")
+		if actor == "" {
+			actor = c.Locals("handle").(string)
+		}
+		if actor == "" {
+			if no_value_default != nil {
+				actor = *no_value_default
+			} else {
+				return nil, ReturnError(c, "No user was specified", 195, 403)
+			}
+		}
+	} else {
+		id, err := strconv.ParseInt(actor, 10, 64)
+		if err != nil {
+			return nil, ReturnError(c, "Invalid ID format", 195, 403)
+		}
+		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
+		if err != nil {
+			return nil, ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
+		}
+		if actorPtr == nil {
+			return nil, ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
+		}
+		actor = *actorPtr
+	}
+	return &actor, nil
 }
 
 // misc
