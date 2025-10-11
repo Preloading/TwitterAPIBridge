@@ -61,6 +61,11 @@ func UsersLookup(c *fiber.Ctx) error {
 	user_id := c.Query("user_id")
 	var usersToLookUp []string
 
+	if screen_name == "" && user_id == "" {
+		screen_name = c.FormValue("screen_name")
+		user_id = c.FormValue("user_id")
+	}
+
 	if screen_name != "" {
 		usersToLookUp = strings.Split(screen_name, ",")
 	} else if user_id != "" {
