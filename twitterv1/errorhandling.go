@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -36,6 +37,8 @@ func ReturnError(c *fiber.Ctx, message string, error_code int, http_error int) e
 			},
 		},
 	}
+
+	log.Printf("a user encountered an error: %s", message)
 
 	return EncodeAndSend(c, err)
 }
