@@ -632,6 +632,10 @@ func TwitterMsgIdToBluesky(id *int64) (*string, *time.Time, *string, error) {
 		return nil, nil, nil, err
 	}
 
+	if createdAt == nil {
+		return nil, nil, nil, err
+	}
+
 	return uri, createdAt, retweetUserId, nil
 }
 

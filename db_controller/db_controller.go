@@ -148,6 +148,8 @@ func InitDB(_cfg config.Config) {
 	db.AutoMigrate(&ShortLink{})
 	db.AutoMigrate(&NotificationTokens{})
 
+	db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tokens_user_did_token_uuid ON tokens(user_did, token_uuid)`) // annoying!
+
 	StartPeriodicAnalyticsWriter(time.Minute)
 }
 

@@ -224,11 +224,15 @@ func AddV1Path(function func(string, ...fiber.Handler) fiber.Router, url string,
 }
 
 func GetUserSpecifiedInRequest(c *fiber.Ctx, no_value_default *string) (*string, error) {
+	var ok bool
 	actor := c.FormValue("user_id")
 	if actor == "" {
 		actor = c.FormValue("screen_name")
 		if actor == "" {
-			actor = c.Locals("handle").(string)
+			actor, ok = c.Locals("handle").(string)
+			if !ok {
+				actor = ""
+			}
 		}
 		if actor == "" {
 			if no_value_default != nil {

@@ -1175,8 +1175,9 @@ func mentions_timeline(c *fiber.Ctx) error {
 	}
 
 	// Handle pagination
-	context := ""
 	max_id := c.Query("max_id")
+	context := ""
+
 	// Handle getting things in the past
 	if max_id != "" {
 		// Get the timeline context from the DB
@@ -1187,9 +1188,47 @@ func mentions_timeline(c *fiber.Ctx) error {
 		}
 		_, date, _, err := bridge.TwitterMsgIdToBluesky(&maxIDInt)
 		if err != nil {
-			return ReturnError(c, "max_id was not found", 144, fiber.StatusForbidden)
+			tempId := maxIDInt - 1
+			_, date, _, err = bridge.TwitterMsgIdToBluesky(&tempId)
+			if err != nil {
+				tempId = maxIDInt + 1
+				_, date, _, err = bridge.TwitterMsgIdToBluesky(&tempId)
+				if err != nil {
+					return ReturnError(c, "max_id was not found", 144, fiber.StatusForbidden)
+
+				}
+			}
 		}
 		context = date.Format(time.RFC3339)
+	}
+
+	since_id := c.Query("since_id")
+	since_date := time.Time{}
+	hasSinceDate := false
+
+	// Handle getting things in the past
+	if since_id != "" {
+		// Get the timeline context from the DB
+		sinceIdInt, err := strconv.ParseInt(since_id, 10, 64)
+		if err != nil {
+			return ReturnError(c, "Invalid since_id format", 195, fiber.StatusForbidden)
+		}
+		_, tempDate, _, err := bridge.TwitterMsgIdToBluesky(&sinceIdInt)
+		if err != nil {
+			// the offical twitter docs recommended you add one to the id. Because of... technical debt, our IDs do not support this, and thus this must be done
+			tempId := sinceIdInt - 1
+			_, tempDate, _, err = bridge.TwitterMsgIdToBluesky(&tempId)
+			if err != nil {
+				tempId = sinceIdInt + 1
+				_, tempDate, _, err = bridge.TwitterMsgIdToBluesky(&tempId)
+				if err != nil {
+					return ReturnError(c, "since_id was not found", 144, fiber.StatusForbidden)
+				}
+			}
+
+		}
+		since_date = *tempDate
+		hasSinceDate = true
 	}
 
 	// Handle count
@@ -1230,32 +1269,38 @@ func mentions_timeline(c *fiber.Ctx) error {
 	}
 
 	// Create thread-safe maps for results
-	var userCache sync.Map
 	var postCache sync.Map
 
 	// Process in parallel
 	var wg sync.WaitGroup
 
 	// Fetch users in chunks
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		users, err := blueskyapi.GetUsersInfo(*pds, *oauthToken, usersToLookUp, false)
-		if err == nil {
-			for _, user := range users {
-				userCache.Store(user.ScreenName[strings.LastIndex(user.ScreenName, "/")+1:], user)
-			}
-		}
-	}()
+
+	userChunks := chunkSlice(usersToLookUp, 25)
+	wg.Add(len(userChunks))
+	for _, chunk := range userChunks {
+		go func() {
+			defer wg.Done()
+			blueskyapi.GetUsersInfo(*pds, *oauthToken, chunk, false)
+		}()
+	}
 
 	// Fetch posts in parallel chunks
+	var wgPosts sync.WaitGroup
 	postChunks := chunkSlice(postsToLookUp, 10)
+
 	for _, chunk := range postChunks {
-		wg.Add(1)
-		go func(posts []string) {
-			defer wg.Done()
-			for _, postID := range posts {
+		wgPosts.Add(len(chunk))
+		for _, postID := range chunk {
+			go func(postID string) {
+				defer wgPosts.Done()
+
 				if post, err := blueskyapi.GetPost(*pds, *oauthToken, postID, 0, 1); err == nil {
+					if hasSinceDate {
+						if !post.Thread.Post.IndexedAt.After(since_date) {
+							return
+						}
+					}
 					tweet := TranslatePostToTweet(
 						post.Thread.Post,
 						func() string {
@@ -1288,8 +1333,10 @@ func mentions_timeline(c *fiber.Ctx) error {
 					)
 					postCache.Store(postID, &tweet)
 				}
-			}
-		}(chunk)
+
+			}(postID)
+		}
+		wgPosts.Wait()
 	}
 
 	wg.Wait()
@@ -1299,6 +1346,7 @@ func mentions_timeline(c *fiber.Ctx) error {
 	for _, notification := range bskyNotifications.Notifications {
 		if post, ok := postCache.Load(notification.URI); ok {
 			tweet := post.(*bridge.Tweet)
+
 			tweets = append(tweets, *tweet)
 		}
 	}
