@@ -384,7 +384,11 @@ func TranslatePostToTweet(tweet blueskyapi.Post, replyMsgBskyURI string, replyUs
 		displayURL := configData.ImgDisplayText
 		shortCode := ""
 		if displayURL != "" {
-			displayURL = strings.ReplaceAll(displayURL, "{shortblob}", image.Image.Ref.Link[len(image.Image.Ref.Link)-6:])
+			if len(image.Image.Ref.Link) < 6 {
+				displayURL = strings.ReplaceAll(displayURL, "{shortblob}", image.Image.Ref.Link)
+			} else {
+				displayURL = strings.ReplaceAll(displayURL, "{shortblob}", image.Image.Ref.Link[len(image.Image.Ref.Link)-6:])
+			}
 			displayURL = strings.ReplaceAll(displayURL, "{fullblob}", image.Image.Ref.Link)
 			displayURL = strings.ReplaceAll(displayURL, "{user_did}", tweet.Author.DID)
 			if strings.Contains(displayURL, "{shortcode}") {
