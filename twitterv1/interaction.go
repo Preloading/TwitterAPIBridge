@@ -78,10 +78,13 @@ func status_update_with_media(c *fiber.Ctx) error {
 	status := c.FormValue("status")
 
 	// The docs say it's an array, but I can only upload one imageData.... so idk
-	imageData, err := c.FormFile("media")
+	imageData, err := c.FormFile("media") // i love it when things dont follow the docs
 	if err != nil {
-		fmt.Println("Error:", err)
-		return ReturnError(c, "Please upload an image", 195, fiber.StatusForbidden)
+		imageData, err = c.FormFile("media[]")
+		if err != nil {
+			fmt.Println("Error:", err)
+			return ReturnError(c, "Please upload an image", 195, fiber.StatusForbidden)
+		}
 	}
 
 	// read the image file content
