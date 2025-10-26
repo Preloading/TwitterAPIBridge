@@ -435,7 +435,7 @@ func GetStatusesFollowers(c *fiber.Ctx) error {
 	// lets go get our user data
 	actorPtr, err := GetUserSpecifiedInRequest(c, userDID)
 	if err != nil {
-		return err
+		return ReturnError(c, err.Error(), 19, 400)
 	}
 	actor := *actorPtr
 
@@ -480,7 +480,7 @@ func GetFollowers(c *fiber.Ctx) error {
 	// lets go get our user data
 	actorPtr, err := GetUserSpecifiedInRequest(c, userDID)
 	if err != nil {
-		return err
+		return ReturnError(c, err.Error(), 19, 400)
 	}
 	actor := *actorPtr
 
@@ -576,7 +576,7 @@ func GetStatusesFollows(c *fiber.Ctx) error {
 	// lets go get our user data
 	actorPtr, err := GetUserSpecifiedInRequest(c, userDID)
 	if err != nil {
-		return err
+		return ReturnError(c, err.Error(), 19, 400)
 	}
 	actor := *actorPtr
 
@@ -733,7 +733,7 @@ func GetFollowingIds(c *fiber.Ctx) error {
 	// lets go get our user data
 	actorPtr, err := GetUserSpecifiedInRequest(c, userDID)
 	if err != nil {
-		return err
+		return ReturnError(c, err.Error(), 19, 400)
 	}
 	actor := *actorPtr
 
@@ -809,7 +809,7 @@ func GetFollowersIds(c *fiber.Ctx) error {
 	// lets go get our user data
 	actorPtr, err := GetUserSpecifiedInRequest(c, userDID)
 	if err != nil {
-		return err
+		return ReturnError(c, err.Error(), 19, 400)
 	}
 	actor := *actorPtr
 

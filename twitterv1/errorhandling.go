@@ -24,6 +24,7 @@ type Errors struct {
 	Error   []Error  `json:"errors"`
 }
 
+// WARNING! This doesn't return a non-nil value
 func ReturnError(c *fiber.Ctx, message string, error_code int, http_error int) error {
 	if c.Query("suppress_response_codes") != "true" {
 		c.Status(http_error)

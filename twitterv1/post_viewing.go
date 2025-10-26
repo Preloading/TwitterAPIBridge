@@ -36,7 +36,7 @@ func hot_post_timeline(c *fiber.Ctx) error {
 func user_timeline(c *fiber.Ctx) error {
 	actorPtr, err := GetUserSpecifiedInRequest(c, nil)
 	if err != nil {
-		return err
+		return ReturnError(c, err.Error(), 19, 400)
 	}
 	actor := *actorPtr
 	return convert_timeline(c, actor, false, blueskyapi.GetUserTimeline)

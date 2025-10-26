@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -238,20 +239,20 @@ func GetUserSpecifiedInRequest(c *fiber.Ctx, no_value_default *string) (*string,
 			if no_value_default != nil {
 				actor = *no_value_default
 			} else {
-				return nil, ReturnError(c, "No user was specified", 195, 403)
+				return nil, errors.New("no user was specified")
 			}
 		}
 	} else {
 		id, err := strconv.ParseInt(actor, 10, 64)
 		if err != nil {
-			return nil, ReturnError(c, "Invalid ID format", 195, 403)
+			return nil, errors.New("invalid id format")
 		}
 		actorPtr, err := bridge.TwitterIDToBlueSky(&id)
 		if err != nil {
-			return nil, ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
+			return nil, errors.New("id not found")
 		}
 		if actorPtr == nil {
-			return nil, ReturnError(c, "ID not found.", 144, fiber.StatusNotFound)
+			return nil, errors.New("id not found")
 		}
 		actor = *actorPtr
 	}
