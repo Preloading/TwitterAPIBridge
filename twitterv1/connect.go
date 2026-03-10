@@ -107,7 +107,7 @@ func SearchAhead(c *fiber.Ctx) error {
 	users := make([]bridge.SummarisedUser, len(bskyUsers))
 	for i, user := range bskyUsers {
 		userId := bridge.BlueSkyToTwitterID(user.DID)
-		pfp_url := configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(user.Avatar) + ":profile_bigger"
+		pfp_url := configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(user.Avatar) + "@jpeg:profile_bigger"
 		users[i] = bridge.SummarisedUser{
 			ID:                   *userId,
 			IDStr:                strconv.FormatInt(*userId, 10),

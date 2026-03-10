@@ -106,6 +106,16 @@ func CDNDownscaler(c *fiber.Ctx) error {
 	}
 	defer resp.Body.Close()
 
+	if resizeOption == "none" || (width == 0 && height == 0) {
+		c.Response().Header.Set("Cache-Control", "public, max-age=1209600")
+		c.Response().Header.Set("Content-Type", resp.Header.Get("Content-Type"))
+		imgBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to recieve image")
+		}
+		return c.Send(imgBytes)
+	}
+
 	imgBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to recieve image")
@@ -114,21 +124,6 @@ func CDNDownscaler(c *fiber.Ctx) error {
 	imgMetadata, err := bimg.Metadata(imgBytes)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("bad img")
-	}
-
-	// Convert WebP to JPEG
-	if imgMetadata.Type == "webp" {
-		imgBytes, err = bimg.Resize(imgBytes, bimg.Options{Quality: 80})
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString("Failed to convert image")
-		}
-		imgMetadata.Type = "jpeg"
-	}
-
-	if resizeOption == "none" || (width == 0 && height == 0) {
-		c.Response().Header.Set("Cache-Control", "public, max-age=1209600")
-		c.Response().Header.Set("Content-Type", "image/"+imgMetadata.Type)
-		return c.Send(imgBytes)
 	}
 
 	if maintainAspect {

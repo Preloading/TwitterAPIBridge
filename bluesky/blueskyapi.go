@@ -677,7 +677,7 @@ func GetRelationships(pds string, token string, source string, others []string) 
 // https://web.archive.org/web/20121029153120/https://dev.twitter.com/docs/platform-objects/users
 func AuthorTTB(author User) *bridge.TwitterUser {
 	id := bridge.BlueSkyToTwitterID(author.DID)
-	pfp_url := configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + ":profile_bigger"
+	pfp_url := configData.CdnURL + "/cdn/img/?url=" + url.QueryEscape(author.Avatar) + "@jpeg:profile_bigger"
 	banner_url := ""
 	if author.Banner != "" {
 		banner_components := strings.Split(author.Banner, "/")
