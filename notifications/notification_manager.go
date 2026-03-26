@@ -132,7 +132,7 @@ func RunNotifications(cfg config.Config) {
 
 			feedback, err := skyglownotificationlib.GetFeedback(cfg.NotificationFeedbackSecret, lastCheckedForPushNotificationFeedback)
 			if err != nil {
-				continue
+				// continue // it will literally spam the server until it responds. oops.
 			}
 
 			lastCheckedForPushNotificationFeedback = time.Now()
