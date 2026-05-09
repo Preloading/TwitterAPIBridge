@@ -109,14 +109,16 @@ func InitServer(config *config.Config) {
 
 	// Posts
 	AddV1Path(app.Get, "/statuses/home_timeline.:filetype", home_timeline)
+	AddV11Path(app.Get, "/timeline/home.:filetype", home_timeline) // todo: make correct
 	AddV1Path(app.Get, "/statuses/friends_timeline.:filetype", home_timeline)
 	AddV1Path(app.Get, "/statuses/user_timeline.:filetype", user_timeline)
 	AddV1Path(app.Get, "/statuses/user_timeline/*", HandleFiletypeSplitter(user_timeline))
 	AddV1Path(app.Get, "/statuses/mentions.:filetype", mentions_timeline)
 	AddV1Path(app.Get, "/favorites/toptweets.:filetype", hot_post_timeline)
-	AddV1Path(app.Get, "/tatuses/media_timeline.:filetype", media_timeline)
+	AddV1Path(app.Get, "/statuses/media_timeline.:filetype", media_timeline)
 	AddV1Path(app.Get, "/statuses/show/:id.:filetype", GetStatusFromId)
 	app.Get("/i/statuses/:id/activity/summary.:filetype", TweetInfo)
+	app.Get("/1.1/statuses/:id/activity/summary.:filetype", TweetInfo)
 	AddV1Path(app.Get, "/related_results/show/:id.:filetype", RelatedResults)
 
 	// Users
@@ -148,6 +150,9 @@ func InitServer(config *config.Config) {
 	app.Get("/i/search/typeahead.:filetype", SearchAhead)
 	app.Get("/i/activity/about_me.:filetype", GetMyActivity)
 
+	app.Get("/1.1/search/typeahead.:filetype", SearchAhead)
+	app.Get("/1.1/activity/about_me.:filetype", GetMyActivity)
+
 	// Discover
 	AddV1Path(app.Get, "/trends/:woeid.:filetype", trends_woeid)
 	AddV1Path(app.Get, "/trends/current.:filetype", trends_woeid)
@@ -155,6 +160,8 @@ func InitServer(config *config.Config) {
 	AddV1Path(app.Get, "/users/suggestions/:slug.:filetype", GetTopicSuggestedUsers)
 	app.Get("/i/search.:filetype", InternalSearch)
 	app.Get("/i/discovery.:filetype", discovery)
+
+	app.Get("/1.1/discovery/universal.:filetype", discovery)
 
 	// Lists
 	AddV1Path(app.Get, "/lists.:filetype", GetUsersLists)
@@ -222,6 +229,11 @@ func HandleFiletypeSplitter(handler fiber.Handler) fiber.Handler {
 func AddV1Path(function func(string, ...fiber.Handler) fiber.Router, url string, handler fiber.Handler) {
 	function(url, handler)
 	function(fmt.Sprintf("/1%s", url), handler)
+	function(fmt.Sprintf("/1.1%s", url), handler)
+}
+
+func AddV11Path(function func(string, ...fiber.Handler) fiber.Router, url string, handler fiber.Handler) {
+	function(url, handler)
 	function(fmt.Sprintf("/1.1%s", url), handler)
 }
 
