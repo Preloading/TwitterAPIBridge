@@ -109,7 +109,7 @@ func InitServer(config *config.Config) {
 
 	// Posts
 	AddV1Path(app.Get, "/statuses/home_timeline.:filetype", home_timeline)
-	AddV11Path(app.Get, "/timeline/home.:filetype", home_timeline) // todo: make correct
+	// AddV11Path(app.Get, "/timeline/home.:filetype", home_timeline) // todo: make correct
 	AddV1Path(app.Get, "/statuses/friends_timeline.:filetype", home_timeline)
 	AddV1Path(app.Get, "/statuses/user_timeline.:filetype", user_timeline)
 	AddV1Path(app.Get, "/statuses/user_timeline/*", HandleFiletypeSplitter(user_timeline))
