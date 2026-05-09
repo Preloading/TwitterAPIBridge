@@ -222,6 +222,7 @@ func HandleFiletypeSplitter(handler fiber.Handler) fiber.Handler {
 func AddV1Path(function func(string, ...fiber.Handler) fiber.Router, url string, handler fiber.Handler) {
 	function(url, handler)
 	function(fmt.Sprintf("/1%s", url), handler)
+	function(fmt.Sprintf("/1.1%s", url), handler)
 }
 
 func GetUserSpecifiedInRequest(c *fiber.Ctx, no_value_default *string) (*string, error) {
