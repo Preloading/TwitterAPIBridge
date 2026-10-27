@@ -15,8 +15,8 @@ type Error struct {
 }
 
 type BlueskyError struct {
-	Error   string
-	Message string
+	Error   string `json:"error"`
+	Message string `json:"message"`
 }
 
 type Errors struct {
@@ -59,11 +59,13 @@ func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string, funct
 	switch res.Error {
 	// Generic
 	case "InvalidRequest":
-		switch res.Message {
-		case "Profile not found":
-			return ReturnError(c, "User not found.", 50, fiber.StatusNotFound)
-		default:
-			return ReturnError(c, "Invalid request.", 0, fiber.StatusBadRequest) // unknown
+		{
+			switch res.Message {
+			case "Profile not found":
+				return ReturnError(c, "User not found.", 50, fiber.StatusNotFound)
+			default:
+				return ReturnError(c, "Invalid request.", 0, fiber.StatusBadRequest) // unknown
+			}
 		}
 
 	case "InvalidSwap":
@@ -78,6 +80,8 @@ func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string, funct
 	// Search
 	case "BadQueryString":
 		return ReturnError(c, "Invalid query.", 0, fiber.StatusBadRequest)
+	case "RateLimitExceeded":
+		return ReturnError(c, "Rate limit exceeded contacting Bluesky. Please try again later.", 88, fiber.StatusTooManyRequests)
 
 	// Auth
 	case "ExpiredToken":
@@ -92,8 +96,6 @@ func HandleBlueskyError(c *fiber.Ctx, responseJson string, lexicon string, funct
 		return ReturnError(c, "Incorrect username/password.", 32, fiber.StatusUnauthorized)
 	case "AuthenticationRequired":
 		return ReturnError(c, "Incorrect username/password.", 32, fiber.StatusUnauthorized)
-	case "RateLimitExceeded":
-		return ReturnError(c, "Rate limit exceeded contacting Bluesky. Please try again later.", 88, fiber.StatusTooManyRequests)
 
 	default:
 		// Handle other errors
