@@ -191,7 +191,7 @@ func RunNotifications(cfg config.Config) {
 			{
 				if slices.Contains(posterDIDs, message.DID) {
 					go sendPushNotificationForMonitoredUser(message.DID, message.Commit.RKey)
-					fmt.Printf("New Jetstream Message (user): %+v\n", message)
+					// fmt.Printf("New Jetstream Message (user): %+v\n", message)
 				}
 
 				var record blueskyapi.PostRecord
@@ -206,13 +206,13 @@ func RunNotifications(cfg config.Config) {
 
 							// check if the mention is in our list of people subscribed to mention notifications
 							if slices.Contains(mentionedDIDs, feature.Did) {
-								fmt.Printf("New Jetstream Message (mention): %+v\n", record)
+								// fmt.Printf("New Jetstream Message (mention): %+v\n", record)
 								go sendPushNotificationForPost(feature.Did, "mention", message.DID, message.Commit.RKey, nil)
 							}
 
 							// now lets do the follower check
 							if slices.Contains(mentionedFollowingOnlyDIDs, feature.Did) {
-								fmt.Printf("New Jetstream Message (mentioned following): %+v\n", record)
+								// fmt.Printf("New Jetstream Message (mentioned following): %+v\n", record)
 								go sendPushNotificationForPost(feature.Did, "mention_following", message.DID, message.Commit.RKey, nil)
 							}
 						}
@@ -232,12 +232,12 @@ func RunNotifications(cfg config.Config) {
 				didOfPoster := splitURI[2]
 
 				if slices.Contains(favouritesDIDs, didOfPoster) {
-					fmt.Printf("New Jetstream Message (liked): %+v\n", record)
+					// fmt.Printf("New Jetstream Message (liked): %+v\n", record)
 					go sendPushNotificationForPost(didOfPoster, "liked", message.DID, splitURI[4], nil)
 				}
 
 				if slices.Contains(favouritesFollowingOnlyDIDs, didOfPoster) {
-					fmt.Printf("New Jetstream Message (liked_following): %+v\n", record)
+					// fmt.Printf("New Jetstream Message (liked_following): %+v\n", record)
 					go sendPushNotificationForPost(didOfPoster, "liked_following", message.DID, splitURI[4], nil)
 				}
 
@@ -254,12 +254,12 @@ func RunNotifications(cfg config.Config) {
 				didOfPoster := splitURI[2]
 
 				if slices.Contains(retweetDIDs, didOfPoster) {
-					fmt.Printf("New Jetstream Message (retweet): %+v\n", record)
+					// fmt.Printf("New Jetstream Message (retweet): %+v\n", record)
 					go sendPushNotificationForPost(didOfPoster, "retweet", message.DID, splitURI[4], nil)
 				}
 
 				if slices.Contains(retweetFollowingOnlyDIDs, didOfPoster) {
-					fmt.Printf("New Jetstream Message (retweet_following): %+v\n", record)
+					// fmt.Printf("New Jetstream Message (retweet_following): %+v\n", record)
 					go sendPushNotificationForPost(didOfPoster, "retweet_following", message.DID, splitURI[4], nil)
 				}
 
@@ -277,7 +277,7 @@ func RunNotifications(cfg config.Config) {
 				}
 
 				if slices.Contains(newFollowers, subject) {
-					fmt.Printf("New Jetstream Message (retweet): %+v\n", record)
+					// fmt.Printf("New Jetstream Message (retweet): %+v\n", record)
 					go sendPushNotificationForPost(subject, "follow", message.DID, "", nil)
 				}
 
@@ -459,7 +459,7 @@ func sendPushNotificationForPost(did string, typeOfNotification string, didOfPos
 		if err := sgn.SendNotification(token.DeviceToken, notificationBody); err != nil {
 			fmt.Println(err.Error())
 		}
-		fmt.Println("i just send a notification")
+		// fmt.Println("i just send a notification")
 	}
 }
 
