@@ -337,6 +337,10 @@ func processNotificationGroup(group notificationGroup, userCache *sync.Map, post
 		return nil
 	}
 
+	if group.reason == "like-via-repost" {
+		return nil
+	}
+
 	first := group.notifications[0]
 	last := group.notifications[len(group.notifications)-1]
 

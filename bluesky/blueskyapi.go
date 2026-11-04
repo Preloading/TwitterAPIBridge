@@ -684,7 +684,7 @@ func AuthorTTB(author User) *bridge.TwitterUser {
 
 		if len(avatar_components) >= 8 {
 			avatar_component_blob := strings.Split(avatar_components[7], "@")
-			pfp_url = configData.CdnURL + "/cdn/img/bsky/" + avatar_components[6] + "/" + avatar_component_blob[0] + ".png:profile_bigger"
+			pfp_url = configData.CdnURL + "/cdn/img/bsky/" + avatar_components[6] + "/" + avatar_component_blob[0] + ".jpg:profile_bigger"
 		}
 	}
 
