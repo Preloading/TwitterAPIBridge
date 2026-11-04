@@ -17,6 +17,7 @@ import (
 var httpClient = &http.Client{}
 
 func CDNDownscaler(c *fiber.Ctx) error {
+	// benchmarkTime := time.Now()
 	imageURL := c.Query("url")
 	widthStr := c.Query("width")
 	heightStr := c.Query("height")
@@ -31,6 +32,14 @@ func CDNDownscaler(c *fiber.Ctx) error {
 
 		// Remove any file extension from link
 		link = strings.TrimSuffix(link, filepath.Ext(link))
+
+		// too slow
+		// imagePDS, err := blueskyapi.ResolvePDSFromDID(did)
+		// if err != nil {
+		// 	return c.Status(fiber.StatusBadRequest).SendString("could not get account server")
+		// }
+
+		// imageURL = fmt.Sprintf("%s/xrpc/com.atproto.sync.getBlob?did=%s&cid=%s", *imagePDS, url.QueryEscape(did), url.QueryEscape(link))
 
 		imageURL = "https://cdn.bsky.app/img/feed_thumbnail/plain/" + did + "/" + link + "@jpeg"
 
@@ -51,6 +60,8 @@ func CDNDownscaler(c *fiber.Ctx) error {
 		}
 		imageURL = unescapedURL
 	}
+
+	// fmt.Printf("after url making -> %s\n", time.Since(benchmarkTime))
 
 	// Check suffixes and set dimensions before any other URL validation
 	suffixes := map[string]struct {
@@ -100,11 +111,15 @@ func CDNDownscaler(c *fiber.Ctx) error {
 		height = 0
 	}
 
+	// fmt.Printf("after random validation -> %s\n", time.Since(benchmarkTime))
+
 	resp, err := httpClient.Get(imageURL)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to fetch image")
 	}
 	defer resp.Body.Close()
+
+	// fmt.Printf("after fetch -> %s\n", time.Since(benchmarkTime))
 
 	if resizeOption == "none" || (width == 0 && height == 0) {
 		c.Response().Header.Set("Cache-Control", "public, max-age=1209600")

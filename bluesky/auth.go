@@ -152,6 +152,7 @@ func ResolveDIDFromHandle(handle string) (*string, error) {
 	return &userDID, nil
 }
 
+// outputs pds url like https://pds.preloading.dev
 func ResolvePDSFromDID(userDID string) (*string, error) {
 	// we must do different things depending on the DID type.
 	didDocReqUrl := ""
