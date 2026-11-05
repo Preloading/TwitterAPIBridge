@@ -202,6 +202,10 @@ func InitServer(config *config.Config) {
 	app.Get("/1/direct_messages/sent.:filetype", GetSentDMs)
 	app.Post("/1/direct_messages/new.:filetype", SendDM)
 
+	// DMs
+	app.Get("/1/direct_messages.:filetype", GetRecievedDMs)
+	app.Get("/1/direct_messages/sent.:filetype", GetSentDMs)
+
 	// Legal cuz why not?
 	AddV1Path(app.Get, "/legal/tos.:filetype", TOS)
 	AddV1Path(app.Get, "/legal/privacy.:filetype", PrivacyPolicy)
