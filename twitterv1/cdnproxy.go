@@ -76,6 +76,7 @@ func CDNDownscaler(c *fiber.Ctx) error {
 		":profile_bigger": {"128", "128", false},
 		":profile_normal": {"48", "48", false},
 		":profile_mini":   {"24", "24", false},
+		"/profile_bigger": {"128", "128", false},
 		"/mobile_retina":  {"620", "320", false},
 		"/mobile":         {"320", "160", false},
 		"/ipad":           {"626", "313", false},
